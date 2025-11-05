@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+.env
+*.sqlite3
+db.sqlite3
+.DS_Store
+google-credentials.json
+service-account.json
+service-app.json
+staticfiles/
+media/
