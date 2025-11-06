@@ -21,7 +21,23 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-q!hm2a(m$w83l&ya0f+1!79!3s
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 # Parse ALLOWED_HOSTS from environment variable (comma-separated)
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS_ENV = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+if ALLOWED_HOSTS_ENV:
+    ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_ENV.split(',')]
+else:
+    ALLOWED_HOSTS = []
+
+# Add Railway domain if RAILWAY_PUBLIC_DOMAIN is set
+RAILWAY_PUBLIC_DOMAIN = os.getenv('RAILWAY_PUBLIC_DOMAIN')
+if RAILWAY_PUBLIC_DOMAIN:
+    ALLOWED_HOSTS.append(RAILWAY_PUBLIC_DOMAIN)
+
+# In production, also allow Railway's internal domain
+if not DEBUG:
+    ALLOWED_HOSTS.extend([
+        '.railway.app',
+        '.up.railway.app',
+    ])
 
 
 # Application definition
@@ -189,7 +205,13 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# Only add static dir if it exists
+STATIC_DIR = BASE_DIR / 'static'
+if STATIC_DIR.exists():
+    STATICFILES_DIRS = [STATIC_DIR]
+else:
+    STATICFILES_DIRS = []
 
 # WhiteNoise configuration for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
