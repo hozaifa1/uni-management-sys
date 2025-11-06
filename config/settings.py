@@ -249,11 +249,6 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'django.log',
-            'formatter': 'verbose',
-        },
     },
     'root': {
         'handlers': ['console'],
@@ -261,9 +256,26 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
     },
 }
+
+# Add file logging only in development (if logs directory exists)
+if DEBUG:
+    LOGS_DIR = BASE_DIR / 'logs'
+    if not LOGS_DIR.exists():
+        try:
+            LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError):
+            pass  # Skip file logging if directory can't be created
+    
+    if LOGS_DIR.exists():
+        LOGGING['handlers']['file'] = {
+            'class': 'logging.FileHandler',
+            'filename': LOGS_DIR / 'django.log',
+            'formatter': 'verbose',
+        }
+        LOGGING['loggers']['django']['handlers'].append('file')
