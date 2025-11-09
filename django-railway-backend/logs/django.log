@@ -62,3 +62,35 @@ INFO 2025-11-09 23:12:17,270 basehttp "GET /api/accounts/students/ HTTP/1.1" 200
 INFO 2025-11-09 23:12:17,285 basehttp "GET /api/students/teachers/ HTTP/1.1" 200 52
 INFO 2025-11-09 23:12:17,304 basehttp "GET /api/payments/payments/recent/ HTTP/1.1" 200 52
 INFO 2025-11-09 23:12:17,415 basehttp "GET /api/payments/payments/statistics/ HTTP/1.1" 200 929
+INFO 2025-11-09 23:14:54,373 basehttp "GET /api/students/teachers/ HTTP/1.1" 200 52
+INFO 2025-11-09 23:14:54,390 basehttp "GET /api/payments/payments/recent/ HTTP/1.1" 200 52
+INFO 2025-11-09 23:14:54,390 basehttp "GET /api/accounts/students/ HTTP/1.1" 200 52
+INFO 2025-11-09 23:14:54,390 basehttp "GET /api/students/teachers/ HTTP/1.1" 200 52
+INFO 2025-11-09 23:14:54,414 basehttp "GET /api/accounts/students/ HTTP/1.1" 200 52
+INFO 2025-11-09 23:14:54,414 basehttp "GET /api/payments/payments/recent/ HTTP/1.1" 200 52
+INFO 2025-11-09 23:14:54,438 basehttp "GET /api/payments/payments/statistics/ HTTP/1.1" 200 929
+INFO 2025-11-09 23:14:54,463 basehttp "GET /api/payments/payments/statistics/ HTTP/1.1" 200 929
+INFO 2025-11-09 23:15:04,871 basehttp "POST /api/token/ HTTP/1.1" 200 483
+INFO 2025-11-09 23:15:04,887 basehttp "GET /api/accounts/users/me/ HTTP/1.1" 200 241
+INFO 2025-11-09 23:15:04,964 basehttp "GET /api/accounts/students/ HTTP/1.1" 200 52
+INFO 2025-11-09 23:15:04,980 basehttp "GET /api/payments/payments/recent/ HTTP/1.1" 200 52
+INFO 2025-11-09 23:15:04,988 basehttp "GET /api/students/teachers/ HTTP/1.1" 200 52
+INFO 2025-11-09 23:15:04,996 basehttp "GET /api/payments/payments/recent/ HTTP/1.1" 200 52
+INFO 2025-11-09 23:15:05,004 basehttp "GET /api/accounts/students/ HTTP/1.1" 200 52
+INFO 2025-11-09 23:15:05,012 basehttp "GET /api/students/teachers/ HTTP/1.1" 200 52
+INFO 2025-11-09 23:15:05,030 basehttp "GET /api/payments/payments/statistics/ HTTP/1.1" 200 929
+INFO 2025-11-09 23:15:05,061 basehttp "GET /api/payments/payments/statistics/ HTTP/1.1" 200 929
+INFO 2025-11-09 23:29:34,493 autoreload F:\IGMIS LMS\django-railway-backend\config\settings.py changed, reloading.
+INFO 2025-11-09 23:29:39,739 autoreload Watching for file changes with StatReloader
+INFO 2025-11-09 23:29:48,512 autoreload F:\IGMIS LMS\django-railway-backend\config\settings.py changed, reloading.
+INFO 2025-11-09 23:29:50,143 autoreload Watching for file changes with StatReloader
+INFO 2025-11-09 23:30:04,422 basehttp "GET /admin/ HTTP/1.1" 200 14724
+INFO 2025-11-09 23:30:04,632 basehttp "GET /static/admin/css/base.css HTTP/1.1" 304 0
+INFO 2025-11-09 23:30:04,646 basehttp "GET /static/admin/css/dark_mode.css HTTP/1.1" 304 0
+INFO 2025-11-09 23:30:04,656 basehttp "GET /static/admin/js/theme.js HTTP/1.1" 304 0
+INFO 2025-11-09 23:30:04,691 basehttp "GET /static/admin/css/dashboard.css HTTP/1.1" 304 0
+INFO 2025-11-09 23:30:04,737 basehttp "GET /static/admin/css/nav_sidebar.css HTTP/1.1" 304 0
+INFO 2025-11-09 23:30:04,737 basehttp "GET /static/admin/css/responsive.css HTTP/1.1" 304 0
+INFO 2025-11-09 23:30:04,854 basehttp "GET /static/admin/js/nav_sidebar.js HTTP/1.1" 304 0
+INFO 2025-11-09 23:30:07,589 basehttp "GET /static/admin/img/icon-changelink.svg HTTP/1.1" 304 0
+INFO 2025-11-09 23:30:07,590 basehttp "GET /static/admin/img/icon-addlink.svg HTTP/1.1" 304 0

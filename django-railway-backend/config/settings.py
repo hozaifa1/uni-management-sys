@@ -44,6 +44,10 @@ if not DEBUG:
         '.railway.app',
         '.up.railway.app',
     ])
+    
+# Allow all hosts if explicitly set (for debugging only)
+if os.getenv('DISABLE_ALLOWED_HOSTS_CHECK', 'False') == 'True':
+    ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -176,10 +180,19 @@ SIMPLE_JWT = {
 
 
 # CORS Configuration
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+# Parse CORS_ALLOWED_ORIGINS from environment variable (comma-separated)
+CORS_ORIGINS_ENV = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173')
+if CORS_ORIGINS_ENV:
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_ENV.split(',')]
+else:
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
+# Allow all origins in development (if explicitly set)
+if os.getenv('CORS_ALLOW_ALL', 'False') == 'True':
+    CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -231,7 +244,16 @@ else:
     STATICFILES_DIRS = []
 
 # WhiteNoise configuration for static files
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Use CompressedStaticFilesStorage instead of CompressedManifestStaticFilesStorage
+# to avoid issues when staticfiles.json is missing
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
 
 
 # Media files
