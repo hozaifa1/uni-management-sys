@@ -6,7 +6,13 @@ Production-ready configuration with environment variables.
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-import dj_database_url
+
+# Try to import dj_database_url, fallback if not available
+try:
+    import dj_database_url
+    HAS_DJ_DATABASE_URL = True
+except ImportError:
+    HAS_DJ_DATABASE_URL = False
 
 # Load environment variables from .env file
 load_dotenv()
@@ -99,10 +105,21 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 # Use DATABASE_URL from environment, fallback to SQLite for development
-DATABASE_URL = os.getenv('DATABASE_URL', f'sqlite:///{BASE_DIR / "db.sqlite3"}')
-DATABASES = {
-    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
-}
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if DATABASE_URL and HAS_DJ_DATABASE_URL:
+    # Parse database URL if dj_database_url is available
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    }
+else:
+    # Fallback to SQLite for local development
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -255,6 +272,10 @@ if not DEBUG:
     # SECURE_HSTS_SECONDS = 31536000
     # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     # SECURE_HSTS_PRELOAD = True
+
+
+# Custom User Model
+AUTH_USER_MODEL = 'accounts.User'
 
 
 # Default primary key field type

@@ -1,0 +1,20 @@
+INFO 2025-11-09 22:52:34,197 autoreload Watching for file changes with StatReloader
+INFO 2025-11-09 22:52:50,018 basehttp "GET / HTTP/1.1" 200 449
+WARNING 2025-11-09 22:52:51,825 log Not Found: /favicon.ico
+WARNING 2025-11-09 22:52:51,825 basehttp "GET /favicon.ico HTTP/1.1" 404 3857
+INFO 2025-11-09 22:53:13,742 basehttp "GET /admin/ HTTP/1.1" 302 0
+INFO 2025-11-09 22:53:15,642 basehttp "GET /admin/login/?next=/admin/ HTTP/1.1" 200 4173
+INFO 2025-11-09 22:53:16,303 basehttp "GET /static/admin/css/dark_mode.css HTTP/1.1" 200 2808
+INFO 2025-11-09 22:53:16,311 basehttp "GET /static/admin/css/nav_sidebar.css HTTP/1.1" 200 2810
+INFO 2025-11-09 22:53:16,327 basehttp "GET /static/admin/css/base.css HTTP/1.1" 200 22120
+INFO 2025-11-09 22:53:16,335 basehttp "GET /static/admin/css/login.css HTTP/1.1" 200 951
+INFO 2025-11-09 22:53:16,367 basehttp "GET /static/admin/css/responsive.css HTTP/1.1" 200 16565
+INFO 2025-11-09 22:53:16,383 basehttp "GET /static/admin/js/nav_sidebar.js HTTP/1.1" 200 3063
+INFO 2025-11-09 22:53:16,456 basehttp "GET /static/admin/js/theme.js HTTP/1.1" 200 1653
+WARNING 2025-11-09 22:53:16,600 log Not Found: /favicon.ico
+WARNING 2025-11-09 22:53:16,600 basehttp "GET /favicon.ico HTTP/1.1" 404 3857
+INFO 2025-11-09 22:53:23,883 basehttp "POST /admin/login/?next=/admin/ HTTP/1.1" 302 0
+INFO 2025-11-09 22:53:23,992 basehttp "GET /admin/ HTTP/1.1" 200 14724
+INFO 2025-11-09 22:53:24,287 basehttp "GET /static/admin/css/dashboard.css HTTP/1.1" 200 441
+INFO 2025-11-09 22:53:24,325 basehttp "GET /static/admin/img/icon-addlink.svg HTTP/1.1" 200 331
+INFO 2025-11-09 22:53:24,333 basehttp "GET /static/admin/img/icon-changelink.svg HTTP/1.1" 200 380
