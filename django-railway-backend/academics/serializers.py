@@ -196,3 +196,4 @@ class StudentReportCardSerializer(serializers.Serializer):
     def get_exam(self, obj):
         return ExamSerializer(obj['exam']).data
 
+

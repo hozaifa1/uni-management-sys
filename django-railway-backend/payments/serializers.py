@@ -143,3 +143,4 @@ class PaymentStatisticsSerializer(serializers.Serializer):
     total_students = serializers.IntegerField()
     monthly_breakdown = serializers.ListField(child=serializers.DictField())
 
+
