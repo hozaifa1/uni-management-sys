@@ -266,14 +266,12 @@ USE_GOOGLE_DRIVE = os.getenv('USE_GOOGLE_DRIVE', 'False') == 'True'
 
 if USE_GOOGLE_DRIVE:
     # Use custom Google Drive Storage backend
-    DEFAULT_FILE_STORAGE = 'config.storage_backends.GoogleDriveStorage'
+    STORAGES["default"]["BACKEND"] = 'config.storage_backends.GoogleDriveStorage'
     
     # Google Drive Configuration
     # GOOGLE_DRIVE_CREDENTIALS_JSON: Service account JSON credentials (as string or file path)
     # GDRIVE_FOLDER_ID: Google Drive folder ID where files will be stored
-else:
-    # Use local file system storage
-    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+# else: Use local file system storage (already set in STORAGES above)
 
 
 # Security Settings for Production
