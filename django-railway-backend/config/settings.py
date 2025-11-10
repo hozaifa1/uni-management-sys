@@ -183,7 +183,17 @@ SIMPLE_JWT = {
 # Parse CORS_ALLOWED_ORIGINS from environment variable (comma-separated)
 CORS_ORIGINS_ENV = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173')
 if CORS_ORIGINS_ENV:
-    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_ENV.split(',')]
+    origins = []
+    for origin in CORS_ORIGINS_ENV.split(','):
+        origin = origin.strip()
+        # Add https:// scheme if missing and not localhost
+        if origin and not origin.startswith(('http://', 'https://')):
+            if 'localhost' in origin or '127.0.0.1' in origin:
+                origin = f'http://{origin}'
+            else:
+                origin = f'https://{origin}'
+        origins.append(origin)
+    CORS_ALLOWED_ORIGINS = origins
 else:
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:5173",
