@@ -23,38 +23,89 @@ class Command(BaseCommand):
             has_accounts = accounts_initial in applied_migrations
             has_admin = admin_initial in applied_migrations
             
-            self.stdout.write("🔍 Checking migration history...")
+            self.stdout.write("🔍 Checking migration and database state...")
             
-            # Case 1: Inconsistent state - admin before accounts
+            # Case 1: Inconsistent state - admin before accounts OR corrupted tables
             if has_admin and not has_accounts:
                 self.stdout.write(
                     self.style.WARNING(
                         '⚠️  Inconsistent migration history detected!'
                     )
                 )
-                self.stdout.write('🔧 Clearing migration history (tables will remain intact)...')
+                self.stdout.write('🔧 Dropping all tables and starting fresh...')
                 
+                # Drop all tables including django_migrations
                 with connection.cursor() as cursor:
-                    cursor.execute("DELETE FROM django_migrations")
+                    # Get all table names
+                    cursor.execute("""
+                        SELECT tablename FROM pg_tables 
+                        WHERE schemaname = 'public'
+                    """)
+                    tables = cursor.fetchall()
+                    
+                    # Drop each table
+                    for table in tables:
+                        table_name = table[0]
+                        self.stdout.write(f'  Dropping table: {table_name}')
+                        cursor.execute(f'DROP TABLE IF EXISTS "{table_name}" CASCADE')
                 
                 self.stdout.write(
                     self.style.SUCCESS(
-                        '✅ Migration history cleared! Ready for migrate --fake-initial'
+                        '✅ Database reset complete! Ready for fresh migrations'
                     )
                 )
                 return
             
-            # Case 2: Already consistent
-            elif has_accounts:
-                self.stdout.write(
-                    self.style.SUCCESS('✅ Migration history is consistent!')
-                )
-                return
+            # Case 2: Check if tables exist but migrations don't (corrupted state)
+            elif not has_accounts and not has_admin:
+                with connection.cursor() as cursor:
+                    # Check if django_content_type table exists
+                    cursor.execute("""
+                        SELECT EXISTS (
+                            SELECT FROM pg_tables 
+                            WHERE schemaname = 'public' 
+                            AND tablename = 'django_content_type'
+                        )
+                    """)
+                    table_exists = cursor.fetchone()[0]
+                    
+                    if table_exists:
+                        self.stdout.write(
+                            self.style.WARNING(
+                                '⚠️  Corrupted database state detected (tables exist but no migration records)!'
+                            )
+                        )
+                        self.stdout.write('🔧 Dropping all tables and starting fresh...')
+                        
+                        # Get all table names
+                        cursor.execute("""
+                            SELECT tablename FROM pg_tables 
+                            WHERE schemaname = 'public'
+                        """)
+                        tables = cursor.fetchall()
+                        
+                        # Drop each table
+                        for table in tables:
+                            table_name = table[0]
+                            self.stdout.write(f'  Dropping table: {table_name}')
+                            cursor.execute(f'DROP TABLE IF EXISTS "{table_name}" CASCADE')
+                        
+                        self.stdout.write(
+                            self.style.SUCCESS(
+                                '✅ Database reset complete! Ready for fresh migrations'
+                            )
+                        )
+                        return
+                    else:
+                        self.stdout.write(
+                            self.style.SUCCESS('✅ Fresh database - ready for migrations!')
+                        )
+                        return
             
-            # Case 3: Fresh database (no migrations yet)
+            # Case 3: Already consistent
             else:
                 self.stdout.write(
-                    self.style.SUCCESS('✅ Fresh database - ready for migrations!')
+                    self.style.SUCCESS('✅ Migration history is consistent!')
                 )
                 return
                 
