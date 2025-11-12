@@ -9,7 +9,7 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
-from accounts.models import User, Role
+from accounts.models import User
 
 def create_admin_user():
     """Create admin user if it doesn't exist"""
@@ -20,21 +20,11 @@ def create_admin_user():
         admin = User.objects.get(username='admin')
         print(f"   Username: {admin.username}")
         print(f"   Email: {admin.email}")
-        print(f"   Role: {admin.role.name if admin.role else 'No role'}")
+        print(f"   Role: {admin.role}")
+        print(f"   Active: {admin.is_active}")
         return
     
     print("Creating admin user...")
-    
-    # Create or get admin role
-    admin_role, created = Role.objects.get_or_create(
-        name='admin',
-        defaults={'description': 'Administrator with full access'}
-    )
-    
-    if created:
-        print(f"✅ Created admin role")
-    else:
-        print(f"✅ Admin role already exists")
     
     # Create admin user
     admin_user = User.objects.create_user(
@@ -43,7 +33,7 @@ def create_admin_user():
         password='admin123',
         first_name='System',
         last_name='Administrator',
-        role=admin_role,
+        role='ADMIN',  # Simple CharField, not ForeignKey
         is_staff=True,
         is_superuser=True,
         is_active=True
@@ -53,9 +43,10 @@ def create_admin_user():
     print(f"   Username: admin")
     print(f"   Password: admin123")
     print(f"   Email: {admin_user.email}")
-    print(f"   Role: {admin_user.role.name}")
+    print(f"   Role: {admin_user.role}")
     print("\n⚠️  IMPORTANT: Change this password after first login!")
 
 if __name__ == '__main__':
     create_admin_user()
+
 
