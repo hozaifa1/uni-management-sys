@@ -4,12 +4,14 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Avg, Count, Q
+from django.http import FileResponse
 
 from .models import Subject, Exam, Result
 from .serializers import (
     SubjectSerializer, ExamSerializer, ExamDetailSerializer,
     ResultSerializer, ResultDetailSerializer, BulkResultSerializer
 )
+from .utils import generate_report_card, generate_bulk_report_cards
 
 
 class SubjectViewSet(viewsets.ModelViewSet):
@@ -289,3 +291,84 @@ class ResultViewSet(viewsets.ModelViewSet):
             'percentage': percentage,
             'grade': grade
         })
+    
+    @action(detail=False, methods=['get'])
+    def generate_report_card(self, request):
+        """
+        Generate PDF report card for a student's exam
+        Query params: student_id, exam_id
+        """
+        student_id = request.query_params.get('student_id')
+        exam_id = request.query_params.get('exam_id')
+        
+        if not student_id or not exam_id:
+            return Response(
+                {'error': 'student_id and exam_id parameters are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            pdf_buffer = generate_report_card(student_id, exam_id)
+            
+            # Return PDF file response
+            response = FileResponse(
+                pdf_buffer,
+                content_type='application/pdf',
+                as_attachment=True,
+                filename=f'report_card_{student_id}_{exam_id}.pdf'
+            )
+            return response
+            
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Error generating report card: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['get'])
+    def generate_bulk_report_cards(self, request):
+        """
+        Generate PDF report cards for all students in a batch
+        Query params: batch_id, exam_id
+        """
+        batch_id = request.query_params.get('batch_id')
+        exam_id = request.query_params.get('exam_id')
+        
+        if not batch_id or not exam_id:
+            return Response(
+                {'error': 'batch_id and exam_id parameters are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            report_cards = generate_bulk_report_cards(batch_id, exam_id)
+            
+            if not report_cards:
+                return Response(
+                    {'error': 'No report cards could be generated. Check if students have results for this exam.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # For now, return count of generated report cards
+            # In a production system, you'd want to zip these and return
+            return Response({
+                'success': True,
+                'count': len(report_cards),
+                'message': f'Generated {len(report_cards)} report cards successfully'
+            })
+            
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Error generating report cards: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

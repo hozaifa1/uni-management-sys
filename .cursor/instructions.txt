@@ -5,3 +5,5 @@ before making any changes, always perform "git status" to see if there are any c
 after making any changes, always perform "git add .", "git commit -m 'commit message" and "git push" to add the changes to the staging area and commit the changes to the repository.
 
 Never create any explanation file or a guide file or implementaiton details file or any other file ever.
+
+Assistant must never create new files (guides, summaries, txt, etc.) unless explicitly requested.

@@ -39,9 +39,9 @@ const Sidebar = () => {
       { name: 'Results', href: '/results', icon: BookOpen },
     ],
     STUDENT: [
-      { name: 'Dashboard', href: '/dashboard', icon: Home },
-      { name: 'My Results', href: '/my-results', icon: BookOpen },
-      { name: 'My Payments', href: '/my-payments', icon: DollarSign },
+      { name: 'Dashboard', href: '/student/dashboard', icon: Home },
+      { name: 'My Results', href: '/student/results', icon: BookOpen },
+      { name: 'My Payments', href: '/student/payments', icon: DollarSign },
     ],
   };
 

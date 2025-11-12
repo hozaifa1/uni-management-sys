@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Upload, User } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../../services/api';
 
 const AddStudentModal = ({ onClose, onSuccess }) => {
@@ -92,10 +93,13 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
         },
       });
 
+      toast.success('Student added successfully!');
       onSuccess();
     } catch (error) {
       console.error('Error adding student:', error);
-      setError(error.response?.data?.message || 'Failed to add student. Please try again.');
+      const errorMsg = error.response?.data?.message || 'Failed to add student. Please try again.';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }

@@ -297,13 +297,13 @@ Open http://localhost:5173 → You should see Vite + React page
 10. Wait 2 minutes
 11. Click "Site settings" → "Change site name"
 12. Name it: `university-management-xyz` (unique name)
-13. **COPY** the URL: `https://university-management-xyz.netlify.app`
+13. **COPY** the URL: `https://uni-manage-sys.netlify.app`
 
 **Add environment variable to Netlify:**
 1. Site settings → "Environment variables"
 2. Add variable:
    - Key: `VITE_API_URL`
-   - Value: `https://your-railway-app.up.railway.app/api`
+   - Value: `https://https://uni-management-sys-production.up.railway.app/api`
 3. Click "Save"
 4. Go to "Deploys" → "Trigger deploy" → "Deploy site"
 
