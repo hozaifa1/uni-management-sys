@@ -10,6 +10,36 @@ import ResultsPage from './pages/ResultsPage';
 import StudentDashboard from './pages/student/StudentDashboard';
 import MyResults from './pages/student/MyResults';
 import MyPayments from './pages/student/MyPayments';
+import TeacherDashboard from './pages/teacher/TeacherDashboard';
+import { useAuth } from './context/AuthContext';
+
+const DefaultRedirect = () => {
+  const { isAuthenticated, loading, user } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const userRole = user?.role || user?.user?.role;
+
+  if (userRole === 'STUDENT') {
+    return <Navigate to="/student/dashboard" replace />;
+  }
+
+  if (userRole === 'TEACHER') {
+    return <Navigate to="/teacher/dashboard" replace />;
+  }
+
+  return <Navigate to="/dashboard" replace />;
+};
 
 function App() {
   return (
@@ -24,7 +54,7 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['ADMIN']}>
                 <DashboardLayout>
                   <DashboardPage />
                 </DashboardLayout>
@@ -93,7 +123,7 @@ function App() {
           <Route
             path="/reports"
             element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
+              <ProtectedRoute allowedRoles={['ADMIN', 'TEACHER']}>
                 <DashboardLayout>
                   <div className="text-center py-12">
                     <h2 className="text-2xl font-bold text-gray-900">Reports Page</h2>
@@ -136,13 +166,25 @@ function App() {
             }
           />
           
+          {/* Teacher Portal */}
+          <Route
+            path="/teacher/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['TEACHER']}>
+                <DashboardLayout>
+                  <TeacherDashboard />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+
           {/* Legacy student routes - redirect to new paths */}
           <Route path="/my-results" element={<Navigate to="/student/results" replace />} />
           <Route path="/my-payments" element={<Navigate to="/student/payments" replace />} />
 
           {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<DefaultRedirect />} />
+          <Route path="*" element={<DefaultRedirect />} />
         </Routes>
         </Router>
       </AuthProvider>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogIn, User, Lock, AlertCircle } from 'lucide-react';
@@ -8,8 +8,22 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const userRole = user?.role || user?.user?.role;
+
+    if (userRole === 'STUDENT') {
+      navigate('/student/dashboard', { replace: true });
+    } else if (userRole === 'TEACHER') {
+      navigate('/teacher/dashboard', { replace: true });
+    } else {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate, user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,8 +31,16 @@ const LoginPage = () => {
     setIsLoading(true);
 
     try {
-      await login(username, password);
-      navigate('/dashboard');
+      const userData = await login(username, password);
+      const userRole = userData?.role || userData?.user?.role;
+
+      if (userRole === 'STUDENT') {
+        navigate('/student/dashboard', { replace: true });
+      } else if (userRole === 'TEACHER') {
+        navigate('/teacher/dashboard', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err) {
       setError(err.detail || 'Invalid username or password');
     } finally {

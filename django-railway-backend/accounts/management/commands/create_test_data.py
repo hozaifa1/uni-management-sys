@@ -362,7 +362,7 @@ class Command(BaseCommand):
         """Create result records for students"""
         results = []
         
-        for student in students[:8]:  # Create results for first 8 students
+        for student in students:
             # Get exams for student's batch
             student_exams = [exam for exam in exams if exam.batch == student.batch]
             
@@ -370,7 +370,7 @@ class Command(BaseCommand):
                 # Get subjects for the course
                 course_subjects = [s for s in subjects if s.course == student.batch.course]
                 
-                for subject in course_subjects[:4]:  # First 4 subjects
+                for subject in course_subjects:
                     if Result.objects.filter(student=student, exam=exam, subject=subject).exists():
                         continue
                         
@@ -394,16 +394,26 @@ class Command(BaseCommand):
         payments = []
         today = timezone.now().date()
 
-        for student in students[:8]:  # Create payments for first 8 students
+        for student in students:
             # Get fee structures for student's batch
             fee_structures = FeeStructure.objects.filter(batch=student.batch)
             
-            for fee_structure in fee_structures[:2]:  # First 2 fee structures
+            for index, fee_structure in enumerate(fee_structures):
                 if Payment.objects.filter(student=student, fee_structure=fee_structure).exists():
                     continue
                     
-                # Random payment amount (70-100% of fee)
-                payment_percentage = random.uniform(0.7, 1.0)
+                if index == 0:
+                    # Admission fees are fully paid
+                    payment_percentage = 1.0
+                elif index == 1:
+                    # Tuition fees partially paid to keep pending dues visible
+                    payment_percentage = random.uniform(0.6, 0.85)
+                else:
+                    # Randomly decide to skip additional fees for some students
+                    if random.random() < 0.4:
+                        continue
+                    payment_percentage = random.uniform(0.4, 0.9)
+
                 amount = fee_structure.amount * Decimal(str(payment_percentage))
                 
                 payment = Payment.objects.create(

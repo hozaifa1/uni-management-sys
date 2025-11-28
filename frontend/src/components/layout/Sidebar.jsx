@@ -34,7 +34,7 @@ const Sidebar = () => {
       { name: 'Reports', href: '/reports', icon: BarChart3 },
     ],
     TEACHER: [
-      { name: 'Dashboard', href: '/dashboard', icon: Home },
+      { name: 'Dashboard', href: '/teacher/dashboard', icon: Home },
       { name: 'Students', href: '/students', icon: Users },
       { name: 'Results', href: '/results', icon: BookOpen },
     ],
