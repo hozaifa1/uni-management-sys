@@ -72,15 +72,35 @@ class StudentSerializer(serializers.ModelSerializer):
     """
     user = UserSerializer(read_only=True)
     batch_name = serializers.CharField(source='batch.name', read_only=True)
+    course_code = serializers.CharField(source='batch.course.code', read_only=True)
     
     class Meta:
         model = Student
         fields = [
             'id', 'user', 'student_id', 'date_of_birth',
-            'guardian_name', 'guardian_phone', 'admission_date',
-            'batch', 'batch_name', 'photo', 'blood_group',
-            'present_address', 'permanent_address',
-            'created_at', 'updated_at'
+            # Family info
+            'guardian_name', 'guardian_phone', 'guardian_yearly_income',
+            'father_name', 'father_phone', 'mother_name', 'mother_phone',
+            # Academic info
+            'admission_date', 'session', 'semester',
+            'batch', 'batch_name', 'course_code',
+            'photo', 'blood_group',
+            # Structured present address
+            'present_address', 'present_house_no', 'present_road_vill',
+            'present_police_station', 'present_post_office',
+            'present_district', 'present_division',
+            # Structured permanent address
+            'permanent_address', 'permanent_house_no', 'permanent_road_vill',
+            'permanent_police_station', 'permanent_post_office',
+            'permanent_district', 'permanent_division',
+            # SSC info
+            'ssc_school', 'ssc_passing_year', 'ssc_group',
+            'ssc_4th_subject', 'ssc_gpa', 'ssc_cgpa',
+            # HSC info
+            'hsc_college', 'hsc_passing_year', 'hsc_group',
+            'hsc_4th_subject', 'hsc_gpa', 'hsc_cgpa',
+            # Other
+            'other_info', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'student_id', 'created_at', 'updated_at']
 
@@ -100,15 +120,36 @@ class StudentCreateSerializer(serializers.ModelSerializer):
     )
     first_name = serializers.CharField(write_only=True)
     last_name = serializers.CharField(write_only=True)
-    phone_number = serializers.CharField(write_only=True, required=False)
+    phone_number = serializers.CharField(write_only=True, required=False, allow_blank=True)
     
     class Meta:
         model = Student
         fields = [
-            'username', 'email', 'password', 'first_name', 'last_name',
-            'phone_number', 'date_of_birth', 'guardian_name', 'guardian_phone',
-            'admission_date', 'batch', 'photo', 'blood_group',
-            'present_address', 'permanent_address'
+            # User fields
+            'username', 'email', 'password', 'first_name', 'last_name', 'phone_number',
+            # Basic student info
+            'date_of_birth', 'blood_group', 'photo',
+            # Family info
+            'guardian_name', 'guardian_phone', 'guardian_yearly_income',
+            'father_name', 'father_phone', 'mother_name', 'mother_phone',
+            # Academic info
+            'admission_date', 'session', 'semester', 'batch',
+            # Structured present address
+            'present_address', 'present_house_no', 'present_road_vill',
+            'present_police_station', 'present_post_office',
+            'present_district', 'present_division',
+            # Structured permanent address
+            'permanent_address', 'permanent_house_no', 'permanent_road_vill',
+            'permanent_police_station', 'permanent_post_office',
+            'permanent_district', 'permanent_division',
+            # SSC info
+            'ssc_school', 'ssc_passing_year', 'ssc_group',
+            'ssc_4th_subject', 'ssc_gpa', 'ssc_cgpa',
+            # HSC info
+            'hsc_college', 'hsc_passing_year', 'hsc_group',
+            'hsc_4th_subject', 'hsc_gpa', 'hsc_cgpa',
+            # Other
+            'other_info'
         ]
     
     def create(self, validated_data):

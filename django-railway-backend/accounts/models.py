@@ -85,6 +85,17 @@ class Student(models.Model):
         ('O+', 'O+'),
         ('O-', 'O-'),
     ]
+
+    SEMESTER_CHOICES = [
+        ('1st', '1st'),
+        ('2nd', '2nd'),
+        ('3rd', '3rd'),
+        ('4th', '4th'),
+        ('5th', '5th'),
+        ('6th', '6th'),
+        ('7th', '7th'),
+        ('8th', '8th'),
+    ]
     
     user = models.OneToOneField(
         'User',
@@ -114,9 +125,59 @@ class Student(models.Model):
         max_length=17,
         help_text="Guardian's contact number"
     )
+
+    father_name = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Father's full name"
+    )
+    father_phone = models.CharField(
+        validators=[User.phone_regex],
+        max_length=17,
+        blank=True,
+        null=True,
+        help_text="Father's contact number"
+    )
+    mother_name = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Mother's full name"
+    )
+    mother_phone = models.CharField(
+        validators=[User.phone_regex],
+        max_length=17,
+        blank=True,
+        null=True,
+        help_text="Mother's contact number"
+    )
+
+    guardian_yearly_income = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        help_text="Guardian's yearly income"
+    )
     
     admission_date = models.DateField(
         help_text='Date of admission'
+    )
+
+    session = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text='Academic session (e.g., 2023-2024)'
+    )
+
+    semester = models.CharField(
+        max_length=10,
+        choices=SEMESTER_CHOICES,
+        blank=True,
+        null=True,
+        help_text='Current semester'
     )
     
     batch = models.ForeignKey(
@@ -143,11 +204,175 @@ class Student(models.Model):
     )
     
     present_address = models.TextField(
+        blank=True,
+        null=True,
         help_text='Current residential address'
     )
     
     permanent_address = models.TextField(
+        blank=True,
+        null=True,
         help_text='Permanent residential address'
+    )
+
+    # Structured present address fields
+    present_house_no = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text='Present address - house number'
+    )
+    present_road_vill = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Present address - road or village'
+    )
+    present_police_station = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Present address - police station'
+    )
+    present_post_office = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Present address - post office'
+    )
+    present_district = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Present address - district'
+    )
+    present_division = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Present address - division'
+    )
+
+    # Structured permanent address fields
+    permanent_house_no = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text='Permanent address - house number'
+    )
+    permanent_road_vill = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Permanent address - road or village'
+    )
+    permanent_police_station = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Permanent address - police station'
+    )
+    permanent_post_office = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Permanent address - post office'
+    )
+    permanent_district = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Permanent address - district'
+    )
+    permanent_division = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Permanent address - division'
+    )
+
+    # SSC academic information
+    ssc_school = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='SSC school name'
+    )
+    ssc_passing_year = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        help_text='SSC passing year'
+    )
+    ssc_group = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text='SSC group (Science, Commerce, Arts)'
+    )
+    ssc_4th_subject = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='SSC 4th subject'
+    )
+    ssc_gpa = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        help_text='SSC GPA'
+    )
+    ssc_cgpa = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        help_text='SSC CGPA'
+    )
+
+    # HSC academic information
+    hsc_college = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='HSC college name'
+    )
+    hsc_passing_year = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        help_text='HSC passing year'
+    )
+    hsc_group = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text='HSC group (Science, Commerce, Arts)'
+    )
+    hsc_4th_subject = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='HSC 4th subject'
+    )
+    hsc_gpa = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        help_text='HSC GPA'
+    )
+    hsc_cgpa = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        help_text='HSC CGPA'
+    )
+
+    other_info = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Other information from admission form'
     )
     
     created_at = models.DateTimeField(auto_now_add=True)

@@ -1,30 +1,88 @@
 import { useState, useEffect } from 'react';
-import { X, Upload, User } from 'lucide-react';
+import { X, Upload, User, ChevronDown, ChevronUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
+const SEMESTER_OPTIONS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
+const BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+const GROUP_OPTIONS = ['Science', 'Commerce', 'Arts'];
+
 const AddStudentModal = ({ onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
+    // Account info
     username: '',
     email: '',
+    password: '',
     first_name: '',
     last_name: '',
-    password: '',
     phone_number: '',
-    address: '',
+    // Basic student info
     date_of_birth: '',
+    blood_group: '',
+    // Academic info
+    batch: '',
+    session: '',
+    semester: '',
+    admission_date: new Date().toISOString().split('T')[0],
+    // Family info
+    father_name: '',
+    father_phone: '',
+    mother_name: '',
+    mother_phone: '',
     guardian_name: '',
     guardian_phone: '',
-    batch: '',
-    blood_group: '',
-    present_address: '',
-    permanent_address: '',
+    guardian_yearly_income: '',
+    // Present address
+    present_house_no: '',
+    present_road_vill: '',
+    present_police_station: '',
+    present_post_office: '',
+    present_district: '',
+    present_division: '',
+    // Permanent address
+    permanent_house_no: '',
+    permanent_road_vill: '',
+    permanent_police_station: '',
+    permanent_post_office: '',
+    permanent_district: '',
+    permanent_division: '',
+    // SSC info
+    ssc_school: '',
+    ssc_passing_year: '',
+    ssc_group: '',
+    ssc_4th_subject: '',
+    ssc_gpa: '',
+    ssc_cgpa: '',
+    // HSC info
+    hsc_college: '',
+    hsc_passing_year: '',
+    hsc_group: '',
+    hsc_4th_subject: '',
+    hsc_gpa: '',
+    hsc_cgpa: '',
+    // Other
+    other_info: '',
   });
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [expandedSections, setExpandedSections] = useState({
+    account: true,
+    personal: true,
+    academic: true,
+    family: true,
+    presentAddress: false,
+    permanentAddress: false,
+    ssc: false,
+    hsc: false,
+    other: false,
+  });
+
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   useEffect(() => {
     fetchBatches();
@@ -64,24 +122,12 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
     try {
       const formDataToSend = new FormData();
       
-      // Add user data
-      formDataToSend.append('username', formData.username);
-      formDataToSend.append('email', formData.email);
-      formDataToSend.append('first_name', formData.first_name);
-      formDataToSend.append('last_name', formData.last_name);
-      formDataToSend.append('password', formData.password);
-      formDataToSend.append('phone_number', formData.phone_number);
-      formDataToSend.append('address', formData.address);
-      formDataToSend.append('role', 'STUDENT');
-      
-      // Add student data
-      formDataToSend.append('date_of_birth', formData.date_of_birth);
-      formDataToSend.append('guardian_name', formData.guardian_name);
-      formDataToSend.append('guardian_phone', formData.guardian_phone);
-      formDataToSend.append('batch', formData.batch);
-      formDataToSend.append('blood_group', formData.blood_group);
-      formDataToSend.append('present_address', formData.present_address);
-      formDataToSend.append('permanent_address', formData.permanent_address);
+      // Add all form fields (skip empty optional fields)
+      Object.keys(formData).forEach(key => {
+        if (formData[key] !== '' && formData[key] !== null) {
+          formDataToSend.append(key, formData[key]);
+        }
+      });
       
       if (photo) {
         formDataToSend.append('photo', photo);
@@ -97,13 +143,75 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
       onSuccess();
     } catch (error) {
       console.error('Error adding student:', error);
-      const errorMsg = error.response?.data?.message || 'Failed to add student. Please try again.';
+      const errorMsg = error.response?.data?.message || 
+        error.response?.data?.detail ||
+        JSON.stringify(error.response?.data) ||
+        'Failed to add student. Please try again.';
       setError(errorMsg);
-      toast.error(errorMsg);
+      toast.error('Failed to add student');
     } finally {
       setLoading(false);
     }
   };
+
+  // Helper component for collapsible section
+  const SectionHeader = ({ title, section, required = false }) => (
+    <button
+      type="button"
+      onClick={() => toggleSection(section)}
+      className="w-full flex items-center justify-between py-3 text-left"
+    >
+      <h3 className="text-lg font-semibold text-gray-900">
+        {title} {required && <span className="text-red-500">*</span>}
+      </h3>
+      {expandedSections[section] ? (
+        <ChevronUp className="w-5 h-5 text-gray-500" />
+      ) : (
+        <ChevronDown className="w-5 h-5 text-gray-500" />
+      )}
+    </button>
+  );
+
+  // Input field component
+  const InputField = ({ label, name, type = 'text', required = false, ...props }) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        type={type}
+        name={name}
+        value={formData[name]}
+        onChange={handleChange}
+        required={required}
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        {...props}
+      />
+    </div>
+  );
+
+  // Select field component
+  const SelectField = ({ label, name, options, required = false, placeholder = 'Select...' }) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <select
+        name={name}
+        value={formData[name]}
+        onChange={handleChange}
+        required={required}
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      >
+        <option value="">{placeholder}</option>
+        {options.map(opt => (
+          <option key={opt.value || opt} value={opt.value || opt}>
+            {opt.label || opt}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -120,248 +228,167 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-              {error}
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {typeof error === 'string' ? error : JSON.stringify(error)}
             </div>
           )}
 
           {/* Photo Upload */}
-          <div className="flex justify-center">
+          <div className="flex justify-center pb-4">
             <div className="relative">
               {photoPreview ? (
-                <img
-                  src={photoPreview}
-                  alt="Preview"
-                  className="w-32 h-32 rounded-full object-cover border-4 border-blue-500"
-                />
+                <img src={photoPreview} alt="Preview" className="w-24 h-24 rounded-full object-cover border-4 border-blue-500" />
               ) : (
-                <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300">
-                  <User className="w-16 h-16 text-gray-400" />
+                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300">
+                  <User className="w-12 h-12 text-gray-400" />
                 </div>
               )}
-              <label className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full cursor-pointer hover:bg-blue-700 transition-colors">
-                <Upload className="w-5 h-5" />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoChange}
-                  className="hidden"
-                />
+              <label className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full cursor-pointer hover:bg-blue-700">
+                <Upload className="w-4 h-4" />
+                <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
               </label>
             </div>
           </div>
 
           {/* Account Information */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Username *
-                </label>
-                <input
-                  type="text"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+          <div className="border border-gray-200 rounded-lg">
+            <SectionHeader title="Account Information" section="account" required />
+            {expandedSections.account && (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <InputField label="Username" name="username" required />
+                <InputField label="Email" name="email" type="email" required />
+                <InputField label="Password" name="password" type="password" required />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password *
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Personal Information */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  First Name *
-                </label>
-                <input
-                  type="text"
-                  name="first_name"
-                  value={formData.first_name}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+          <div className="border border-gray-200 rounded-lg">
+            <SectionHeader title="Personal Information" section="personal" required />
+            {expandedSections.personal && (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <InputField label="First Name" name="first_name" required />
+                <InputField label="Last Name" name="last_name" required />
+                <InputField label="Phone (WhatsApp)" name="phone_number" type="tel" />
+                <InputField label="Date of Birth" name="date_of_birth" type="date" required />
+                <SelectField label="Blood Group" name="blood_group" options={BLOOD_GROUP_OPTIONS} />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Last Name *
-                </label>
-                <input
-                  type="text"
-                  name="last_name"
-                  value={formData.last_name}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Date of Birth *
-                </label>
-                <input
-                  type="date"
-                  name="date_of_birth"
-                  value={formData.date_of_birth}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Blood Group
-                </label>
-                <select
-                  name="blood_group"
-                  value={formData.blood_group}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select Blood Group</option>
-                  <option value="A+">A+</option>
-                  <option value="A-">A-</option>
-                  <option value="B+">B+</option>
-                  <option value="B-">B-</option>
-                  <option value="O+">O+</option>
-                  <option value="O-">O-</option>
-                  <option value="AB+">AB+</option>
-                  <option value="AB-">AB-</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  name="phone_number"
-                  value={formData.phone_number}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Batch *
-                </label>
-                <select
-                  name="batch"
-                  value={formData.batch}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select Batch</option>
-                  {batches.map((batch) => (
-                    <option key={batch.id} value={batch.id}>
-                      {batch.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Guardian Information */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Guardian Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Guardian Name *
-                </label>
-                <input
-                  type="text"
-                  name="guardian_name"
-                  value={formData.guardian_name}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          {/* Academic Information */}
+          <div className="border border-gray-200 rounded-lg">
+            <SectionHeader title="Academic Information" section="academic" required />
+            {expandedSections.academic && (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <SelectField 
+                  label="Admitted Group (Batch)" 
+                  name="batch" 
+                  required 
+                  options={batches.map(b => ({ value: b.id, label: b.name }))}
+                  placeholder="Select Batch"
                 />
+                <InputField label="Session" name="session" placeholder="e.g., 2024-2025" />
+                <SelectField label="Semester" name="semester" options={SEMESTER_OPTIONS} />
+                <InputField label="Admission Date" name="admission_date" type="date" required />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Guardian Phone *
-                </label>
-                <input
-                  type="tel"
-                  name="guardian_phone"
-                  value={formData.guardian_phone}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Address Information */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Address Information</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Present Address *
-                </label>
+          {/* Family Information */}
+          <div className="border border-gray-200 rounded-lg">
+            <SectionHeader title="Family Information" section="family" required />
+            {expandedSections.family && (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InputField label="Father's Name" name="father_name" />
+                <InputField label="Father's Phone (WhatsApp)" name="father_phone" type="tel" />
+                <InputField label="Mother's Name" name="mother_name" />
+                <InputField label="Mother's Phone (WhatsApp)" name="mother_phone" type="tel" />
+                <InputField label="Guardian's Name" name="guardian_name" required />
+                <InputField label="Guardian's Phone (WhatsApp)" name="guardian_phone" type="tel" required />
+                <InputField label="Guardian's Yearly Income" name="guardian_yearly_income" type="number" />
+              </div>
+            )}
+          </div>
+
+          {/* Present Address */}
+          <div className="border border-gray-200 rounded-lg">
+            <SectionHeader title="Present Address" section="presentAddress" />
+            {expandedSections.presentAddress && (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <InputField label="House No" name="present_house_no" />
+                <InputField label="Road / Village" name="present_road_vill" />
+                <InputField label="Police Station" name="present_police_station" />
+                <InputField label="Post Office" name="present_post_office" />
+                <InputField label="District" name="present_district" />
+                <InputField label="Division" name="present_division" />
+              </div>
+            )}
+          </div>
+
+          {/* Permanent Address */}
+          <div className="border border-gray-200 rounded-lg">
+            <SectionHeader title="Permanent Address" section="permanentAddress" />
+            {expandedSections.permanentAddress && (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <InputField label="House No" name="permanent_house_no" />
+                <InputField label="Road / Village" name="permanent_road_vill" />
+                <InputField label="Police Station" name="permanent_police_station" />
+                <InputField label="Post Office" name="permanent_post_office" />
+                <InputField label="District" name="permanent_district" />
+                <InputField label="Division" name="permanent_division" />
+              </div>
+            )}
+          </div>
+
+          {/* SSC Information */}
+          <div className="border border-gray-200 rounded-lg">
+            <SectionHeader title="SSC Information" section="ssc" />
+            {expandedSections.ssc && (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <InputField label="School Name" name="ssc_school" />
+                <InputField label="Passing Year" name="ssc_passing_year" type="number" min="1990" max="2030" />
+                <SelectField label="Group" name="ssc_group" options={GROUP_OPTIONS} />
+                <InputField label="4th Subject" name="ssc_4th_subject" />
+                <InputField label="GPA" name="ssc_gpa" type="number" step="0.01" min="0" max="5" />
+                <InputField label="CGPA" name="ssc_cgpa" type="number" step="0.01" min="0" max="5" />
+              </div>
+            )}
+          </div>
+
+          {/* HSC Information */}
+          <div className="border border-gray-200 rounded-lg">
+            <SectionHeader title="HSC Information" section="hsc" />
+            {expandedSections.hsc && (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <InputField label="College Name" name="hsc_college" />
+                <InputField label="Passing Year" name="hsc_passing_year" type="number" min="1990" max="2030" />
+                <SelectField label="Group" name="hsc_group" options={GROUP_OPTIONS} />
+                <InputField label="4th Subject" name="hsc_4th_subject" />
+                <InputField label="GPA" name="hsc_gpa" type="number" step="0.01" min="0" max="5" />
+                <InputField label="CGPA" name="hsc_cgpa" type="number" step="0.01" min="0" max="5" />
+              </div>
+            )}
+          </div>
+
+          {/* Other Information */}
+          <div className="border border-gray-200 rounded-lg">
+            <SectionHeader title="Other Information" section="other" />
+            {expandedSections.other && (
+              <div className="p-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
                 <textarea
-                  name="present_address"
-                  value={formData.present_address}
+                  name="other_info"
+                  value={formData.other_info}
                   onChange={handleChange}
-                  required
-                  rows="2"
+                  rows="3"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Any additional information..."
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Permanent Address *
-                </label>
-                <textarea
-                  name="permanent_address"
-                  value={formData.permanent_address}
-                  onChange={handleChange}
-                  required
-                  rows="2"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
+            )}
           </div>
         </form>
 

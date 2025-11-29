@@ -1,4 +1,6 @@
-# 🎯 **Exact Step-by-Step Implementation Guide**
+# 🎯 **IGMIS LMS – 10-Day Implementation Plan (Archived)**
+
+ NOTE: This file contains the original day-by-day implementation plan. For the **current project status** and **actionable next steps**, see `PROJECT_STATUS.md` at the repository root.
 
 ---
 
