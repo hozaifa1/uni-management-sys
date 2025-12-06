@@ -1,0 +1,10 @@
+### IDE / editor metadata
+.windsurf/
+.cursor/
+.cursorignore
+
+### Local notes & exports
+IGMIS LMS.txt
+Personal Info.xlsx
+TODO.md
+PROJECT_STATUS.md
