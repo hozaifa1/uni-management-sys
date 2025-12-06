@@ -13,7 +13,6 @@ const MyPayments = () => {
   const [payments, setPayments] = useState([]);
   const [feeStructures, setFeeStructures] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // all, paid, pending
   const [stats, setStats] = useState({
     totalPaid: 0,
     totalDue: 0,
@@ -94,7 +93,14 @@ const MyPayments = () => {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800">My Payments</h1>
-        <p className="text-gray-600 mt-2">View your payment history and pending dues</p>
+        <p className="text-gray-600 mt-2">
+          View your payment history and pending dues
+          {studentData?.student_id && (
+            <span className="block text-sm text-gray-500 mt-1">
+              Student ID: {studentData.student_id}
+            </span>
+          )}
+        </p>
       </div>
 
       {/* Stats Cards */}

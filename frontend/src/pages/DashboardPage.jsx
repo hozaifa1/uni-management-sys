@@ -3,7 +3,7 @@ import { Users, DollarSign, AlertCircle, GraduationCap, TrendingUp, Calendar } f
 import api from '../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const StatCard = ({ title, value, icon: Icon, color, trend }) => (
+const StatCard = ({ title, value, icon: IconComponent, color, trend }) => (
   <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
     <div className="flex items-center justify-between">
       <div>
@@ -17,7 +17,7 @@ const StatCard = ({ title, value, icon: Icon, color, trend }) => (
         )}
       </div>
       <div className={`p-4 ${color} rounded-xl`}>
-        <Icon className="w-8 h-8 text-white" />
+        <IconComponent className="w-8 h-8 text-white" />
       </div>
     </div>
   </div>
