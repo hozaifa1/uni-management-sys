@@ -108,14 +108,12 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
     ssc_group: '',
     ssc_4th_subject: '',
     ssc_gpa: '',
-    ssc_cgpa: '',
     // HSC info
     hsc_college: '',
     hsc_passing_year: '',
     hsc_group: '',
     hsc_4th_subject: '',
     hsc_gpa: '',
-    hsc_cgpa: '',
     // Other
     other_info: '',
   });
@@ -319,7 +317,6 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
             <SectionHeader
               title="Family Information"
               section="family"
-              required
               expanded={expandedSections.family}
               onToggle={toggleSection}
             />
@@ -329,8 +326,8 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
                 <InputField label="Father's Phone (WhatsApp)" name="father_phone" type="tel" value={formData.father_phone} onChange={handleChange} />
                 <InputField label="Mother's Name" name="mother_name" value={formData.mother_name} onChange={handleChange} />
                 <InputField label="Mother's Phone (WhatsApp)" name="mother_phone" type="tel" value={formData.mother_phone} onChange={handleChange} />
-                <InputField label="Guardian's Name" name="guardian_name" required value={formData.guardian_name} onChange={handleChange} />
-                <InputField label="Guardian's Phone (WhatsApp)" name="guardian_phone" type="tel" required value={formData.guardian_phone} onChange={handleChange} />
+                <InputField label="Guardian's Name" name="guardian_name" value={formData.guardian_name} onChange={handleChange} />
+                <InputField label="Guardian's Phone (WhatsApp)" name="guardian_phone" type="tel" value={formData.guardian_phone} onChange={handleChange} />
                 <InputField label="Guardian's Yearly Income" name="guardian_yearly_income" type="number" value={formData.guardian_yearly_income} onChange={handleChange} />
               </div>
             )}
@@ -391,7 +388,6 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
                 <SelectField label="Group" name="ssc_group" options={GROUP_OPTIONS} value={formData.ssc_group} onChange={handleChange} />
                 <InputField label="4th Subject" name="ssc_4th_subject" value={formData.ssc_4th_subject} onChange={handleChange} />
                 <InputField label="GPA" name="ssc_gpa" type="number" step="0.01" min="0" max="5" value={formData.ssc_gpa} onChange={handleChange} />
-                <InputField label="CGPA" name="ssc_cgpa" type="number" step="0.01" min="0" max="5" value={formData.ssc_cgpa} onChange={handleChange} />
               </div>
             )}
           </div>
@@ -411,7 +407,6 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
                 <SelectField label="Group" name="hsc_group" options={GROUP_OPTIONS} value={formData.hsc_group} onChange={handleChange} />
                 <InputField label="4th Subject" name="hsc_4th_subject" value={formData.hsc_4th_subject} onChange={handleChange} />
                 <InputField label="GPA" name="hsc_gpa" type="number" step="0.01" min="0" max="5" value={formData.hsc_gpa} onChange={handleChange} />
-                <InputField label="CGPA" name="hsc_cgpa" type="number" step="0.01" min="0" max="5" value={formData.hsc_cgpa} onChange={handleChange} />
               </div>
             )}
           </div>

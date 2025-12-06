@@ -117,12 +117,16 @@ class Student(models.Model):
     
     guardian_name = models.CharField(
         max_length=200,
+        blank=True,
+        null=True,
         help_text="Guardian's full name"
     )
     
     guardian_phone = models.CharField(
         validators=[User.phone_regex],
         max_length=17,
+        blank=True,
+        null=True,
         help_text="Guardian's contact number"
     )
 
@@ -322,13 +326,6 @@ class Student(models.Model):
         null=True,
         help_text='SSC GPA'
     )
-    ssc_cgpa = models.DecimalField(
-        max_digits=4,
-        decimal_places=2,
-        blank=True,
-        null=True,
-        help_text='SSC CGPA'
-    )
 
     # HSC academic information
     hsc_college = models.CharField(
@@ -360,13 +357,6 @@ class Student(models.Model):
         blank=True,
         null=True,
         help_text='HSC GPA'
-    )
-    hsc_cgpa = models.DecimalField(
-        max_digits=4,
-        decimal_places=2,
-        blank=True,
-        null=True,
-        help_text='HSC CGPA'
     )
 
     other_info = models.TextField(

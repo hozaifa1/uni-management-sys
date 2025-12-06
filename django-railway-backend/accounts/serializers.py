@@ -95,10 +95,10 @@ class StudentSerializer(serializers.ModelSerializer):
             'permanent_district', 'permanent_division',
             # SSC info
             'ssc_school', 'ssc_passing_year', 'ssc_group',
-            'ssc_4th_subject', 'ssc_gpa', 'ssc_cgpa',
+            'ssc_4th_subject', 'ssc_gpa',
             # HSC info
             'hsc_college', 'hsc_passing_year', 'hsc_group',
-            'hsc_4th_subject', 'hsc_gpa', 'hsc_cgpa',
+            'hsc_4th_subject', 'hsc_gpa',
             # Other
             'other_info', 'created_at', 'updated_at'
         ]
@@ -144,10 +144,10 @@ class StudentCreateSerializer(serializers.ModelSerializer):
             'permanent_district', 'permanent_division',
             # SSC info
             'ssc_school', 'ssc_passing_year', 'ssc_group',
-            'ssc_4th_subject', 'ssc_gpa', 'ssc_cgpa',
+            'ssc_4th_subject', 'ssc_gpa',
             # HSC info
             'hsc_college', 'hsc_passing_year', 'hsc_group',
-            'hsc_4th_subject', 'hsc_gpa', 'hsc_cgpa',
+            'hsc_4th_subject', 'hsc_gpa',
             # Other
             'other_info'
         ]
