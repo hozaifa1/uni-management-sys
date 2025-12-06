@@ -7,6 +7,62 @@ const SEMESTER_OPTIONS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'
 const BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 const GROUP_OPTIONS = ['Science', 'Commerce', 'Arts'];
 
+const SectionHeader = ({ title, section, required = false, expanded, onToggle }) => (
+  <button
+    type="button"
+    onClick={() => onToggle(section)}
+    className="w-full flex items-center justify-between py-3 text-left"
+  >
+    <h3 className="text-lg font-semibold text-gray-900">
+      {title} {required && <span className="text-red-500">*</span>}
+    </h3>
+    {expanded ? (
+      <ChevronUp className="w-5 h-5 text-gray-500" />
+    ) : (
+      <ChevronDown className="w-5 h-5 text-gray-500" />
+    )}
+  </button>
+);
+
+const InputField = ({ label, name, type = 'text', required = false, value, onChange, ...props }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    <input
+      type={type}
+      name={name}
+      value={value}
+      onChange={onChange}
+      required={required}
+      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      {...props}
+    />
+  </div>
+);
+
+const SelectField = ({ label, name, options, required = false, placeholder = 'Select...', value, onChange }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    <select
+      name={name}
+      value={value}
+      onChange={onChange}
+      required={required}
+      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+    >
+      <option value="">{placeholder}</option>
+      {options.map(opt => (
+        <option key={opt.value || opt} value={opt.value || opt}>
+          {opt.label || opt}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+
 const AddStudentModal = ({ onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     // Account info
@@ -154,65 +210,6 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
     }
   };
 
-  // Helper component for collapsible section
-  const SectionHeader = ({ title, section, required = false }) => (
-    <button
-      type="button"
-      onClick={() => toggleSection(section)}
-      className="w-full flex items-center justify-between py-3 text-left"
-    >
-      <h3 className="text-lg font-semibold text-gray-900">
-        {title} {required && <span className="text-red-500">*</span>}
-      </h3>
-      {expandedSections[section] ? (
-        <ChevronUp className="w-5 h-5 text-gray-500" />
-      ) : (
-        <ChevronDown className="w-5 h-5 text-gray-500" />
-      )}
-    </button>
-  );
-
-  // Input field component
-  const InputField = ({ label, name, type = 'text', required = false, ...props }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={formData[name]}
-        onChange={handleChange}
-        required={required}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        {...props}
-      />
-    </div>
-  );
-
-  // Select field component
-  const SelectField = ({ label, name, options, required = false, placeholder = 'Select...' }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <select
-        name={name}
-        value={formData[name]}
-        onChange={handleChange}
-        required={required}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      >
-        <option value="">{placeholder}</option>
-        {options.map(opt => (
-          <option key={opt.value || opt} value={opt.value || opt}>
-            {opt.label || opt}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full my-8">
@@ -254,33 +251,51 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
 
           {/* Account Information */}
           <div className="border border-gray-200 rounded-lg">
-            <SectionHeader title="Account Information" section="account" required />
+            <SectionHeader
+              title="Account Information"
+              section="account"
+              required
+              expanded={expandedSections.account}
+              onToggle={toggleSection}
+            />
             {expandedSections.account && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <InputField label="Username" name="username" required />
-                <InputField label="Email" name="email" type="email" required />
-                <InputField label="Password" name="password" type="password" required />
+                <InputField label="Username" name="username" required value={formData.username} onChange={handleChange} />
+                <InputField label="Email" name="email" type="email" required value={formData.email} onChange={handleChange} />
+                <InputField label="Password" name="password" type="password" required value={formData.password} onChange={handleChange} />
               </div>
             )}
           </div>
 
           {/* Personal Information */}
           <div className="border border-gray-200 rounded-lg">
-            <SectionHeader title="Personal Information" section="personal" required />
+            <SectionHeader
+              title="Personal Information"
+              section="personal"
+              required
+              expanded={expandedSections.personal}
+              onToggle={toggleSection}
+            />
             {expandedSections.personal && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <InputField label="First Name" name="first_name" required />
-                <InputField label="Last Name" name="last_name" required />
-                <InputField label="Phone (WhatsApp)" name="phone_number" type="tel" />
-                <InputField label="Date of Birth" name="date_of_birth" type="date" required />
-                <SelectField label="Blood Group" name="blood_group" options={BLOOD_GROUP_OPTIONS} />
+                <InputField label="First Name" name="first_name" required value={formData.first_name} onChange={handleChange} />
+                <InputField label="Last Name" name="last_name" required value={formData.last_name} onChange={handleChange} />
+                <InputField label="Phone (WhatsApp)" name="phone_number" type="tel" value={formData.phone_number} onChange={handleChange} />
+                <InputField label="Date of Birth" name="date_of_birth" type="date" required value={formData.date_of_birth} onChange={handleChange} />
+                <SelectField label="Blood Group" name="blood_group" options={BLOOD_GROUP_OPTIONS} value={formData.blood_group} onChange={handleChange} />
               </div>
             )}
           </div>
 
           {/* Academic Information */}
           <div className="border border-gray-200 rounded-lg">
-            <SectionHeader title="Academic Information" section="academic" required />
+            <SectionHeader
+              title="Academic Information"
+              section="academic"
+              required
+              expanded={expandedSections.academic}
+              onToggle={toggleSection}
+            />
             {expandedSections.academic && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <SelectField 
@@ -288,87 +303,115 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
                   name="batch" 
                   required 
                   options={batches.map(b => ({ value: b.id, label: b.name }))}
+                  value={formData.batch}
+                  onChange={handleChange}
                   placeholder="Select Batch"
                 />
-                <InputField label="Session" name="session" placeholder="e.g., 2024-2025" />
-                <SelectField label="Semester" name="semester" options={SEMESTER_OPTIONS} />
-                <InputField label="Admission Date" name="admission_date" type="date" required />
+                <InputField label="Session" name="session" placeholder="e.g., 2024-2025" value={formData.session} onChange={handleChange} />
+                <SelectField label="Semester" name="semester" options={SEMESTER_OPTIONS} value={formData.semester} onChange={handleChange} />
+                <InputField label="Admission Date" name="admission_date" type="date" required value={formData.admission_date} onChange={handleChange} />
               </div>
             )}
           </div>
 
           {/* Family Information */}
           <div className="border border-gray-200 rounded-lg">
-            <SectionHeader title="Family Information" section="family" required />
+            <SectionHeader
+              title="Family Information"
+              section="family"
+              required
+              expanded={expandedSections.family}
+              onToggle={toggleSection}
+            />
             {expandedSections.family && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="Father's Name" name="father_name" />
-                <InputField label="Father's Phone (WhatsApp)" name="father_phone" type="tel" />
-                <InputField label="Mother's Name" name="mother_name" />
-                <InputField label="Mother's Phone (WhatsApp)" name="mother_phone" type="tel" />
-                <InputField label="Guardian's Name" name="guardian_name" required />
-                <InputField label="Guardian's Phone (WhatsApp)" name="guardian_phone" type="tel" required />
-                <InputField label="Guardian's Yearly Income" name="guardian_yearly_income" type="number" />
+                <InputField label="Father's Name" name="father_name" value={formData.father_name} onChange={handleChange} />
+                <InputField label="Father's Phone (WhatsApp)" name="father_phone" type="tel" value={formData.father_phone} onChange={handleChange} />
+                <InputField label="Mother's Name" name="mother_name" value={formData.mother_name} onChange={handleChange} />
+                <InputField label="Mother's Phone (WhatsApp)" name="mother_phone" type="tel" value={formData.mother_phone} onChange={handleChange} />
+                <InputField label="Guardian's Name" name="guardian_name" required value={formData.guardian_name} onChange={handleChange} />
+                <InputField label="Guardian's Phone (WhatsApp)" name="guardian_phone" type="tel" required value={formData.guardian_phone} onChange={handleChange} />
+                <InputField label="Guardian's Yearly Income" name="guardian_yearly_income" type="number" value={formData.guardian_yearly_income} onChange={handleChange} />
               </div>
             )}
           </div>
 
           {/* Present Address */}
           <div className="border border-gray-200 rounded-lg">
-            <SectionHeader title="Present Address" section="presentAddress" />
+            <SectionHeader
+              title="Present Address"
+              section="presentAddress"
+              expanded={expandedSections.presentAddress}
+              onToggle={toggleSection}
+            />
             {expandedSections.presentAddress && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <InputField label="House No" name="present_house_no" />
-                <InputField label="Road / Village" name="present_road_vill" />
-                <InputField label="Police Station" name="present_police_station" />
-                <InputField label="Post Office" name="present_post_office" />
-                <InputField label="District" name="present_district" />
-                <InputField label="Division" name="present_division" />
+                <InputField label="House No" name="present_house_no" value={formData.present_house_no} onChange={handleChange} />
+                <InputField label="Road / Village" name="present_road_vill" value={formData.present_road_vill} onChange={handleChange} />
+                <InputField label="Police Station" name="present_police_station" value={formData.present_police_station} onChange={handleChange} />
+                <InputField label="Post Office" name="present_post_office" value={formData.present_post_office} onChange={handleChange} />
+                <InputField label="District" name="present_district" value={formData.present_district} onChange={handleChange} />
+                <InputField label="Division" name="present_division" value={formData.present_division} onChange={handleChange} />
               </div>
             )}
           </div>
 
           {/* Permanent Address */}
           <div className="border border-gray-200 rounded-lg">
-            <SectionHeader title="Permanent Address" section="permanentAddress" />
+            <SectionHeader
+              title="Permanent Address"
+              section="permanentAddress"
+              expanded={expandedSections.permanentAddress}
+              onToggle={toggleSection}
+            />
             {expandedSections.permanentAddress && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <InputField label="House No" name="permanent_house_no" />
-                <InputField label="Road / Village" name="permanent_road_vill" />
-                <InputField label="Police Station" name="permanent_police_station" />
-                <InputField label="Post Office" name="permanent_post_office" />
-                <InputField label="District" name="permanent_district" />
-                <InputField label="Division" name="permanent_division" />
+                <InputField label="House No" name="permanent_house_no" value={formData.permanent_house_no} onChange={handleChange} />
+                <InputField label="Road / Village" name="permanent_road_vill" value={formData.permanent_road_vill} onChange={handleChange} />
+                <InputField label="Police Station" name="permanent_police_station" value={formData.permanent_police_station} onChange={handleChange} />
+                <InputField label="Post Office" name="permanent_post_office" value={formData.permanent_post_office} onChange={handleChange} />
+                <InputField label="District" name="permanent_district" value={formData.permanent_district} onChange={handleChange} />
+                <InputField label="Division" name="permanent_division" value={formData.permanent_division} onChange={handleChange} />
               </div>
             )}
           </div>
 
           {/* SSC Information */}
           <div className="border border-gray-200 rounded-lg">
-            <SectionHeader title="SSC Information" section="ssc" />
+            <SectionHeader
+              title="SSC Information"
+              section="ssc"
+              expanded={expandedSections.ssc}
+              onToggle={toggleSection}
+            />
             {expandedSections.ssc && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <InputField label="School Name" name="ssc_school" />
-                <InputField label="Passing Year" name="ssc_passing_year" type="number" min="1990" max="2030" />
-                <SelectField label="Group" name="ssc_group" options={GROUP_OPTIONS} />
-                <InputField label="4th Subject" name="ssc_4th_subject" />
-                <InputField label="GPA" name="ssc_gpa" type="number" step="0.01" min="0" max="5" />
-                <InputField label="CGPA" name="ssc_cgpa" type="number" step="0.01" min="0" max="5" />
+                <InputField label="School Name" name="ssc_school" value={formData.ssc_school} onChange={handleChange} />
+                <InputField label="Passing Year" name="ssc_passing_year" type="number" min="1990" max="2030" value={formData.ssc_passing_year} onChange={handleChange} />
+                <SelectField label="Group" name="ssc_group" options={GROUP_OPTIONS} value={formData.ssc_group} onChange={handleChange} />
+                <InputField label="4th Subject" name="ssc_4th_subject" value={formData.ssc_4th_subject} onChange={handleChange} />
+                <InputField label="GPA" name="ssc_gpa" type="number" step="0.01" min="0" max="5" value={formData.ssc_gpa} onChange={handleChange} />
+                <InputField label="CGPA" name="ssc_cgpa" type="number" step="0.01" min="0" max="5" value={formData.ssc_cgpa} onChange={handleChange} />
               </div>
             )}
           </div>
 
           {/* HSC Information */}
           <div className="border border-gray-200 rounded-lg">
-            <SectionHeader title="HSC Information" section="hsc" />
+            <SectionHeader
+              title="HSC Information"
+              section="hsc"
+              expanded={expandedSections.hsc}
+              onToggle={toggleSection}
+            />
             {expandedSections.hsc && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <InputField label="College Name" name="hsc_college" />
-                <InputField label="Passing Year" name="hsc_passing_year" type="number" min="1990" max="2030" />
-                <SelectField label="Group" name="hsc_group" options={GROUP_OPTIONS} />
-                <InputField label="4th Subject" name="hsc_4th_subject" />
-                <InputField label="GPA" name="hsc_gpa" type="number" step="0.01" min="0" max="5" />
-                <InputField label="CGPA" name="hsc_cgpa" type="number" step="0.01" min="0" max="5" />
+                <InputField label="College Name" name="hsc_college" value={formData.hsc_college} onChange={handleChange} />
+                <InputField label="Passing Year" name="hsc_passing_year" type="number" min="1990" max="2030" value={formData.hsc_passing_year} onChange={handleChange} />
+                <SelectField label="Group" name="hsc_group" options={GROUP_OPTIONS} value={formData.hsc_group} onChange={handleChange} />
+                <InputField label="4th Subject" name="hsc_4th_subject" value={formData.hsc_4th_subject} onChange={handleChange} />
+                <InputField label="GPA" name="hsc_gpa" type="number" step="0.01" min="0" max="5" value={formData.hsc_gpa} onChange={handleChange} />
+                <InputField label="CGPA" name="hsc_cgpa" type="number" step="0.01" min="0" max="5" value={formData.hsc_cgpa} onChange={handleChange} />
               </div>
             )}
           </div>

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Edit, Trash2, Eye } from 'lucide-react';
 import api from '../services/api';
 import AddStudentModal from '../components/students/AddStudentModal';
+import StudentDetailModal from '../components/students/StudentDetailModal';
+import EditStudentModal from '../components/students/EditStudentModal';
 
 const StudentsPage = () => {
   const [students, setStudents] = useState([]);
@@ -12,6 +14,8 @@ const StudentsPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [selectedStudentForView, setSelectedStudentForView] = useState(null);
+  const [selectedStudentForEdit, setSelectedStudentForEdit] = useState(null);
 
   useEffect(() => {
     fetchStudents();
@@ -63,6 +67,11 @@ const StudentsPage = () => {
 
   const handleAddSuccess = () => {
     setShowAddModal(false);
+    fetchStudents();
+  };
+
+  const handleEditSuccess = () => {
+    setSelectedStudentForEdit(null);
     fetchStudents();
   };
 
@@ -213,10 +222,16 @@ const StudentsPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
-                        <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                        <button
+                          onClick={() => setSelectedStudentForView(student)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+                        <button
+                          onClick={() => setSelectedStudentForEdit(student)}
+                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                        >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
@@ -268,7 +283,28 @@ const StudentsPage = () => {
 
       {/* Add Student Modal */}
       {showAddModal && (
-        <AddStudentModal onClose={() => setShowAddModal(false)} onSuccess={handleAddSuccess} />
+        <AddStudentModal
+          onClose={() => setShowAddModal(false)}
+          onSuccess={handleAddSuccess}
+        />
+      )}
+
+      {/* View Student Modal */}
+      {selectedStudentForView && (
+        <StudentDetailModal
+          student={selectedStudentForView}
+          onClose={() => setSelectedStudentForView(null)}
+        />
+      )}
+
+      {/* Edit Student Modal */}
+      {selectedStudentForEdit && (
+        <EditStudentModal
+          student={selectedStudentForEdit}
+          batches={batches}
+          onClose={() => setSelectedStudentForEdit(null)}
+          onSuccess={handleEditSuccess}
+        />
       )}
     </div>
   );
