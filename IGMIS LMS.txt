@@ -201,37 +201,166 @@ git commit -m "Initial Django setup"
 
 ---
 
-### **Task 1.7: Railway Backend Deployment (15 minutes)**
+### **Task 1.7: Backend Hosting (Forever-Free Target) — Oracle Cloud (OCI) Always Free VM (45–90 minutes)**
 
-1. Go to https://railway.app
-2. Click "Start a New Project"
-3. Login with GitHub
-4. Click "Deploy from GitHub repo"
-5. Click "Configure GitHub App"
-6. Select your repositories → Install
-7. Back to Railway → Select your repo
-8. Railway auto-detects Django → Wait for build
-9. Click on the deployment
-10. Go to "Settings" tab
-11. Click "Generate Domain" under "Networking"
-12. **COPY** the URL (e.g., `your-app.up.railway.app`)
-13. Go to "Variables" tab
-14. Click "RAW Editor"
-15. Paste this (replace with your values):
+Railway free trial expires. For a backend host that is designed to remain free long-term, use **Oracle Cloud Infrastructure (OCI) Always Free Compute**.
+
+Notes:
+- Always Free instances must be created in your **Home Region**.
+- Oracle can reclaim **idle** Always Free compute. Avoid this by having regular inbound traffic (real users or a monitor pinging your health endpoint).
+
+#### Part A — Create the VM (OCI Console UI)
+
+1. Go to https://www.oracle.com/cloud/free/
+2. Create account → finish verification.
+3. Open OCI Console.
+4. Left menu → **Compute** → **Instances**
+5. Click **Create instance**
+6. Configure:
+    - Name: `igmis-backend`
+    - Image: Ubuntu LTS
+    - Shape:
+      - Preferred: `VM.Standard.A1.Flex` (Arm)
+      - Fallback: `VM.Standard.E2.1.Micro`
+    - Networking: create a new VCN + public subnet (wizard defaults are OK)
+    - SSH: add your public key (or download OCI-generated keys)
+7. Click **Create**
+8. Copy the instance **Public IPv4 address**
+
+#### Part B — Open firewall/ingress
+
+1. Left menu → **Networking** → **Virtual Cloud Networks**
+2. Open your VCN → open the **public subnet**
+3. Open **Security Lists** (or Network Security Groups)
+4. Add **Ingress Rules**:
+    - TCP 22 from your IP (SSH)
+    - TCP 80 from 0.0.0.0/0 (HTTP)
+    - TCP 443 from 0.0.0.0/0 (HTTPS)
+
+#### Part C — SSH into the VM and deploy Django
+
+From your computer:
+
+```bash
+ssh -i path\to\your_private_key ubuntu@YOUR_SERVER_PUBLIC_IP
+```
+
+On the VM:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y python3 python3-venv python3-pip git nginx
+
+mkdir -p ~/apps
+cd ~/apps
+git clone YOUR_GITHUB_REPO_URL igmis
+cd igmis/django-railway-backend
+
+python3 -m venv venv
+source venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+Create `.env` on the VM:
+
+```bash
+nano .env
+```
 
 ```bash
 DEBUG=False
-SECRET_KEY=generate-a-long-random-string-here-use-random-org
+SECRET_KEY=generate-a-long-random-string
 DATABASE_URL=your_neon_url_here
-ALLOWED_HOSTS=your-app.up.railway.app,yourdomain.com
+ALLOWED_HOSTS=YOUR_SERVER_PUBLIC_IP,yourdomain.com
 CORS_ALLOWED_ORIGINS=https://your-netlify-app.netlify.app
-GOOGLE_DRIVE_FOLDER_ID=your_folder_id
-GOOGLE_DRIVE_CREDENTIALS_JSON={"type":"service_account","project_id":"...paste the entire JSON as one line..."}
-PORT=8000
+
+# File storage
+# If you already use Cloudflare R2 for files, keep it there.
+# This repo currently supports Google Drive storage via USE_GOOGLE_DRIVE.
+USE_GOOGLE_DRIVE=False
 ```
 
-16. Click "Save"
-17. Wait for redeployment (2 minutes)
+Run setup:
+
+```bash
+python manage.py migrate
+python manage.py collectstatic --noinput
+python create_admin.py
+```
+
+#### Part D — systemd + Nginx reverse proxy
+
+Create systemd service:
+
+```bash
+sudo nano /etc/systemd/system/igmis.service
+```
+
+```bash
+[Unit]
+Description=IGMIS Django API
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/apps/igmis/django-railway-backend
+EnvironmentFile=/home/ubuntu/apps/igmis/django-railway-backend/.env
+ExecStart=/home/ubuntu/apps/igmis/django-railway-backend/venv/bin/gunicorn config.wsgi:application --bind 127.0.0.1:8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable igmis
+sudo systemctl restart igmis
+sudo systemctl status igmis --no-pager
+```
+
+Nginx config:
+
+```bash
+sudo nano /etc/nginx/sites-available/igmis
+```
+
+```nginx
+server {
+  listen 80;
+  server_name yourdomain.com;
+
+  location / {
+    proxy_pass http://127.0.0.1:8000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+}
+```
+
+```bash
+sudo ln -s /etc/nginx/sites-available/igmis /etc/nginx/sites-enabled/igmis
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+If you use a Cloudflare-managed custom domain:
+- Add an **A record** pointing to your VM public IP
+- Then enable HTTPS with Certbot
+
+```bash
+sudo apt-get install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d yourdomain.com
+```
+
+#### Part E — Confirm backend is live
+
+Open:
+- `https://yourdomain.com/` → should return the JSON health response
+- `https://yourdomain.com/admin` → Django admin login
 
 ---
 
@@ -305,7 +434,7 @@ Open http://localhost:5173 → You should see Vite + React page
 1. Site settings → "Environment variables"
 2. Add variable:
    - Key: `VITE_API_URL`
-   - Value: `https://https://uni-management-sys-production.up.railway.app/api`
+   - Value: `https://yourdomain.com/api`
 3. Click "Save"
 4. Go to "Deploys" → "Trigger deploy" → "Deploy site"
 
@@ -317,11 +446,11 @@ Open http://localhost:5173 → You should see Vite + React page
 - [ ] Django project created locally
 - [ ] `.env` file configured
 - [ ] Git initialized
-- [ ] Railway deployment working
+- [ ] OCI Always Free backend deployment working
 - [ ] React app created
 - [ ] Netlify deployment working
 
-**Test:** Visit your Railway URL → Should see Django error page (that's OK for now)
+**Test:** Visit your backend URL → Should see JSON health response
 
 ---
 
@@ -612,7 +741,7 @@ python manage.py runserver
 
 ---
 
-### **Task 2.8: Deploy to Railway (15 minutes)**
+### **Task 2.8: Deploy to OCI VM (15 minutes)**
 
 ```bash
 # Commit changes
@@ -621,29 +750,21 @@ git commit -m "Add models, serializers, views"
 git push origin main
 ```
 
-**Railway auto-deploys** (wait 3 minutes)
-
-**Run migrations on Railway:**
-1. Go to Railway dashboard
-2. Click your project → Click deployment
-3. Click "Settings" → "Deploy"
-4. Or use Railway CLI:
+Pull updates on the VM and restart the service:
 
 ```bash
-# Install Railway CLI
-npm install -g @railway/cli
+ssh -i path\to\your_private_key ubuntu@YOUR_SERVER_PUBLIC_IP
 
-# Login
-railway login
+cd ~/apps/igmis/django-railway-backend
+source venv/bin/activate
 
-# Link project
-railway link
+git pull
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py collectstatic --noinput
 
-# Run migrations
-railway run python manage.py migrate
-
-# Create superuser
-railway run python manage.py createsuperuser
+sudo systemctl restart igmis
+sudo systemctl status igmis --no-pager
 ```
 
 ---
@@ -655,9 +776,9 @@ railway run python manage.py createsuperuser
 - [ ] All viewsets created
 - [ ] API endpoints accessible
 - [ ] JWT authentication working
-- [ ] Railway deployment updated
+- [ ] OCI backend deployment updated
 
-**Test:** Visit `https://your-app.railway.app/admin` → Should see admin login
+**Test:** Visit `https://yourdomain.com/admin` → Should see admin login
 
 ---
 
@@ -1145,16 +1266,21 @@ web: gunicorn config.wsgi --log-file -
 python-3.11.5
 ```
 
-**Railway:**
+**OCI VM:**
 ```bash
 git add .
 git commit -m "Production ready"
 git push origin main
 
 # Wait for deploy, then:
-railway run python manage.py migrate
-railway run python manage.py collectstatic --noinput
-railway run python manage.py createsuperuser
+ssh -i path\to\your_private_key ubuntu@YOUR_SERVER_PUBLIC_IP
+cd ~/apps/igmis/django-railway-backend
+source venv/bin/activate
+git pull
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py collectstatic --noinput
+sudo systemctl restart igmis
 ```
 
 ---
@@ -1163,7 +1289,7 @@ railway run python manage.py createsuperuser
 
 **Update `.env.production` in frontend:**
 ```
-VITE_API_URL=https://your-app.railway.app/api
+VITE_API_URL=https://yourdomain.com/api
 ```
 
 **Netlify:**
