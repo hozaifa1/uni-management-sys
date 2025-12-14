@@ -121,7 +121,6 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [expandedSections, setExpandedSections] = useState({
     account: true,
     personal: true,
@@ -168,9 +167,29 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
     }
   };
 
+  const validateForm = () => {
+    const errors = [];
+    if (!formData.username.trim()) errors.push('Username is required');
+    if (!formData.email.trim()) errors.push('Email is required');
+    if (!formData.password.trim()) errors.push('Password is required');
+    if (!formData.first_name.trim()) errors.push('First Name is required');
+    if (!formData.last_name.trim()) errors.push('Last Name is required');
+    if (!formData.date_of_birth) errors.push('Date of Birth is required');
+    if (!formData.batch) errors.push('Batch is required');
+    if (!formData.admission_date) errors.push('Admission Date is required');
+    return errors;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    
+    // Validate form and show errors as toast
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      validationErrors.forEach(err => toast.error(err));
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -206,12 +225,21 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
       onSuccess();
     } catch (error) {
       console.error('Error adding student:', error);
-      const errorMsg = error.response?.data?.message || 
-        error.response?.data?.detail ||
-        JSON.stringify(error.response?.data) ||
-        'Failed to add student. Please try again.';
-      setError(errorMsg);
-      toast.error('Failed to add student');
+      // Parse and display errors as toast
+      const errorData = error.response?.data;
+      if (errorData && typeof errorData === 'object') {
+        // Handle field-specific errors
+        Object.entries(errorData).forEach(([field, messages]) => {
+          const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          if (Array.isArray(messages)) {
+            messages.forEach(msg => toast.error(`${fieldName}: ${msg}`));
+          } else {
+            toast.error(`${fieldName}: ${messages}`);
+          }
+        });
+      } else {
+        toast.error(error.response?.data?.detail || 'Failed to add student. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -233,12 +261,6 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-          {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {typeof error === 'string' ? error : JSON.stringify(error)}
-            </div>
-          )}
-
           {/* Photo Upload */}
           <div className="flex justify-center pb-4">
             <div className="relative">

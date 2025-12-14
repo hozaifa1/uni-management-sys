@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ChevronDown, ChevronUp, Upload, User } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Upload, User, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
@@ -64,6 +64,7 @@ const SelectField = ({ label, name, options, required = false, placeholder = 'Se
 const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
   const [formData, setFormData] = useState({
     // User/account info
     username: '',
@@ -130,7 +131,6 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     if (student) {
@@ -195,6 +195,7 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
     const file = e.target.files[0];
     if (file) {
       setPhoto(file);
+      setRemovePhoto(false);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result);
@@ -203,13 +204,38 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
     }
   };
 
+  const handleRemovePhoto = () => {
+    setPhoto(null);
+    setPhotoPreview(null);
+    setRemovePhoto(true);
+  };
+
   const toggleSection = (section) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  const validateForm = () => {
+    const errors = [];
+    if (!formData.username.trim()) errors.push('Username is required');
+    if (!formData.email.trim()) errors.push('Email is required');
+    if (!formData.first_name.trim()) errors.push('First Name is required');
+    if (!formData.last_name.trim()) errors.push('Last Name is required');
+    if (!formData.date_of_birth) errors.push('Date of Birth is required');
+    if (!formData.batch) errors.push('Batch is required');
+    if (!formData.admission_date) errors.push('Admission Date is required');
+    return errors;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    
+    // Validate form and show errors as toast
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      validationErrors.forEach(err => toast.error(err));
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -274,15 +300,19 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
         await api.patch(`/accounts/users/${student.user.id}/`, userPayload);
       }
 
-      // Update student profile - use FormData if photo is being uploaded
-      if (photo) {
+      // Update student profile - use FormData if photo is being uploaded or removed
+      if (photo || removePhoto) {
         const formDataToSend = new FormData();
         Object.keys(studentPayload).forEach(key => {
           if (studentPayload[key] !== '' && studentPayload[key] !== null && studentPayload[key] !== undefined) {
             formDataToSend.append(key, studentPayload[key]);
           }
         });
-        formDataToSend.append('photo', photo);
+        if (photo) {
+          formDataToSend.append('photo', photo);
+        } else if (removePhoto) {
+          formDataToSend.append('photo', '');  // Send empty to clear the photo
+        }
         await api.patch(`/accounts/students/${student.id}/`, formDataToSend, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
@@ -295,12 +325,21 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
         onSuccess();
       }
     } catch (err) {
-      const errorMsg = err.response?.data?.message ||
-        err.response?.data?.detail ||
-        JSON.stringify(err.response?.data) ||
-        'Failed to update student. Please try again.';
-      setError(errorMsg);
-      toast.error('Failed to update student');
+      // Parse and display errors as toast
+      const errorData = err.response?.data;
+      if (errorData && typeof errorData === 'object') {
+        // Handle field-specific errors
+        Object.entries(errorData).forEach(([field, messages]) => {
+          const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          if (Array.isArray(messages)) {
+            messages.forEach(msg => toast.error(`${fieldName}: ${msg}`));
+          } else {
+            toast.error(`${fieldName}: ${messages}`);
+          }
+        });
+      } else {
+        toast.error(err.response?.data?.detail || 'Failed to update student. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -322,14 +361,8 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-          {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {typeof error === 'string' ? error : JSON.stringify(error)}
-            </div>
-          )}
-
           {/* Photo Upload */}
-          <div className="flex justify-center pb-4">
+          <div className="flex flex-col items-center pb-4">
             <div className="relative">
               {photoPreview ? (
                 <img src={photoPreview} alt="Preview" className="w-24 h-24 rounded-full object-cover border-4 border-blue-500" />
@@ -343,6 +376,16 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
                 <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
               </label>
             </div>
+            {(photoPreview || student.photo) && (
+              <button
+                type="button"
+                onClick={handleRemovePhoto}
+                className="mt-2 flex items-center gap-1 text-sm text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="w-4 h-4" />
+                Remove Photo
+              </button>
+            )}
           </div>
 
           {/* Account Information */}

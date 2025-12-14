@@ -181,6 +181,7 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
+    'EXCEPTION_HANDLER': 'config.exception_handler.custom_exception_handler',
 }
 
 # JWT Settings
@@ -249,6 +250,15 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# Expose headers in CORS responses
+CORS_EXPOSE_HEADERS = [
+    'content-type',
+    'content-length',
+]
+
+# Preflight cache time (24 hours)
+CORS_PREFLIGHT_MAX_AGE = 86400
 
 
 # Internationalization
