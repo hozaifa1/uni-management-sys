@@ -34,15 +34,17 @@ class ExamAdmin(admin.ModelAdmin):
     """
     Exam Admin
     """
-    list_display = ['name', 'exam_type', 'batch', 'exam_date', 'total_marks']
-    list_filter = ['exam_type', 'batch', 'exam_date']
-    search_fields = ['name', 'batch__name', 'description']
+    list_display = ['name', 'exam_type', 'course', 'intake', 'semester', 'session', 'exam_date', 'total_marks']
+    list_filter = ['exam_type', 'course', 'intake', 'semester', 'session', 'exam_date']
+    search_fields = ['name', 'description']
     ordering = ['-exam_date']
-    list_select_related = ['batch']
     
     fieldsets = (
         ('Exam Information', {
-            'fields': ('name', 'exam_type', 'batch', 'exam_date', 'total_marks')
+            'fields': ('name', 'exam_type', 'exam_date', 'total_marks')
+        }),
+        ('Course/Intake/Semester/Session', {
+            'fields': ('course', 'intake', 'semester', 'session')
         }),
         ('Description', {
             'fields': ('description',)

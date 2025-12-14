@@ -4,7 +4,7 @@ from django.conf import settings
 
 class FeeStructure(models.Model):
     """
-    Fee structure for different batches and fee types
+    Fee structure for different course/intake/semester/session combinations
     """
     
     FEE_TYPE_CHOICES = [
@@ -12,12 +12,63 @@ class FeeStructure(models.Model):
         ('exam', 'Examination Fee'),
         ('admission', 'Admission Fee'),
     ]
+
+    COURSE_CHOICES = [
+        ('BBA', 'BBA'),
+        ('MBA', 'MBA'),
+        ('CSE', 'CSE'),
+        ('THM', 'THM'),
+    ]
+
+    INTAKE_CHOICES = [
+        ('1st', '1st'),
+        ('2nd', '2nd'),
+        ('9th', '9th'),
+        ('10th', '10th'),
+        ('15th', '15th'),
+        ('16th', '16th'),
+        ('17th', '17th'),
+        ('18th', '18th'),
+        ('19th', '19th'),
+        ('20th', '20th'),
+    ]
+
+    SEMESTER_CHOICES = [
+        ('1st', '1st'),
+        ('2nd', '2nd'),
+        ('3rd', '3rd'),
+        ('4th', '4th'),
+        ('5th', '5th'),
+        ('6th', '6th'),
+        ('7th', '7th'),
+        ('8th', '8th'),
+    ]
     
-    batch = models.ForeignKey(
-        'students.Batch',
-        on_delete=models.CASCADE,
-        related_name='fee_structures',
-        help_text='Associated batch'
+    course = models.CharField(
+        max_length=10,
+        choices=COURSE_CHOICES,
+        default='BBA',
+        help_text='Course (BBA, MBA, CSE, THM)'
+    )
+
+    intake = models.CharField(
+        max_length=10,
+        choices=INTAKE_CHOICES,
+        default='15th',
+        help_text='Intake number'
+    )
+
+    semester = models.CharField(
+        max_length=10,
+        choices=SEMESTER_CHOICES,
+        default='1st',
+        help_text='Semester'
+    )
+
+    session = models.CharField(
+        max_length=20,
+        default='2024-2025',
+        help_text='Academic session (e.g., 2024-2025)'
     )
     
     fee_type = models.CharField(
@@ -51,7 +102,7 @@ class FeeStructure(models.Model):
         verbose_name_plural = 'Fee Structures'
     
     def __str__(self):
-        return f"{self.batch.name} - {self.get_fee_type_display()} - ${self.amount}"
+        return f"{self.course} {self.intake} - {self.semester} Sem - {self.get_fee_type_display()} - ${self.amount}"
 
 
 class Payment(models.Model):

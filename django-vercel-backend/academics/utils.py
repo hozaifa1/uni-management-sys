@@ -29,8 +29,8 @@ def generate_report_card(student_id, exam_id):
     """
     # Get student and exam
     try:
-        student = Student.objects.select_related('user', 'batch').get(id=student_id)
-        exam = Exam.objects.select_related('batch__course').get(id=exam_id)
+        student = Student.objects.select_related('user').get(id=student_id)
+        exam = Exam.objects.get(id=exam_id)
     except (Student.DoesNotExist, Exam.DoesNotExist):
         raise ValueError("Student or Exam not found")
     
@@ -92,7 +92,8 @@ def generate_report_card(student_id, exam_id):
     
     student_data = [
         ['Student ID:', student.student_id, 'Name:', student.user.get_full_name()],
-        ['Batch:', student.batch.name, 'Course:', student.batch.course.name],
+        ['Course:', student.course, 'Intake:', student.intake],
+        ['Semester:', student.semester, 'Session:', student.session],
         ['Email:', student.user.email, 'Phone:', student.user.phone_number or 'N/A'],
     ]
     
@@ -299,27 +300,38 @@ def calculate_gpa(percentage):
         return 0.0
 
 
-def generate_bulk_report_cards(batch_id, exam_id):
+def generate_bulk_report_cards(course=None, intake=None, semester=None, session=None, exam_id=None):
     """
-    Generate report cards for all students in a batch for a specific exam
+    Generate report cards for all students matching the criteria for a specific exam
     
     Args:
-        batch_id: ID of the batch
+        course: Course code (optional)
+        intake: Intake number (optional)
+        semester: Semester (optional)
+        session: Academic session (optional)
         exam_id: ID of the exam
     
     Returns:
         List of tuples (student_name, pdf_buffer)
     """
-    from students.models import Batch
-    
     try:
-        batch = Batch.objects.get(id=batch_id)
         exam = Exam.objects.get(id=exam_id)
-    except (Batch.DoesNotExist, Exam.DoesNotExist):
-        raise ValueError("Batch or Exam not found")
+    except Exam.DoesNotExist:
+        raise ValueError("Exam not found")
     
-    # Get all students in the batch
-    students = Student.objects.filter(batch=batch)
+    # Build filter for students
+    student_filter = {}
+    if course:
+        student_filter['course'] = course
+    if intake:
+        student_filter['intake'] = intake
+    if semester:
+        student_filter['semester'] = semester
+    if session:
+        student_filter['session'] = session
+    
+    # Get students matching the criteria
+    students = Student.objects.filter(**student_filter)
     
     report_cards = []
     for student in students:

@@ -8,15 +8,17 @@ class FeeStructureAdmin(admin.ModelAdmin):
     """
     Fee Structure Admin
     """
-    list_display = ['batch', 'fee_type', 'amount', 'due_date']
-    list_filter = ['fee_type', 'batch', 'due_date']
-    search_fields = ['batch__name', 'description']
+    list_display = ['course', 'intake', 'semester', 'session', 'fee_type', 'amount', 'due_date']
+    list_filter = ['fee_type', 'course', 'intake', 'semester', 'session', 'due_date']
+    search_fields = ['description']
     ordering = ['-due_date']
-    list_select_related = ['batch']
     
     fieldsets = (
+        ('Course/Intake/Semester/Session', {
+            'fields': ('course', 'intake', 'semester', 'session')
+        }),
         ('Fee Information', {
-            'fields': ('batch', 'fee_type', 'amount', 'due_date')
+            'fields': ('fee_type', 'amount', 'due_date')
         }),
         ('Description', {
             'fields': ('description',)

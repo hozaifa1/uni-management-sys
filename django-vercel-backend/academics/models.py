@@ -49,7 +49,8 @@ class Subject(models.Model):
 
 class Exam(models.Model):
     """
-    Exam model for different examinations
+    Exam model for different examinations.
+    Connected to course/intake/semester/session instead of batch.
     """
     
     EXAM_TYPE_CHOICES = [
@@ -58,6 +59,37 @@ class Exam(models.Model):
         ('ssc', 'SSC Exam'),
         ('hsc', 'HSC Exam'),
         ('monthly', 'Monthly Test'),
+    ]
+
+    COURSE_CHOICES = [
+        ('BBA', 'BBA'),
+        ('MBA', 'MBA'),
+        ('CSE', 'CSE'),
+        ('THM', 'THM'),
+    ]
+
+    INTAKE_CHOICES = [
+        ('1st', '1st'),
+        ('2nd', '2nd'),
+        ('9th', '9th'),
+        ('10th', '10th'),
+        ('15th', '15th'),
+        ('16th', '16th'),
+        ('17th', '17th'),
+        ('18th', '18th'),
+        ('19th', '19th'),
+        ('20th', '20th'),
+    ]
+
+    SEMESTER_CHOICES = [
+        ('1st', '1st'),
+        ('2nd', '2nd'),
+        ('3rd', '3rd'),
+        ('4th', '4th'),
+        ('5th', '5th'),
+        ('6th', '6th'),
+        ('7th', '7th'),
+        ('8th', '8th'),
     ]
     
     name = models.CharField(
@@ -71,11 +103,31 @@ class Exam(models.Model):
         help_text='Type of examination'
     )
     
-    batch = models.ForeignKey(
-        'students.Batch',
-        on_delete=models.CASCADE,
-        related_name='exams',
-        help_text='Batch taking this exam'
+    course = models.CharField(
+        max_length=10,
+        choices=COURSE_CHOICES,
+        default='BBA',
+        help_text='Course (BBA, MBA, CSE, THM)'
+    )
+
+    intake = models.CharField(
+        max_length=10,
+        choices=INTAKE_CHOICES,
+        default='15th',
+        help_text='Intake number'
+    )
+
+    semester = models.CharField(
+        max_length=10,
+        choices=SEMESTER_CHOICES,
+        default='1st',
+        help_text='Semester'
+    )
+
+    session = models.CharField(
+        max_length=20,
+        default='2024-2025',
+        help_text='Academic session (e.g., 2024-2025)'
     )
     
     exam_date = models.DateField(
@@ -102,7 +154,7 @@ class Exam(models.Model):
         verbose_name_plural = 'Exams'
     
     def __str__(self):
-        return f"{self.name} - {self.batch.name}"
+        return f"{self.name} - {self.course} {self.intake} Intake - {self.semester} Sem"
 
 
 class Result(models.Model):

@@ -40,25 +40,13 @@ class ExamViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Exam model CRUD operations
     """
-    queryset = Exam.objects.select_related('batch', 'batch__course').all()
+    queryset = Exam.objects.all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['exam_type', 'batch', 'exam_date']
-    search_fields = ['name', 'batch__name', 'description']
+    filterset_fields = ['exam_type', 'course', 'intake', 'semester', 'session', 'exam_date']
+    search_fields = ['name', 'description']
     ordering_fields = ['exam_date', 'name']
     ordering = ['-exam_date']
-    
-    def get_queryset(self):
-        """
-        Optionally filter exams by course code.
-        """
-        queryset = super().get_queryset()
-        course = self.request.query_params.get('course')
-        
-        if course:
-            queryset = queryset.filter(batch__course__code=course)
-        
-        return queryset
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -139,7 +127,7 @@ class ResultViewSet(viewsets.ModelViewSet):
     ViewSet for Result model CRUD operations
     """
     queryset = Result.objects.select_related(
-        'student', 'student__user', 'exam', 'exam__batch', 'exam__batch__course', 'subject'
+        'student', 'student__user', 'exam', 'subject'
     ).all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -367,20 +355,26 @@ class ResultViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def generate_bulk_report_cards(self, request):
         """
-        Generate PDF report cards for all students in a batch
-        Query params: batch_id, exam_id
+        Generate PDF report cards for all students by course/intake/semester/session
+        Query params: course, intake, semester, session, exam_id
         """
-        batch_id = request.query_params.get('batch_id')
+        course = request.query_params.get('course')
+        intake = request.query_params.get('intake')
+        semester = request.query_params.get('semester')
+        session = request.query_params.get('session')
         exam_id = request.query_params.get('exam_id')
         
-        if not batch_id or not exam_id:
+        if not exam_id:
             return Response(
-                {'error': 'batch_id and exam_id parameters are required'},
+                {'error': 'exam_id parameter is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         try:
-            report_cards = generate_bulk_report_cards(batch_id, exam_id)
+            report_cards = generate_bulk_report_cards(
+                course=course, intake=intake, semester=semester, 
+                session=session, exam_id=exam_id
+            )
             
             if not report_cards:
                 return Response(
@@ -388,8 +382,6 @@ class ResultViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
             
-            # For now, return count of generated report cards
-            # In a production system, you'd want to zip these and return
             return Response({
                 'success': True,
                 'count': len(report_cards),

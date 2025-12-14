@@ -1,6 +1,6 @@
 """
 Management command to seed exam data for IGMIS LMS
-Seeds: Exams for each course/batch with proper associations
+Seeds: Exams for each course/intake/semester/session with proper associations
 """
 from django.core.management.base import BaseCommand
 from datetime import date, timedelta
@@ -8,7 +8,7 @@ from decimal import Decimal
 
 from academics.models import Exam, Subject, Result
 from accounts.models import Student
-from students.models import Course, Batch
+from students.models import Course
 
 
 class Command(BaseCommand):
@@ -86,40 +86,49 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'Seeded {subjects_created} subjects.'))
 
     def seed_exams(self):
-        """Seed exams for each batch (properly associated with courses)"""
+        """Seed exams for each course/intake/semester/session combination"""
         exam_types = [
             {'type': 'midterm', 'name_suffix': 'Mid Term Exam'},
             {'type': 'final', 'name_suffix': 'Final Exam'},
         ]
         
-        semesters = ['1st', '2nd', '3rd', '4th']
+        # Define course/intake/semester/session combinations
+        combinations = [
+            {'course': 'BBA', 'intake': '15th', 'semester': '1st', 'session': '2024-2025'},
+            {'course': 'BBA', 'intake': '15th', 'semester': '2nd', 'session': '2024-2025'},
+            {'course': 'MBA', 'intake': '9th', 'semester': '1st', 'session': '2024-2025'},
+            {'course': 'MBA', 'intake': '9th', 'semester': '2nd', 'session': '2024-2025'},
+            {'course': 'CSE', 'intake': '1st', 'semester': '1st', 'session': '2024-2025'},
+            {'course': 'CSE', 'intake': '1st', 'semester': '2nd', 'session': '2024-2025'},
+            {'course': 'THM', 'intake': '1st', 'semester': '1st', 'session': '2024-2025'},
+        ]
         
         exams_created = 0
-        for batch in Batch.objects.select_related('course').all():
-            course_code = batch.course.code
-            
-            for semester in semesters:
-                for exam_type in exam_types:
-                    exam_name = f'{course_code} {semester} Semester {exam_type["name_suffix"]} ({batch.name})'
-                    
-                    # Calculate exam date based on semester
-                    semester_num = int(semester[0]) if semester[0].isdigit() else 1
-                    base_date = batch.start_date + timedelta(days=semester_num * 120)
-                    exam_date = base_date + (timedelta(days=60) if exam_type['type'] == 'midterm' else timedelta(days=110))
-                    
-                    exam, created = Exam.objects.update_or_create(
-                        name=exam_name,
-                        batch=batch,
-                        defaults={
-                            'exam_type': exam_type['type'],
-                            'exam_date': exam_date,
-                            'total_marks': 100,
-                            'description': f'{exam_type["name_suffix"]} for {batch.name} - {semester} Semester',
-                        }
-                    )
-                    if created:
-                        exams_created += 1
-                        self.stdout.write(f'  Created exam: {exam.name}')
+        base_date = date.today() - timedelta(days=30)
+        
+        for combo in combinations:
+            for exam_type in exam_types:
+                exam_name = f'{combo["course"]} {combo["intake"]} Intake - {combo["semester"]} Sem {exam_type["name_suffix"]}'
+                
+                # Calculate exam date
+                exam_date = base_date + (timedelta(days=0) if exam_type['type'] == 'midterm' else timedelta(days=60))
+                
+                exam, created = Exam.objects.update_or_create(
+                    name=exam_name,
+                    course=combo['course'],
+                    intake=combo['intake'],
+                    semester=combo['semester'],
+                    session=combo['session'],
+                    defaults={
+                        'exam_type': exam_type['type'],
+                        'exam_date': exam_date,
+                        'total_marks': 100,
+                        'description': f'{exam_type["name_suffix"]} for {combo["course"]} {combo["intake"]} Intake - {combo["semester"]} Semester',
+                    }
+                )
+                if created:
+                    exams_created += 1
+                    self.stdout.write(f'  Created exam: {exam.name}')
 
         self.stdout.write(self.style.SUCCESS(f'Seeded {exams_created} exams.'))
 
@@ -139,11 +148,15 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.WARNING(f'  No subjects found for {course_code}, skipping {student.student_id}'))
                 continue
             
-            # Get exams for batches of this course
-            exams = Exam.objects.filter(batch__course__code=course_code)[:2]  # Limit to 2 exams
+            # Get exams for this student's course/intake/semester
+            exams = Exam.objects.filter(
+                course=student.course,
+                intake=student.intake,
+                semester=student.semester
+            )[:2]  # Limit to 2 exams
             
             if not exams.exists():
-                self.stdout.write(self.style.WARNING(f'  No exams found for {course_code}, skipping {student.student_id}'))
+                self.stdout.write(self.style.WARNING(f'  No exams found for {course_code} {student.intake} {student.semester}, skipping {student.student_id}'))
                 continue
             
             for exam in exams:

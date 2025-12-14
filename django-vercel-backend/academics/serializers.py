@@ -22,13 +22,12 @@ class ExamSerializer(serializers.ModelSerializer):
     """
     Serializer for Exam model
     """
-    batch_name = serializers.CharField(source='batch.name', read_only=True)
     results_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Exam
         fields = [
-            'id', 'name', 'exam_type', 'batch', 'batch_name',
+            'id', 'name', 'exam_type', 'course', 'intake', 'semester', 'session',
             'exam_date', 'total_marks', 'description', 'results_count',
             'created_at', 'updated_at'
         ]
@@ -42,9 +41,6 @@ class ExamDetailSerializer(serializers.ModelSerializer):
     """
     Detailed Exam serializer with statistics
     """
-    from students.serializers import BatchSerializer
-    
-    batch = BatchSerializer(read_only=True)
     results_count = serializers.SerializerMethodField()
     average_marks = serializers.SerializerMethodField()
     pass_rate = serializers.SerializerMethodField()
@@ -52,8 +48,8 @@ class ExamDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exam
         fields = [
-            'id', 'name', 'exam_type', 'batch', 'exam_date',
-            'total_marks', 'description', 'results_count',
+            'id', 'name', 'exam_type', 'course', 'intake', 'semester', 'session',
+            'exam_date', 'total_marks', 'description', 'results_count',
             'average_marks', 'pass_rate', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

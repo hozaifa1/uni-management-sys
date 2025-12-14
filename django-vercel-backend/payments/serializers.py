@@ -7,15 +7,14 @@ class FeeStructureSerializer(serializers.ModelSerializer):
     """
     Serializer for FeeStructure model
     """
-    batch_name = serializers.CharField(source='batch.name', read_only=True)
     total_collected = serializers.SerializerMethodField()
     
     class Meta:
         model = FeeStructure
         fields = [
-            'id', 'batch', 'batch_name', 'fee_type', 'amount',
-            'due_date', 'description', 'total_collected',
-            'created_at', 'updated_at'
+            'id', 'course', 'intake', 'semester', 'session',
+            'fee_type', 'amount', 'due_date', 'description',
+            'total_collected', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     

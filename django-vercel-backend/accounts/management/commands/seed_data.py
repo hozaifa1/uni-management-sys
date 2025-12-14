@@ -1,6 +1,6 @@
 """
 Management command to seed initial data for IGMIS LMS
-Seeds: Courses (BBA, CSE, THM, EEE, LLB, MBA), Batches, and Sample Students
+Seeds: Courses (BBA, CSE, THM, EEE, LLB, MBA) and Sample Students
 """
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -8,11 +8,11 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from accounts.models import User, Student
-from students.models import Course, Batch
+from students.models import Course
 
 
 class Command(BaseCommand):
-    help = 'Seed initial data: Courses, Batches, and Sample Students'
+    help = 'Seed initial data: Courses and Sample Students'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -26,12 +26,10 @@ class Command(BaseCommand):
             self.stdout.write('Clearing existing data...')
             Student.objects.all().delete()
             User.objects.filter(role='STUDENT').delete()
-            Batch.objects.all().delete()
             Course.objects.all().delete()
             self.stdout.write(self.style.WARNING('Existing data cleared.'))
 
         self.seed_courses()
-        self.seed_batches()
         self.seed_students()
         
         self.stdout.write(self.style.SUCCESS('Data seeding completed successfully!'))
@@ -93,42 +91,14 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f'Seeded {len(courses_data)} courses.'))
 
-    def seed_batches(self):
-        """Seed sample batches for each course"""
-        today = date.today()
-        current_year = today.year
-        
-        sessions = ['2023-2024', '2024-2025']
-        
-        batches_created = 0
-        for course in Course.objects.all():
-            for session in sessions:
-                start_year = int(session.split('-')[0])
-                batch_name = f'{course.code} {session}'
-                
-                batch, created = Batch.objects.update_or_create(
-                    name=batch_name,
-                    course=course,
-                    defaults={
-                        'start_date': date(start_year, 1, 1),
-                        'end_date': date(start_year + (course.duration_months // 12), 12, 31),
-                        'is_active': session == '2024-2025',
-                    }
-                )
-                if created:
-                    batches_created += 1
-                    self.stdout.write(f'  Created batch: {batch.name}')
-
-        self.stdout.write(self.style.SUCCESS(f'Seeded {batches_created} batches.'))
-
     def seed_students(self):
         """Seed sample students with all the new fields"""
-        # Get some batches to assign students to
-        batches = list(Batch.objects.filter(is_active=True)[:3])
-        
-        if not batches:
-            self.stdout.write(self.style.WARNING('No active batches found. Skipping student seeding.'))
-            return
+        # Course/Intake combinations for sample students
+        course_intakes = [
+            {'course': 'BBA', 'intake': '15th'},
+            {'course': 'MBA', 'intake': '9th'},
+            {'course': 'CSE', 'intake': '1st'},
+        ]
 
         sample_students = [
             {
@@ -140,6 +110,8 @@ class Command(BaseCommand):
                     'phone_number': '+8801712345678',
                 },
                 'student': {
+                    'course': 'BBA',
+                    'intake': '15th',
                     'date_of_birth': date(2000, 5, 15),
                     'blood_group': 'A+',
                     'session': '2024-2025',
@@ -184,6 +156,8 @@ class Command(BaseCommand):
                     'phone_number': '+8801623456789',
                 },
                 'student': {
+                    'course': 'MBA',
+                    'intake': '9th',
                     'date_of_birth': date(2001, 8, 22),
                     'blood_group': 'B+',
                     'session': '2024-2025',
@@ -228,6 +202,8 @@ class Command(BaseCommand):
                     'phone_number': '+8801534567890',
                 },
                 'student': {
+                    'course': 'CSE',
+                    'intake': '1st',
                     'date_of_birth': date(1999, 3, 10),
                     'blood_group': 'O+',
                     'session': '2023-2024',
@@ -287,18 +263,14 @@ class Command(BaseCommand):
             user.set_password('student123')
             user.save()
             
-            # Assign to a batch (cycle through available batches)
-            batch = batches[idx % len(batches)]
-            
             # Create student profile
             student = Student.objects.create(
                 user=user,
-                batch=batch,
                 admission_date=date.today() - timedelta(days=idx * 30),
                 **student_data
             )
             
             students_created += 1
-            self.stdout.write(f'  Created student: {student.student_id} - {user.get_full_name()} ({batch.name})')
+            self.stdout.write(f'  Created student: {student.student_id} - {user.get_full_name()} ({student.course} {student.intake})')
 
         self.stdout.write(self.style.SUCCESS(f'Seeded {students_created} students.'))
