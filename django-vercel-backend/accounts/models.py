@@ -176,12 +176,14 @@ class Student(models.Model):
     course = models.CharField(
         max_length=10,
         choices=COURSE_CHOICES,
+        default='BBA',
         help_text='Course (BBA, MBA, CSE, THM)'
     )
 
     intake = models.CharField(
         max_length=10,
         choices=INTAKE_CHOICES,
+        default='15th',
         help_text='Intake number'
     )
     
@@ -252,12 +254,14 @@ class Student(models.Model):
 
     session = models.CharField(
         max_length=50,
+        default='2024-2025',
         help_text='Academic session (e.g., 2023-2024)'
     )
 
     semester = models.CharField(
         max_length=10,
         choices=SEMESTER_CHOICES,
+        default='1st',
         help_text='Current semester'
     )
     

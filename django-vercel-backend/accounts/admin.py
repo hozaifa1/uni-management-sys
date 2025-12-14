@@ -34,12 +34,14 @@ class StudentAdmin(admin.ModelAdmin):
     list_display = [
         'student_id', 
         'get_full_name', 
-        'batch', 
+        'course',
+        'intake',
+        'semester',
         'admission_date', 
         'blood_group',
         'get_phone'
     ]
-    list_filter = ['batch', 'admission_date', 'blood_group']
+    list_filter = ['course', 'intake', 'semester', 'session', 'admission_date', 'blood_group']
     search_fields = [
         'student_id', 
         'user__username', 
@@ -50,11 +52,11 @@ class StudentAdmin(admin.ModelAdmin):
     ]
     readonly_fields = ['student_id', 'created_at', 'updated_at']
     ordering = ['-admission_date']
-    list_select_related = ['user', 'batch']
+    list_select_related = ['user']
     
     fieldsets = (
         ('Student Information', {
-            'fields': ('student_id', 'user', 'batch', 'admission_date')
+            'fields': ('student_id', 'user', 'course', 'intake', 'session', 'semester', 'admission_date')
         }),
         ('Personal Details', {
             'fields': ('date_of_birth', 'blood_group', 'photo')
