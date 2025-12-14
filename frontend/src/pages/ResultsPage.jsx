@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, Filter, Plus, Edit, Trash2, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -22,10 +22,12 @@ const ResultsPage = () => {
   const [results, setResults] = useState([]);
   const [exams, setExams] = useState([]);
   const [students, setStudents] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [error, setError] = useState('');
   const [selectedExam, setSelectedExam] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedIntake, setSelectedIntake] = useState('');
@@ -35,18 +37,21 @@ const ResultsPage = () => {
   const [editingResult, setEditingResult] = useState(null);
   const [editMarks, setEditMarks] = useState('');
   const [editRemarks, setEditRemarks] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Load all dropdown data first, then results
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setLoading(true);
-        // Load exams and students in parallel first
-        const [examsRes, studentsRes] = await Promise.all([
+        // Load exams, subjects, and students in parallel first
+        const [examsRes, subjectsRes, studentsRes] = await Promise.all([
           api.get('/academics/exams/'),
+          api.get('/academics/subjects/'),
           api.get('/accounts/students/')
         ]);
         setExams(examsRes.data.results || examsRes.data || []);
+        setSubjects(subjectsRes.data.results || subjectsRes.data || []);
         setStudents(studentsRes.data.results || studentsRes.data || []);
         setDataLoaded(true);
         
@@ -68,12 +73,14 @@ const ResultsPage = () => {
   useEffect(() => {
     if (!dataLoaded) return;
     fetchResults();
-  }, [selectedExam, selectedStudent, selectedCourse, selectedIntake, selectedSemester, selectedSession, dataLoaded]);
+  }, [dataLoaded, fetchResults]);
 
-  const fetchResults = async () => {
+  const fetchResults = useCallback(async () => {
     try {
+      setLoading(true);
       const params = {};
       if (selectedExam) params.exam = selectedExam;
+      if (selectedSubject) params.subject = selectedSubject;
       if (selectedStudent) params.student = selectedStudent;
       if (selectedCourse) params.course = selectedCourse;
       if (selectedIntake) params.intake = selectedIntake;
@@ -86,8 +93,10 @@ const ResultsPage = () => {
     } catch (err) {
       console.error('Error fetching results:', err);
       setError('Failed to load results');
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [selectedCourse, selectedExam, selectedIntake, selectedSemester, selectedSession, selectedStudent, selectedSubject]);
 
   const handleCourseChange = (value) => {
     setSelectedCourse(value);
@@ -109,17 +118,22 @@ const ResultsPage = () => {
 
   const handleUpdate = async () => {
     if (!editingResult) return;
+    setActionLoading(true);
+    setLoading(true);
     try {
       await api.patch(`/academics/results/${editingResult.id}/`, {
         marks_obtained: Number(editMarks),
         remarks: editRemarks,
       });
       toast.success('Result updated successfully');
+      await fetchResults();
       closeEditModal();
-      fetchResults();
     } catch (error) {
       console.error('Error updating result:', error);
       toast.error('Failed to update result');
+      setLoading(false);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -135,12 +149,17 @@ const ResultsPage = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this result?')) {
       try {
+        setActionLoading(true);
+        setLoading(true);
         await api.delete(`/academics/results/${id}/`);
         toast.success('Result deleted successfully');
-        fetchResults();
+        await fetchResults();
       } catch (error) {
         console.error('Error deleting result:', error);
         toast.error('Failed to delete result');
+        setLoading(false);
+      } finally {
+        setActionLoading(false);
       }
     }
   };
@@ -178,7 +197,7 @@ const ResultsPage = () => {
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         {/* Row 1: Course/Intake/Semester/Session Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
           {/* Course Filter */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Course</label>
@@ -254,6 +273,23 @@ const ResultsPage = () => {
               {exams.map((exam) => (
                 <option key={exam.id} value={exam.id}>
                   {exam.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Subject Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Subject</label>
+            <select
+              value={selectedSubject}
+              onChange={(e) => setSelectedSubject(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Subjects</option>
+              {subjects.map((subject) => (
+                <option key={subject.id} value={subject.id}>
+                  {subject.code ? `${subject.code} - ${subject.name}` : subject.name}
                 </option>
               ))}
             </select>
@@ -448,15 +484,17 @@ const ResultsPage = () => {
             <div className="flex justify-end space-x-3 mt-6">
               <button
                 onClick={closeEditModal}
-                className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+                disabled={actionLoading}
+                className={`px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 ${actionLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
                 Cancel
               </button>
               <button
                 onClick={handleUpdate}
-                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                disabled={actionLoading}
+                className={`px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 ${actionLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                Save Changes
+                {actionLoading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
