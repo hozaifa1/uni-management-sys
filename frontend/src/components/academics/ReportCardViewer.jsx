@@ -18,7 +18,7 @@ const ReportCardViewer = () => {
 
   const fetchStudents = async () => {
     try {
-      const response = await api.get('/students/students/');
+      const response = await api.get('/accounts/students/');
       setStudents(response.data.results || response.data);
     } catch (error) {
       console.error('Error fetching students:', error);
