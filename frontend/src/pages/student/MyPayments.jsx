@@ -47,8 +47,13 @@ const MyPayments = () => {
         const batchId = typeof studentProfile.batch === 'object' ? studentProfile.batch?.id : studentProfile.batch;
         let fees = [];
         if (batchId) {
-          const feeResponse = await api.get(`/payments/fee-structures/?batch=${batchId}`);
-          fees = feeResponse.data.results || feeResponse.data;
+          try {
+            const feeResponse = await api.get(`/payments/fee-structures/?batch=${batchId}`);
+            fees = feeResponse.data.results || feeResponse.data;
+          } catch (feeError) {
+            console.error('Error fetching fee structures:', feeError);
+            // Continue without fee structures - we can still show payment data
+          }
         }
         setFeeStructures(fees);
 

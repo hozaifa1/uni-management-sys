@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db.models import Sum
 from .models import FeeStructure, Payment, Expense
 
 
@@ -21,7 +22,7 @@ class FeeStructureSerializer(serializers.ModelSerializer):
     def get_total_collected(self, obj):
         """Calculate total amount collected for this fee structure"""
         return obj.payments.aggregate(
-            total=serializers.Sum('amount_paid')
+            total=Sum('amount_paid')
         )['total'] or 0
 
 
