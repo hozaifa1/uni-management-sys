@@ -36,10 +36,10 @@ class Command(BaseCommand):
         teachers = self.create_teacher_profiles(teacher_users)
 
         # Create students
-        students = self.create_student_profiles(student_users, batches)
+        students, student_batch_map = self.create_student_profiles(student_users, batches)
 
         # Create enrollments
-        self.create_enrollments(students, batches)
+        self.create_enrollments(students, student_batch_map)
 
         # Create fee structures
         self.create_fee_structures(batches)
@@ -48,10 +48,10 @@ class Command(BaseCommand):
         exams = self.create_exams(batches)
 
         # Create results
-        self.create_results(students, exams, subjects)
+        self.create_results(students, exams, subjects, student_batch_map)
 
         # Create payments
-        self.create_payments(students)
+        self.create_payments(students, student_batch_map)
 
         # Create expenses
         self.create_expenses(admin_user)
@@ -139,7 +139,8 @@ class Command(BaseCommand):
         courses_data = [
             ('BBA', 'Bachelor of Business Administration', 'Undergraduate business program focusing on management, finance, and marketing', 48, 250000.00),
             ('MBA', 'Master of Business Administration', 'Graduate program in business administration and management', 24, 350000.00),
-            ('BCS', 'Bachelor of Computer Science', 'Undergraduate program in computer science and software engineering', 48, 280000.00),
+            ('CSE', 'Bachelor of Computer Science & Engineering', 'Undergraduate program in computer science and software engineering', 48, 280000.00),
+            ('THM', 'Tourism & Hospitality Management', 'Undergraduate program in tourism and hospitality management', 48, 220000.00),
         ]
 
         courses = []
@@ -165,14 +166,17 @@ class Command(BaseCommand):
         today = timezone.now().date()
 
         batches_data = [
-            # BBA batches
-            (courses[0], 'BBA 12th Batch', today - timedelta(days=365*2), today + timedelta(days=365*2)),
-            (courses[0], 'BBA 13th Batch', today - timedelta(days=365), today + timedelta(days=365*3)),
-            # MBA semesters
-            (courses[1], 'MBA 1st Semester', today - timedelta(days=180), today + timedelta(days=180)),
-            (courses[1], 'MBA 2nd Semester', today - timedelta(days=90), today + timedelta(days=270)),
-            # BCS batches
-            (courses[2], 'BCS 5th Batch', today - timedelta(days=365), today + timedelta(days=365*3)),
+            # BBA batches (different intakes/sessions)
+            (courses[0], 'BBA 15th Intake (2023-2024)', today - timedelta(days=365*2), today + timedelta(days=365*2)),
+            (courses[0], 'BBA 16th Intake (2024-2025)', today - timedelta(days=365), today + timedelta(days=365*3)),
+            # MBA intakes
+            (courses[1], 'MBA 9th Intake (2024-2025)', today - timedelta(days=200), today + timedelta(days=365)),
+            (courses[1], 'MBA 10th Intake (2025-2026)', today, today + timedelta(days=365*2)),
+            # CSE batches
+            (courses[2], 'CSE 1st Intake (2023-2024)', today - timedelta(days=365), today + timedelta(days=365*3)),
+            (courses[2], 'CSE 2nd Intake (2024-2025)', today - timedelta(days=200), today + timedelta(days=365*4)),
+            # THM batches
+            (courses[3], 'THM 1st Intake (2024-2025)', today - timedelta(days=150), today + timedelta(days=365*3)),
         ]
 
         for course, name, start_date, end_date in batches_data:
@@ -210,12 +214,19 @@ class Command(BaseCommand):
                 ('MBA504', 'Operations Management', 100),
                 ('MBA505', 'Human Resource Management', 100),
             ],
-            'BCS': [
+            'CSE': [
                 ('CS101', 'Programming Fundamentals', 100),
                 ('CS102', 'Data Structures', 100),
                 ('CS103', 'Database Systems', 100),
                 ('CS104', 'Web Development', 100),
                 ('CS105', 'Software Engineering', 100),
+            ],
+            'THM': [
+                ('THM101', 'Introduction to Hospitality', 100),
+                ('THM102', 'Tourism Marketing', 100),
+                ('THM103', 'Hotel Operations', 100),
+                ('THM104', 'Food & Beverage Management', 100),
+                ('THM105', 'Event Management', 100),
             ],
         }
 
@@ -260,15 +271,40 @@ class Command(BaseCommand):
         return teachers
 
     def create_student_profiles(self, student_users, batches):
-        """Create student profiles"""
+        """Create student profiles and map to batches for enrollments/results/payments"""
         students = []
-        
+        student_batch_map = {}
+
+        # Predefined spread across courses/intakes/sessions/semesters
+        profile_matrix = [
+            ('BBA', '15th', '2023-2024', '1st'),
+            ('BBA', '16th', '2024-2025', '2nd'),
+            ('MBA', '9th', '2024-2025', '1st'),
+            ('MBA', '10th', '2025-2026', '2nd'),
+            ('CSE', '1st', '2023-2024', '3rd'),
+            ('CSE', '2nd', '2024-2025', '1st'),
+            ('THM', '1st', '2024-2025', '2nd'),
+            ('BBA', '17th', '2025-2026', '1st'),
+            ('CSE', '1st', '2023-2024', '4th'),
+            ('MBA', '9th', '2024-2025', '3rd'),
+        ]
+
         for i, user in enumerate(student_users):
             if hasattr(user, 'student_profile'):
-                students.append(user.student_profile)
+                student = user.student_profile
+                students.append(student)
+                # map existing student to a batch based on course if possible
+                existing_course = getattr(student, 'course', None)
+                if existing_course:
+                    match = [b for b in batches if b.course.code == existing_course]
+                    if match:
+                        student_batch_map[student.id] = match[0]
                 continue
 
-            batch = batches[i % len(batches)]
+            course_code, intake, session, semester = profile_matrix[i % len(profile_matrix)]
+            # Pick a batch matching course if available; fallback to round-robin
+            matching_batches = [b for b in batches if b.course.code == course_code]
+            batch = matching_batches[i % len(matching_batches)] if matching_batches else batches[i % len(batches)]
             
             student = Student.objects.create(
                 user=user,
@@ -276,26 +312,33 @@ class Command(BaseCommand):
                 guardian_name=f'Guardian {user.last_name}',
                 guardian_phone=f'+880170{i:07d}',
                 admission_date=timezone.now().date() - timedelta(days=random.randint(30, 365)),
-                batch=batch,
+                course=course_code,
+                intake=intake,
+                session=session,
+                semester=semester,
                 blood_group=random.choice(['A+', 'B+', 'O+', 'AB+']),
                 present_address=f'{i+1} University Road, Dhaka, Bangladesh',
                 permanent_address=f'{i+1} Main Street, Chittagong, Bangladesh'
             )
             students.append(student)
+            student_batch_map[student.id] = batch
         
         self.stdout.write(self.style.SUCCESS(f'✓ Created {len(students)} student profiles'))
-        return students
+        return students, student_batch_map
 
-    def create_enrollments(self, students, batches):
+    def create_enrollments(self, students, student_batch_map):
         """Create enrollments for students"""
         enrollments = []
         for student in students:
-            if Enrollment.objects.filter(student=student, batch=student.batch).exists():
+            batch = student_batch_map.get(student.id)
+            if not batch:
+                continue
+            if Enrollment.objects.filter(student=student, batch=batch).exists():
                 continue
                 
             enrollment = Enrollment.objects.create(
                 student=student,
-                batch=student.batch,
+                batch=batch,
                 enrollment_date=student.admission_date,
                 status='active'
             )
@@ -358,17 +401,20 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'✓ Created {len(exams)} exams'))
         return exams
 
-    def create_results(self, students, exams, subjects):
+    def create_results(self, students, exams, subjects, student_batch_map):
         """Create result records for students"""
         results = []
         
         for student in students:
+            batch = student_batch_map.get(student.id)
+            if not batch:
+                continue
             # Get exams for student's batch
-            student_exams = [exam for exam in exams if exam.batch == student.batch]
+            student_exams = [exam for exam in exams if exam.batch == batch]
             
             for exam in student_exams:
                 # Get subjects for the course
-                course_subjects = [s for s in subjects if s.course == student.batch.course]
+                course_subjects = [s for s in subjects if s.course == batch.course]
                 
                 for subject in course_subjects:
                     if Result.objects.filter(student=student, exam=exam, subject=subject).exists():
@@ -389,14 +435,17 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'✓ Created {len(results)} result records'))
         return results
 
-    def create_payments(self, students):
+    def create_payments(self, students, student_batch_map):
         """Create payment records for students"""
         payments = []
         today = timezone.now().date()
 
         for student in students:
             # Get fee structures for student's batch
-            fee_structures = FeeStructure.objects.filter(batch=student.batch)
+            batch = student_batch_map.get(student.id)
+            if not batch:
+                continue
+            fee_structures = FeeStructure.objects.filter(batch=batch)
             
             for index, fee_structure in enumerate(fee_structures):
                 if Payment.objects.filter(student=student, fee_structure=fee_structure).exists():
