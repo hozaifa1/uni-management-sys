@@ -99,11 +99,27 @@ const MyResults = () => {
     });
   };
 
-  const handleDownloadReportCard = (examId) => {
+  const handleDownloadReportCard = async (examId) => {
     if (!studentData || !examId) return;
     
-    const url = `${import.meta.env.VITE_API_URL}/academics/results/generate_report_card/?student_id=${studentData.id}&exam_id=${examId}`;
-    window.open(url, '_blank');
+    try {
+      const response = await api.get('/academics/results/generate_report_card/', {
+        params: { student_id: studentData.id, exam_id: examId },
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `report_card_${studentData?.student_id || studentData?.id}_${examId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading report card:', error);
+    }
   };
 
   // Group results by exam
