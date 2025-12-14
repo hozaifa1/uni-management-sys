@@ -62,7 +62,7 @@ class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.select_related('user', 'batch').all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['batch', 'blood_group', 'admission_date']
+    filterset_fields = ['batch', 'blood_group', 'admission_date', 'user']
     search_fields = [
         'student_id', 'user__username', 'user__first_name',
         'user__last_name', 'user__email', 'guardian_name'

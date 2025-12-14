@@ -6,6 +6,31 @@ import api from '../../services/api';
 const SEMESTER_OPTIONS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 const BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 const GROUP_OPTIONS = ['Science', 'Commerce', 'Arts'];
+const BOARD_OPTIONS = [
+  { value: 'dhaka', label: 'Dhaka' },
+  { value: 'chittagong', label: 'Chittagong' },
+  { value: 'rajshahi', label: 'Rajshahi' },
+  { value: 'comilla', label: 'Comilla' },
+  { value: 'jessore', label: 'Jessore' },
+  { value: 'sylhet', label: 'Sylhet' },
+  { value: 'dinajpur', label: 'Dinajpur' },
+  { value: 'barishal', label: 'Barishal' },
+  { value: 'mymensingh', label: 'Mymensingh' },
+  { value: 'technical', label: 'Technical' },
+  { value: 'madrasah', label: 'Madrasah' },
+];
+const COURSE_OPTIONS = [
+  { value: 'BBA', label: 'BBA' },
+  { value: 'MBA', label: 'MBA' },
+  { value: 'CSE', label: 'CSE' },
+  { value: 'THM', label: 'THM' },
+];
+const INTAKE_OPTIONS = {
+  BBA: ['15th', '16th', '17th', '18th', '19th', '20th'],
+  MBA: ['9th', '10th'],
+  CSE: ['1st', '2nd'],
+  THM: ['1st'],
+};
 
 const SectionHeader = ({ title, section, expanded, onToggle }) => (
   <button
@@ -69,9 +94,14 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
     // User/account info
     username: '',
     email: '',
-    first_name: '',
-    last_name: '',
+    full_name: '',
     phone_number: '',
+    // New fields
+    registration_number: '',
+    national_university_id: '',
+    national_id_number: '',
+    course: '',
+    intake: '',
     // Basic student info
     date_of_birth: '',
     blood_group: '',
@@ -88,6 +118,7 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
     guardian_name: '',
     guardian_phone: '',
     guardian_yearly_income: '',
+    guardian_occupation: '',
     // Present address
     present_house_no: '',
     present_road_vill: '',
@@ -108,12 +139,14 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
     ssc_group: '',
     ssc_4th_subject: '',
     ssc_gpa: '',
+    ssc_board: '',
     // HSC info
     hsc_college: '',
     hsc_passing_year: '',
     hsc_group: '',
     hsc_4th_subject: '',
     hsc_gpa: '',
+    hsc_board: '',
     // Other
     other_info: '',
   });
@@ -141,9 +174,13 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
       setFormData({
         username: student.user?.username || '',
         email: student.user?.email || '',
-        first_name: student.user?.first_name || '',
-        last_name: student.user?.last_name || '',
+        full_name: student.full_name || `${student.user?.first_name || ''} ${student.user?.last_name || ''}`.trim(),
         phone_number: student.user?.phone_number || '',
+        registration_number: student.registration_number || '',
+        national_university_id: student.national_university_id || '',
+        national_id_number: student.national_id_number || '',
+        course: student.course || '',
+        intake: student.intake || '',
         date_of_birth: student.date_of_birth || '',
         blood_group: student.blood_group || '',
         batch: student.batch || '',
@@ -157,6 +194,7 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
         guardian_name: student.guardian_name || '',
         guardian_phone: student.guardian_phone || '',
         guardian_yearly_income: student.guardian_yearly_income || '',
+        guardian_occupation: student.guardian_occupation || '',
         present_house_no: student.present_house_no || '',
         present_road_vill: student.present_road_vill || '',
         present_police_station: student.present_police_station || '',
@@ -174,11 +212,13 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
         ssc_group: student.ssc_group || '',
         ssc_4th_subject: student.ssc_4th_subject || '',
         ssc_gpa: student.ssc_gpa || '',
+        ssc_board: student.ssc_board || '',
         hsc_college: student.hsc_college || '',
         hsc_passing_year: student.hsc_passing_year || '',
         hsc_group: student.hsc_group || '',
         hsc_4th_subject: student.hsc_4th_subject || '',
         hsc_gpa: student.hsc_gpa || '',
+        hsc_board: student.hsc_board || '',
         other_info: student.other_info || '',
       });
     }
@@ -224,14 +264,17 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
 
   const validateForm = () => {
     const errors = [];
-    if (!formData.username.trim()) errors.push('Username is required');
-    if (!formData.email.trim()) errors.push('Email is required');
-    if (!formData.first_name.trim()) errors.push('First Name is required');
-    if (!formData.last_name.trim()) errors.push('Last Name is required');
+    if (!formData.username.trim()) errors.push('College ID is required');
+    if (!formData.full_name.trim()) errors.push('Full Name is required');
     if (!formData.date_of_birth) errors.push('Date of Birth is required');
     if (!formData.batch) errors.push('Batch is required');
     if (!formData.admission_date) errors.push('Admission Date is required');
     return errors;
+  };
+
+  const handleCourseChange = (e) => {
+    const { value } = e.target;
+    setFormData(prev => ({ ...prev, course: value, intake: '' }));
   };
 
   const handleSubmit = async (e) => {
@@ -271,6 +314,14 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
         session: processValue(formData.session),
         semester: processValue(formData.semester),
         admission_date: formData.admission_date,
+        // New fields
+        registration_number: processValue(formData.registration_number),
+        national_university_id: processValue(formData.national_university_id),
+        full_name: processValue(formData.full_name),
+        national_id_number: processValue(formData.national_id_number),
+        course: processValue(formData.course),
+        intake: processValue(formData.intake),
+        // Family info
         father_name: processValue(formData.father_name),
         father_phone: processValue(formData.father_phone),
         mother_name: processValue(formData.mother_name),
@@ -278,6 +329,8 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
         guardian_name: processValue(formData.guardian_name),
         guardian_phone: processValue(formData.guardian_phone),
         guardian_yearly_income: processValue(formData.guardian_yearly_income, true),
+        guardian_occupation: processValue(formData.guardian_occupation),
+        // Address info
         present_house_no: processValue(formData.present_house_no),
         present_road_vill: processValue(formData.present_road_vill),
         present_police_station: processValue(formData.present_police_station),
@@ -290,16 +343,20 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
         permanent_post_office: processValue(formData.permanent_post_office),
         permanent_district: processValue(formData.permanent_district),
         permanent_division: processValue(formData.permanent_division),
+        // SSC info
         ssc_school: processValue(formData.ssc_school),
         ssc_passing_year: processValue(formData.ssc_passing_year, true),
         ssc_group: processValue(formData.ssc_group),
         ssc_4th_subject: processValue(formData.ssc_4th_subject),
         ssc_gpa: processValue(formData.ssc_gpa, true),
+        ssc_board: processValue(formData.ssc_board),
+        // HSC info
         hsc_college: processValue(formData.hsc_college),
         hsc_passing_year: processValue(formData.hsc_passing_year, true),
         hsc_group: processValue(formData.hsc_group),
         hsc_4th_subject: processValue(formData.hsc_4th_subject),
         hsc_gpa: processValue(formData.hsc_gpa, true),
+        hsc_board: processValue(formData.hsc_board),
         other_info: processValue(formData.other_info),
       };
 
@@ -414,8 +471,8 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
             />
             {expandedSections.account && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <InputField label="Username" name="username" required value={formData.username} onChange={handleChange} />
-                <InputField label="Email" name="email" type="email" required value={formData.email} onChange={handleChange} />
+                <InputField label="College ID" name="username" required value={formData.username} onChange={handleChange} />
+                <InputField label="Email" name="email" type="email" value={formData.email} onChange={handleChange} />
                 <InputField label="Phone (WhatsApp)" name="phone_number" type="tel" value={formData.phone_number} onChange={handleChange} />
               </div>
             )}
@@ -431,10 +488,10 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
             />
             {expandedSections.personal && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <InputField label="First Name" name="first_name" required value={formData.first_name} onChange={handleChange} />
-                <InputField label="Last Name" name="last_name" required value={formData.last_name} onChange={handleChange} />
+                <InputField label="Full Name" name="full_name" required value={formData.full_name} onChange={handleChange} />
                 <InputField label="Date of Birth" name="date_of_birth" type="date" required value={formData.date_of_birth} onChange={handleChange} />
                 <SelectField label="Blood Group" name="blood_group" options={BLOOD_GROUP_OPTIONS} value={formData.blood_group} onChange={handleChange} />
+                <InputField label="National ID Number" name="national_id_number" value={formData.national_id_number} onChange={handleChange} placeholder="Optional" />
               </div>
             )}
           </div>
@@ -457,6 +514,24 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
                   value={formData.batch}
                   onChange={handleChange}
                   placeholder="Select batch"
+                />
+                <InputField label="Registration Number" name="registration_number" value={formData.registration_number} onChange={handleChange} />
+                <InputField label="National University ID" name="national_university_id" value={formData.national_university_id} onChange={handleChange} />
+                <SelectField 
+                  label="Course" 
+                  name="course" 
+                  options={COURSE_OPTIONS}
+                  value={formData.course}
+                  onChange={handleCourseChange}
+                  placeholder="Select Course"
+                />
+                <SelectField 
+                  label="Intake" 
+                  name="intake" 
+                  options={formData.course ? INTAKE_OPTIONS[formData.course] || [] : []}
+                  value={formData.intake}
+                  onChange={handleChange}
+                  placeholder="Select Intake"
                 />
                 <InputField label="Session" name="session" placeholder="e.g., 2024-2025" value={formData.session} onChange={handleChange} />
                 <SelectField label="Semester" name="semester" options={SEMESTER_OPTIONS} value={formData.semester} onChange={handleChange} placeholder="Select semester" />
@@ -482,6 +557,7 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
                 <InputField label="Guardian's Name" name="guardian_name" value={formData.guardian_name} onChange={handleChange} />
                 <InputField label="Guardian's Phone (WhatsApp)" name="guardian_phone" type="tel" value={formData.guardian_phone} onChange={handleChange} />
                 <InputField label="Guardian's Yearly Income" name="guardian_yearly_income" type="number" value={formData.guardian_yearly_income} onChange={handleChange} />
+                <InputField label="Guardian's Occupation" name="guardian_occupation" value={formData.guardian_occupation} onChange={handleChange} />
               </div>
             )}
           </div>
@@ -538,6 +614,7 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <InputField label="School Name" name="ssc_school" value={formData.ssc_school} onChange={handleChange} />
                 <InputField label="Passing Year" name="ssc_passing_year" type="number" min="1990" max="2030" value={formData.ssc_passing_year} onChange={handleChange} />
+                <SelectField label="Board" name="ssc_board" options={BOARD_OPTIONS} value={formData.ssc_board} onChange={handleChange} placeholder="Select Board" />
                 <SelectField label="Group" name="ssc_group" options={GROUP_OPTIONS} value={formData.ssc_group} onChange={handleChange} />
                 <InputField label="4th Subject" name="ssc_4th_subject" value={formData.ssc_4th_subject} onChange={handleChange} />
                 <InputField label="GPA" name="ssc_gpa" type="number" step="0.01" min="0" max="5" value={formData.ssc_gpa} onChange={handleChange} />
@@ -557,6 +634,7 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <InputField label="College Name" name="hsc_college" value={formData.hsc_college} onChange={handleChange} />
                 <InputField label="Passing Year" name="hsc_passing_year" type="number" min="1990" max="2030" value={formData.hsc_passing_year} onChange={handleChange} />
+                <SelectField label="Board" name="hsc_board" options={BOARD_OPTIONS} value={formData.hsc_board} onChange={handleChange} placeholder="Select Board" />
                 <SelectField label="Group" name="hsc_group" options={GROUP_OPTIONS} value={formData.hsc_group} onChange={handleChange} />
                 <InputField label="4th Subject" name="hsc_4th_subject" value={formData.hsc_4th_subject} onChange={handleChange} />
                 <InputField label="GPA" name="hsc_gpa" type="number" step="0.01" min="0" max="5" value={formData.hsc_gpa} onChange={handleChange} />

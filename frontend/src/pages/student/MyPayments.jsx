@@ -29,8 +29,8 @@ const MyPayments = () => {
       setLoading(true);
       
       // Fetch student profile
-      const studentResponse = await api.get('/students/students/', {
-        params: { user_id: user?.id }
+      const studentResponse = await api.get('/accounts/students/', {
+        params: { user: user?.id }
       });
       const students = studentResponse.data.results || studentResponse.data;
       const studentProfile = students.find(s => s.user?.id === user?.id) || students[0];

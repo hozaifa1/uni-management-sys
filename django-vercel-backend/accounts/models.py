@@ -96,6 +96,40 @@ class Student(models.Model):
         ('7th', '7th'),
         ('8th', '8th'),
     ]
+
+    BOARD_CHOICES = [
+        ('dhaka', 'Dhaka'),
+        ('chittagong', 'Chittagong'),
+        ('rajshahi', 'Rajshahi'),
+        ('comilla', 'Comilla'),
+        ('jessore', 'Jessore'),
+        ('sylhet', 'Sylhet'),
+        ('dinajpur', 'Dinajpur'),
+        ('barishal', 'Barishal'),
+        ('mymensingh', 'Mymensingh'),
+        ('technical', 'Technical'),
+        ('madrasah', 'Madrasah'),
+    ]
+
+    COURSE_CHOICES = [
+        ('BBA', 'BBA'),
+        ('MBA', 'MBA'),
+        ('CSE', 'CSE'),
+        ('THM', 'THM'),
+    ]
+
+    INTAKE_CHOICES = [
+        ('1st', '1st'),
+        ('2nd', '2nd'),
+        ('9th', '9th'),
+        ('10th', '10th'),
+        ('15th', '15th'),
+        ('16th', '16th'),
+        ('17th', '17th'),
+        ('18th', '18th'),
+        ('19th', '19th'),
+        ('20th', '20th'),
+    ]
     
     user = models.OneToOneField(
         'User',
@@ -109,6 +143,50 @@ class Student(models.Model):
         unique=True,
         editable=False,
         help_text='Auto-generated student ID'
+    )
+
+    registration_number = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text='Registration number'
+    )
+
+    national_university_id = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text='National University ID'
+    )
+
+    full_name = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='Full name of the student'
+    )
+
+    national_id_number = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        help_text='National ID number (optional)'
+    )
+
+    course = models.CharField(
+        max_length=10,
+        choices=COURSE_CHOICES,
+        blank=True,
+        null=True,
+        help_text='Course (BBA, MBA, CSE, THM)'
+    )
+
+    intake = models.CharField(
+        max_length=10,
+        choices=INTAKE_CHOICES,
+        blank=True,
+        null=True,
+        help_text='Intake number'
     )
     
     date_of_birth = models.DateField(
@@ -163,6 +241,13 @@ class Student(models.Model):
         blank=True,
         null=True,
         help_text="Guardian's yearly income"
+    )
+
+    guardian_occupation = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Guardian's occupation"
     )
     
     admission_date = models.DateField(
@@ -327,6 +412,14 @@ class Student(models.Model):
         help_text='SSC GPA'
     )
 
+    ssc_board = models.CharField(
+        max_length=20,
+        choices=BOARD_CHOICES,
+        blank=True,
+        null=True,
+        help_text='SSC Board'
+    )
+
     # HSC academic information
     hsc_college = models.CharField(
         max_length=255,
@@ -357,6 +450,14 @@ class Student(models.Model):
         blank=True,
         null=True,
         help_text='HSC GPA'
+    )
+
+    hsc_board = models.CharField(
+        max_length=20,
+        choices=BOARD_CHOICES,
+        blank=True,
+        null=True,
+        help_text='HSC Board'
     )
 
     other_info = models.TextField(

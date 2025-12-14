@@ -6,6 +6,31 @@ import api from '../../services/api';
 const SEMESTER_OPTIONS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 const BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 const GROUP_OPTIONS = ['Science', 'Commerce', 'Arts'];
+const BOARD_OPTIONS = [
+  { value: 'dhaka', label: 'Dhaka' },
+  { value: 'chittagong', label: 'Chittagong' },
+  { value: 'rajshahi', label: 'Rajshahi' },
+  { value: 'comilla', label: 'Comilla' },
+  { value: 'jessore', label: 'Jessore' },
+  { value: 'sylhet', label: 'Sylhet' },
+  { value: 'dinajpur', label: 'Dinajpur' },
+  { value: 'barishal', label: 'Barishal' },
+  { value: 'mymensingh', label: 'Mymensingh' },
+  { value: 'technical', label: 'Technical' },
+  { value: 'madrasah', label: 'Madrasah' },
+];
+const COURSE_OPTIONS = [
+  { value: 'BBA', label: 'BBA' },
+  { value: 'MBA', label: 'MBA' },
+  { value: 'CSE', label: 'CSE' },
+  { value: 'THM', label: 'THM' },
+];
+const INTAKE_OPTIONS = {
+  BBA: ['15th', '16th', '17th', '18th', '19th', '20th'],
+  MBA: ['9th', '10th'],
+  CSE: ['1st', '2nd'],
+  THM: ['1st'],
+};
 
 const SectionHeader = ({ title, section, required = false, expanded, onToggle }) => (
   <button
@@ -69,9 +94,14 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
     username: '',
     email: '',
     password: '',
-    first_name: '',
-    last_name: '',
+    full_name: '',
     phone_number: '',
+    // New fields
+    registration_number: '',
+    national_university_id: '',
+    national_id_number: '',
+    course: '',
+    intake: '',
     // Basic student info
     date_of_birth: '',
     blood_group: '',
@@ -88,6 +118,7 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
     guardian_name: '',
     guardian_phone: '',
     guardian_yearly_income: '',
+    guardian_occupation: '',
     // Present address
     present_house_no: '',
     present_road_vill: '',
@@ -108,12 +139,14 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
     ssc_group: '',
     ssc_4th_subject: '',
     ssc_gpa: '',
+    ssc_board: '',
     // HSC info
     hsc_college: '',
     hsc_passing_year: '',
     hsc_group: '',
     hsc_4th_subject: '',
     hsc_gpa: '',
+    hsc_board: '',
     // Other
     other_info: '',
   });
@@ -177,15 +210,18 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
 
   const validateForm = () => {
     const errors = [];
-    if (!formData.username.trim()) errors.push('Username is required');
-    if (!formData.email.trim()) errors.push('Email is required');
+    if (!formData.username.trim()) errors.push('College ID is required');
     if (!formData.password.trim()) errors.push('Password is required');
-    if (!formData.first_name.trim()) errors.push('First Name is required');
-    if (!formData.last_name.trim()) errors.push('Last Name is required');
+    if (!formData.full_name.trim()) errors.push('Full Name is required');
     if (!formData.date_of_birth) errors.push('Date of Birth is required');
     if (!formData.batch) errors.push('Batch is required');
     if (!formData.admission_date) errors.push('Admission Date is required');
     return errors;
+  };
+
+  const handleCourseChange = (e) => {
+    const { value } = e.target;
+    setFormData(prev => ({ ...prev, course: value, intake: '' }));
   };
 
   const handleSubmit = async (e) => {
@@ -304,8 +340,8 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
             />
             {expandedSections.account && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <InputField label="Username" name="username" required value={formData.username} onChange={handleChange} />
-                <InputField label="Email" name="email" type="email" required value={formData.email} onChange={handleChange} />
+                <InputField label="College ID" name="username" required value={formData.username} onChange={handleChange} />
+                <InputField label="Email" name="email" type="email" value={formData.email} onChange={handleChange} />
                 <InputField label="Password" name="password" type="password" required value={formData.password} onChange={handleChange} />
               </div>
             )}
@@ -322,11 +358,11 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
             />
             {expandedSections.personal && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <InputField label="First Name" name="first_name" required value={formData.first_name} onChange={handleChange} />
-                <InputField label="Last Name" name="last_name" required value={formData.last_name} onChange={handleChange} />
+                <InputField label="Full Name" name="full_name" required value={formData.full_name} onChange={handleChange} />
                 <InputField label="Phone (WhatsApp)" name="phone_number" type="tel" value={formData.phone_number} onChange={handleChange} />
                 <InputField label="Date of Birth" name="date_of_birth" type="date" required value={formData.date_of_birth} onChange={handleChange} />
                 <SelectField label="Blood Group" name="blood_group" options={BLOOD_GROUP_OPTIONS} value={formData.blood_group} onChange={handleChange} />
+                <InputField label="National ID Number" name="national_id_number" value={formData.national_id_number} onChange={handleChange} placeholder="Optional" />
               </div>
             )}
           </div>
@@ -350,6 +386,24 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
                   value={formData.batch}
                   onChange={handleChange}
                   placeholder="Select Batch"
+                />
+                <InputField label="Registration Number" name="registration_number" value={formData.registration_number} onChange={handleChange} />
+                <InputField label="National University ID" name="national_university_id" value={formData.national_university_id} onChange={handleChange} />
+                <SelectField 
+                  label="Course" 
+                  name="course" 
+                  options={COURSE_OPTIONS}
+                  value={formData.course}
+                  onChange={handleCourseChange}
+                  placeholder="Select Course"
+                />
+                <SelectField 
+                  label="Intake" 
+                  name="intake" 
+                  options={formData.course ? INTAKE_OPTIONS[formData.course] || [] : []}
+                  value={formData.intake}
+                  onChange={handleChange}
+                  placeholder="Select Intake"
                 />
                 <InputField label="Session" name="session" placeholder="e.g., 2024-2025" value={formData.session} onChange={handleChange} />
                 <SelectField label="Semester" name="semester" options={SEMESTER_OPTIONS} value={formData.semester} onChange={handleChange} />
@@ -375,6 +429,7 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
                 <InputField label="Guardian's Name" name="guardian_name" value={formData.guardian_name} onChange={handleChange} />
                 <InputField label="Guardian's Phone (WhatsApp)" name="guardian_phone" type="tel" value={formData.guardian_phone} onChange={handleChange} />
                 <InputField label="Guardian's Yearly Income" name="guardian_yearly_income" type="number" value={formData.guardian_yearly_income} onChange={handleChange} />
+                <InputField label="Guardian's Occupation" name="guardian_occupation" value={formData.guardian_occupation} onChange={handleChange} />
               </div>
             )}
           </div>
@@ -431,6 +486,7 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <InputField label="School Name" name="ssc_school" value={formData.ssc_school} onChange={handleChange} />
                 <InputField label="Passing Year" name="ssc_passing_year" type="number" min="1990" max="2030" value={formData.ssc_passing_year} onChange={handleChange} />
+                <SelectField label="Board" name="ssc_board" options={BOARD_OPTIONS} value={formData.ssc_board} onChange={handleChange} placeholder="Select Board" />
                 <SelectField label="Group" name="ssc_group" options={GROUP_OPTIONS} value={formData.ssc_group} onChange={handleChange} />
                 <InputField label="4th Subject" name="ssc_4th_subject" value={formData.ssc_4th_subject} onChange={handleChange} />
                 <InputField label="GPA" name="ssc_gpa" type="number" step="0.01" min="0" max="5" value={formData.ssc_gpa} onChange={handleChange} />
@@ -450,6 +506,7 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <InputField label="College Name" name="hsc_college" value={formData.hsc_college} onChange={handleChange} />
                 <InputField label="Passing Year" name="hsc_passing_year" type="number" min="1990" max="2030" value={formData.hsc_passing_year} onChange={handleChange} />
+                <SelectField label="Board" name="hsc_board" options={BOARD_OPTIONS} value={formData.hsc_board} onChange={handleChange} placeholder="Select Board" />
                 <SelectField label="Group" name="hsc_group" options={GROUP_OPTIONS} value={formData.hsc_group} onChange={handleChange} />
                 <InputField label="4th Subject" name="hsc_4th_subject" value={formData.hsc_4th_subject} onChange={handleChange} />
                 <InputField label="GPA" name="hsc_gpa" type="number" step="0.01" min="0" max="5" value={formData.hsc_gpa} onChange={handleChange} />
