@@ -122,6 +122,13 @@ class StudentCreateSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(write_only=True)
     phone_number = serializers.CharField(write_only=True, required=False, allow_blank=True)
     
+    # Make numeric fields optional and allow null/blank
+    ssc_passing_year = serializers.IntegerField(required=False, allow_null=True)
+    hsc_passing_year = serializers.IntegerField(required=False, allow_null=True)
+    guardian_yearly_income = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    ssc_gpa = serializers.DecimalField(max_digits=4, decimal_places=2, required=False, allow_null=True)
+    hsc_gpa = serializers.DecimalField(max_digits=4, decimal_places=2, required=False, allow_null=True)
+    
     class Meta:
         model = Student
         fields = [
@@ -152,6 +159,14 @@ class StudentCreateSerializer(serializers.ModelSerializer):
             'other_info'
         ]
     
+    def to_internal_value(self, data):
+        """Convert empty strings to None for optional numeric fields"""
+        numeric_fields = ['ssc_passing_year', 'hsc_passing_year', 'guardian_yearly_income', 'ssc_gpa', 'hsc_gpa']
+        for field in numeric_fields:
+            if field in data and data[field] == '':
+                data[field] = None
+        return super().to_internal_value(data)
+    
     def create(self, validated_data):
         """Create user and student profile together"""
         # Extract user data
@@ -174,6 +189,58 @@ class StudentCreateSerializer(serializers.ModelSerializer):
         student = Student.objects.create(user=user, **validated_data)
         
         return student
+
+
+class StudentUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating student profile (PATCH requests)
+    """
+    # Make numeric fields optional and allow null/blank
+    ssc_passing_year = serializers.IntegerField(required=False, allow_null=True)
+    hsc_passing_year = serializers.IntegerField(required=False, allow_null=True)
+    guardian_yearly_income = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    ssc_gpa = serializers.DecimalField(max_digits=4, decimal_places=2, required=False, allow_null=True)
+    hsc_gpa = serializers.DecimalField(max_digits=4, decimal_places=2, required=False, allow_null=True)
+    
+    class Meta:
+        model = Student
+        fields = [
+            # Basic student info
+            'date_of_birth', 'blood_group', 'photo',
+            # Family info
+            'guardian_name', 'guardian_phone', 'guardian_yearly_income',
+            'father_name', 'father_phone', 'mother_name', 'mother_phone',
+            # Academic info
+            'admission_date', 'session', 'semester', 'batch',
+            # Structured present address
+            'present_address', 'present_house_no', 'present_road_vill',
+            'present_police_station', 'present_post_office',
+            'present_district', 'present_division',
+            # Structured permanent address
+            'permanent_address', 'permanent_house_no', 'permanent_road_vill',
+            'permanent_police_station', 'permanent_post_office',
+            'permanent_district', 'permanent_division',
+            # SSC info
+            'ssc_school', 'ssc_passing_year', 'ssc_group',
+            'ssc_4th_subject', 'ssc_gpa',
+            # HSC info
+            'hsc_college', 'hsc_passing_year', 'hsc_group',
+            'hsc_4th_subject', 'hsc_gpa',
+            # Other
+            'other_info'
+        ]
+    
+    def to_internal_value(self, data):
+        """Convert empty strings to None for optional numeric fields"""
+        # Make a mutable copy if needed
+        if hasattr(data, '_mutable'):
+            data._mutable = True
+        
+        numeric_fields = ['ssc_passing_year', 'hsc_passing_year', 'guardian_yearly_income', 'ssc_gpa', 'hsc_gpa']
+        for field in numeric_fields:
+            if field in data and data[field] == '':
+                data[field] = None
+        return super().to_internal_value(data)
 
 
 class LoginSerializer(serializers.Serializer):

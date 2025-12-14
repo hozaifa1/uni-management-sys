@@ -176,10 +176,19 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
     try {
       const formDataToSend = new FormData();
       
-      // Add all form fields (skip empty optional fields)
+      // Numeric fields that should be sent as null if empty
+      const numericFields = ['ssc_passing_year', 'hsc_passing_year', 'guardian_yearly_income', 'ssc_gpa', 'hsc_gpa'];
+      
+      // Add all form fields (skip empty optional fields, but handle numeric fields specially)
       Object.keys(formData).forEach(key => {
-        if (formData[key] !== '' && formData[key] !== null) {
-          formDataToSend.append(key, formData[key]);
+        const value = formData[key];
+        if (numericFields.includes(key)) {
+          // For numeric fields, only append if there's a value
+          if (value !== '' && value !== null && value !== undefined) {
+            formDataToSend.append(key, value);
+          }
+        } else if (value !== '' && value !== null) {
+          formDataToSend.append(key, value);
         }
       });
       

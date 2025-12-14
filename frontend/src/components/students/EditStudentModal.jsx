@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Upload, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
@@ -62,6 +62,8 @@ const SelectField = ({ label, name, options, required = false, placeholder = 'Se
 );
 
 const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
+  const [photo, setPhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [formData, setFormData] = useState({
     // User/account info
     username: '',
@@ -132,6 +134,10 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
 
   useEffect(() => {
     if (student) {
+      // Set photo preview from existing photo
+      if (student.photo) {
+        setPhotoPreview(student.photo);
+      }
       setFormData({
         username: student.user?.username || '',
         email: student.user?.email || '',
@@ -185,6 +191,18 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPhoto(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const toggleSection = (section) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
@@ -204,43 +222,51 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
         phone_number: formData.phone_number,
       };
 
+      // Convert empty strings to null for numeric fields
+      const processValue = (value, isNumeric = false) => {
+        if (value === '' || value === null || value === undefined) {
+          return isNumeric ? null : '';
+        }
+        return value;
+      };
+
       const studentPayload = {
         date_of_birth: formData.date_of_birth,
-        blood_group: formData.blood_group,
+        blood_group: processValue(formData.blood_group),
         batch: formData.batch,
-        session: formData.session,
-        semester: formData.semester,
+        session: processValue(formData.session),
+        semester: processValue(formData.semester),
         admission_date: formData.admission_date,
-        father_name: formData.father_name,
-        father_phone: formData.father_phone,
-        mother_name: formData.mother_name,
-        mother_phone: formData.mother_phone,
-        guardian_name: formData.guardian_name,
-        guardian_phone: formData.guardian_phone,
-        guardian_yearly_income: formData.guardian_yearly_income,
-        present_house_no: formData.present_house_no,
-        present_road_vill: formData.present_road_vill,
-        present_police_station: formData.present_police_station,
-        present_post_office: formData.present_post_office,
-        present_district: formData.present_district,
-        present_division: formData.present_division,
-        permanent_house_no: formData.permanent_house_no,
-        permanent_road_vill: formData.permanent_road_vill,
-        permanent_police_station: formData.permanent_police_station,
-        permanent_post_office: formData.permanent_post_office,
-        permanent_district: formData.permanent_district,
-        permanent_division: formData.permanent_division,
-        ssc_school: formData.ssc_school,
-        ssc_passing_year: formData.ssc_passing_year,
-        ssc_group: formData.ssc_group,
-        ssc_4th_subject: formData.ssc_4th_subject,
-        ssc_gpa: formData.ssc_gpa,
-        hsc_college: formData.hsc_college,
-        hsc_passing_year: formData.hsc_passing_year,
-        hsc_group: formData.hsc_group,
-        hsc_4th_subject: formData.hsc_4th_subject,
-        hsc_gpa: formData.hsc_gpa,
-        other_info: formData.other_info,
+        father_name: processValue(formData.father_name),
+        father_phone: processValue(formData.father_phone),
+        mother_name: processValue(formData.mother_name),
+        mother_phone: processValue(formData.mother_phone),
+        guardian_name: processValue(formData.guardian_name),
+        guardian_phone: processValue(formData.guardian_phone),
+        guardian_yearly_income: processValue(formData.guardian_yearly_income, true),
+        present_house_no: processValue(formData.present_house_no),
+        present_road_vill: processValue(formData.present_road_vill),
+        present_police_station: processValue(formData.present_police_station),
+        present_post_office: processValue(formData.present_post_office),
+        present_district: processValue(formData.present_district),
+        present_division: processValue(formData.present_division),
+        permanent_house_no: processValue(formData.permanent_house_no),
+        permanent_road_vill: processValue(formData.permanent_road_vill),
+        permanent_police_station: processValue(formData.permanent_police_station),
+        permanent_post_office: processValue(formData.permanent_post_office),
+        permanent_district: processValue(formData.permanent_district),
+        permanent_division: processValue(formData.permanent_division),
+        ssc_school: processValue(formData.ssc_school),
+        ssc_passing_year: processValue(formData.ssc_passing_year, true),
+        ssc_group: processValue(formData.ssc_group),
+        ssc_4th_subject: processValue(formData.ssc_4th_subject),
+        ssc_gpa: processValue(formData.ssc_gpa, true),
+        hsc_college: processValue(formData.hsc_college),
+        hsc_passing_year: processValue(formData.hsc_passing_year, true),
+        hsc_group: processValue(formData.hsc_group),
+        hsc_4th_subject: processValue(formData.hsc_4th_subject),
+        hsc_gpa: processValue(formData.hsc_gpa, true),
+        other_info: processValue(formData.other_info),
       };
 
       // Update user first (account info)
@@ -248,8 +274,21 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
         await api.patch(`/accounts/users/${student.user.id}/`, userPayload);
       }
 
-      // Update student profile
-      await api.patch(`/accounts/students/${student.id}/`, studentPayload);
+      // Update student profile - use FormData if photo is being uploaded
+      if (photo) {
+        const formDataToSend = new FormData();
+        Object.keys(studentPayload).forEach(key => {
+          if (studentPayload[key] !== '' && studentPayload[key] !== null && studentPayload[key] !== undefined) {
+            formDataToSend.append(key, studentPayload[key]);
+          }
+        });
+        formDataToSend.append('photo', photo);
+        await api.patch(`/accounts/students/${student.id}/`, formDataToSend, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } else {
+        await api.patch(`/accounts/students/${student.id}/`, studentPayload);
+      }
 
       toast.success('Student updated successfully');
       if (onSuccess) {
@@ -288,6 +327,23 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
               {typeof error === 'string' ? error : JSON.stringify(error)}
             </div>
           )}
+
+          {/* Photo Upload */}
+          <div className="flex justify-center pb-4">
+            <div className="relative">
+              {photoPreview ? (
+                <img src={photoPreview} alt="Preview" className="w-24 h-24 rounded-full object-cover border-4 border-blue-500" />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300">
+                  <User className="w-12 h-12 text-gray-400" />
+                </div>
+              )}
+              <label className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full cursor-pointer hover:bg-blue-700">
+                <Upload className="w-4 h-4" />
+                <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+              </label>
+            </div>
+          </div>
 
           {/* Account Information */}
           <div className="border border-gray-200 rounded-lg">

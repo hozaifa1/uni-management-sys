@@ -8,7 +8,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import User, Student
 from .serializers import (
     UserSerializer, UserCreateSerializer, StudentSerializer,
-    StudentCreateSerializer, LoginSerializer, ChangePasswordSerializer
+    StudentCreateSerializer, StudentUpdateSerializer, LoginSerializer, ChangePasswordSerializer
 )
 
 
@@ -73,6 +73,8 @@ class StudentViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'create':
             return StudentCreateSerializer
+        if self.action in ['update', 'partial_update']:
+            return StudentUpdateSerializer
         return StudentSerializer
     
     @action(detail=True, methods=['get'])
