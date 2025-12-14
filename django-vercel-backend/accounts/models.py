@@ -176,16 +176,12 @@ class Student(models.Model):
     course = models.CharField(
         max_length=10,
         choices=COURSE_CHOICES,
-        blank=True,
-        null=True,
         help_text='Course (BBA, MBA, CSE, THM)'
     )
 
     intake = models.CharField(
         max_length=10,
         choices=INTAKE_CHOICES,
-        blank=True,
-        null=True,
         help_text='Intake number'
     )
     
@@ -256,25 +252,13 @@ class Student(models.Model):
 
     session = models.CharField(
         max_length=50,
-        blank=True,
-        null=True,
         help_text='Academic session (e.g., 2023-2024)'
     )
 
     semester = models.CharField(
         max_length=10,
         choices=SEMESTER_CHOICES,
-        blank=True,
-        null=True,
         help_text='Current semester'
-    )
-    
-    batch = models.ForeignKey(
-        'students.Batch',
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='students',
-        help_text='Assigned batch'
     )
     
     photo = models.ImageField(

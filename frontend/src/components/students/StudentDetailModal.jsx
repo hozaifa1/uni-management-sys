@@ -63,7 +63,6 @@ const StudentDetailModal = ({ student, onClose }) => {
               <p className="text-sm font-semibold text-gray-700 border-b pb-1">Academic Information</p>
               <div className="text-sm text-gray-700 space-y-1">
                 <p><span className="font-medium">Student ID:</span> {student.student_id}</p>
-                <p><span className="font-medium">Batch:</span> {student.batch_name || 'N/A'}</p>
                 <p><span className="font-medium">Course:</span> {student.course || 'N/A'}</p>
                 <p><span className="font-medium">Intake:</span> {student.intake || 'N/A'}</p>
                 <p><span className="font-medium">Registration No:</span> {student.registration_number || 'N/A'}</p>

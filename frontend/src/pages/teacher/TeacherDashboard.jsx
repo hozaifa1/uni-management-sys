@@ -16,7 +16,7 @@ const TeacherDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalStudents: 0,
-    activeBatches: 0,
+    totalCourses: 4, // BBA, MBA, CSE, THM
     upcomingExams: 0,
     averageScore: 'N/A',
   });
@@ -32,20 +32,17 @@ const TeacherDashboard = () => {
     try {
       setLoading(true);
 
-      const [studentsRes, batchesRes, examsRes, resultsRes] = await Promise.all([
+      const [studentsRes, examsRes, resultsRes] = await Promise.all([
         api.get('/accounts/students/'),
-        api.get('/students/batches/'),
         api.get('/academics/exams/'),
         api.get('/academics/results/'),
       ]);
 
       const students = studentsRes.data.results || studentsRes.data || [];
-      const batches = batchesRes.data.results || batchesRes.data || [];
       const exams = examsRes.data.results || examsRes.data || [];
       const results = resultsRes.data.results || resultsRes.data || [];
 
       const totalStudents = studentsRes.data.count || students.length;
-      const activeBatches = batches.filter((batch) => batch.is_active !== false).length;
 
       const upcoming = exams
         .filter((exam) => new Date(exam.exam_date) >= new Date())
@@ -58,7 +55,7 @@ const TeacherDashboard = () => {
 
       setStats({
         totalStudents,
-        activeBatches,
+        totalCourses: 4, // BBA, MBA, CSE, THM
         upcomingExams: upcoming.length,
         averageScore,
       });
@@ -85,7 +82,7 @@ const TeacherDashboard = () => {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Hello, {user?.first_name || user?.username}!</h1>
         <p className="text-gray-600 mt-1">
-          Here is a quick snapshot of your students, batches, and assessment performance.
+          Here is a quick snapshot of your students, courses, and assessment performance.
         </p>
       </div>
 
@@ -105,8 +102,8 @@ const TeacherDashboard = () => {
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Batches</p>
-              <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.activeBatches}</h3>
+              <p className="text-sm font-medium text-gray-600">Courses</p>
+              <h3 className="text-3xl font-bold text-gray-900 mt-2">{stats.totalCourses}</h3>
             </div>
             <div className="p-4 bg-purple-500 rounded-xl">
               <BookOpen className="w-8 h-8 text-white" />
@@ -228,7 +225,7 @@ const TeacherDashboard = () => {
         >
           <ClipboardList className="w-8 h-8 text-purple-600 mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Update Results</h3>
-          <p className="text-sm text-gray-600">Record and review academic performance across your batches.</p>
+          <p className="text-sm text-gray-600">Record and review academic performance across your courses.</p>
         </a>
 
         <a

@@ -47,12 +47,10 @@ const MyResults = () => {
         const studentResults = resultsResponse.data.results || resultsResponse.data;
         setResults(studentResults);
 
-        // Fetch exams for filter
-        // Handle both cases: batch as object or batch as ID
-        const batchId = typeof studentProfile.batch === 'object' ? studentProfile.batch?.id : studentProfile.batch;
-        if (batchId) {
+        // Fetch exams for filter based on course/semester
+        if (studentProfile.course && studentProfile.semester) {
           const examsResponse = await api.get('/academics/exams/', {
-            params: { batch: batchId }
+            params: { course: studentProfile.course, semester: studentProfile.semester }
           });
           setExams(examsResponse.data.results || examsResponse.data);
         }

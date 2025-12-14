@@ -59,10 +59,10 @@ class StudentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Student model CRUD operations
     """
-    queryset = Student.objects.select_related('user', 'batch').all()
+    queryset = Student.objects.select_related('user').all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['batch', 'blood_group', 'admission_date', 'user']
+    filterset_fields = ['course', 'intake', 'semester', 'session', 'blood_group', 'admission_date', 'user']
     search_fields = [
         'student_id', 'user__username', 'user__first_name',
         'user__last_name', 'user__email', 'guardian_name'

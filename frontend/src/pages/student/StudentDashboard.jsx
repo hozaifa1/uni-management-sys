@@ -47,12 +47,10 @@ const StudentDashboard = () => {
         const studentPayments = paymentsResponse.data.results || paymentsResponse.data;
         setPayments(studentPayments.slice(0, 5)); // Latest 5 payments
 
-        // Fetch upcoming exams
-        // Handle both cases: batch as object or batch as ID
-        const batchId = typeof studentProfile.batch === 'object' ? studentProfile.batch?.id : studentProfile.batch;
-        if (batchId) {
+        // Fetch upcoming exams based on course/semester
+        if (studentProfile.course && studentProfile.semester) {
           const examsResponse = await api.get('/academics/exams/', {
-            params: { batch: batchId }
+            params: { course: studentProfile.course, semester: studentProfile.semester }
           });
           const allExams = examsResponse.data.results || examsResponse.data;
           const upcoming = allExams.filter(exam => new Date(exam.exam_date) > new Date());
@@ -133,7 +131,7 @@ const StudentDashboard = () => {
             <div className="flex items-center space-x-4 mt-3">
               <div className="flex items-center">
                 <Book className="w-4 h-4 mr-2" />
-                <span>{studentData?.batch?.name}</span>
+                <span>{studentData?.course} - {studentData?.intake} Intake</span>
               </div>
               <div className="flex items-center">
                 <Calendar className="w-4 h-4 mr-2" />

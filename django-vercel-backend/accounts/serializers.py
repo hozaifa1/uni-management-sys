@@ -71,8 +71,6 @@ class StudentSerializer(serializers.ModelSerializer):
     Serializer for Student model with nested user data
     """
     user = UserSerializer(read_only=True)
-    batch_name = serializers.CharField(source='batch.name', read_only=True)
-    course_code = serializers.CharField(source='batch.course.code', read_only=True)
     
     class Meta:
         model = Student
@@ -87,7 +85,6 @@ class StudentSerializer(serializers.ModelSerializer):
             'father_name', 'father_phone', 'mother_name', 'mother_phone',
             # Academic info
             'admission_date', 'session', 'semester',
-            'batch', 'batch_name', 'course_code',
             'photo', 'blood_group',
             # Structured present address
             'present_address', 'present_house_no', 'present_road_vill',
@@ -150,7 +147,7 @@ class StudentCreateSerializer(serializers.ModelSerializer):
             'guardian_occupation',
             'father_name', 'father_phone', 'mother_name', 'mother_phone',
             # Academic info
-            'admission_date', 'session', 'semester', 'batch',
+            'admission_date', 'session', 'semester',
             # Structured present address
             'present_address', 'present_house_no', 'present_road_vill',
             'present_police_station', 'present_post_office',
@@ -239,7 +236,7 @@ class StudentUpdateSerializer(serializers.ModelSerializer):
             'guardian_occupation',
             'father_name', 'father_phone', 'mother_name', 'mother_phone',
             # Academic info
-            'admission_date', 'session', 'semester', 'batch',
+            'admission_date', 'session', 'semester',
             # Structured present address
             'present_address', 'present_house_no', 'present_road_vill',
             'present_police_station', 'present_post_office',

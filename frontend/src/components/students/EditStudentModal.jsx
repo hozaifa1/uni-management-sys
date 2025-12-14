@@ -86,7 +86,7 @@ const SelectField = ({ label, name, options, required = false, placeholder = 'Se
   </div>
 );
 
-const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
+const EditStudentModal = ({ student, onClose, onSuccess }) => {
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [removePhoto, setRemovePhoto] = useState(false);
@@ -106,7 +106,6 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
     date_of_birth: '',
     blood_group: '',
     // Academic info
-    batch: '',
     session: '',
     semester: '',
     admission_date: '',
@@ -183,7 +182,6 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
         intake: student.intake || '',
         date_of_birth: student.date_of_birth || '',
         blood_group: student.blood_group || '',
-        batch: student.batch || '',
         session: student.session || '',
         semester: student.semester || '',
         admission_date: student.admission_date || '',
@@ -267,7 +265,10 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
     if (!formData.username.trim()) errors.push('College ID is required');
     if (!formData.full_name.trim()) errors.push('Full Name is required');
     if (!formData.date_of_birth) errors.push('Date of Birth is required');
-    if (!formData.batch) errors.push('Batch is required');
+    if (!formData.course) errors.push('Course is required');
+    if (!formData.intake) errors.push('Intake is required');
+    if (!formData.session.trim()) errors.push('Session is required');
+    if (!formData.semester) errors.push('Semester is required');
     if (!formData.admission_date) errors.push('Admission Date is required');
     return errors;
   };
@@ -310,17 +311,16 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
       const studentPayload = {
         date_of_birth: formData.date_of_birth,
         blood_group: processValue(formData.blood_group),
-        batch: formData.batch,
-        session: processValue(formData.session),
-        semester: processValue(formData.semester),
+        course: formData.course,
+        intake: formData.intake,
+        session: formData.session,
+        semester: formData.semester,
         admission_date: formData.admission_date,
         // New fields
         registration_number: processValue(formData.registration_number),
         national_university_id: processValue(formData.national_university_id),
         full_name: processValue(formData.full_name),
         national_id_number: processValue(formData.national_id_number),
-        course: processValue(formData.course),
-        intake: processValue(formData.intake),
         // Family info
         father_name: processValue(formData.father_name),
         father_phone: processValue(formData.father_phone),
@@ -417,8 +417,6 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
     }
   };
 
-  const batchOptions = (batches || []).map(b => ({ value: b.id, label: b.name }));
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full my-8">
@@ -506,20 +504,10 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
             />
             {expandedSections.academic && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <SelectField
-                  label="Admitted Group (Batch)"
-                  name="batch"
-                  options={batchOptions}
-                  required
-                  value={formData.batch}
-                  onChange={handleChange}
-                  placeholder="Select batch"
-                />
-                <InputField label="Registration Number" name="registration_number" value={formData.registration_number} onChange={handleChange} />
-                <InputField label="National University ID" name="national_university_id" value={formData.national_university_id} onChange={handleChange} />
                 <SelectField 
                   label="Course" 
                   name="course" 
+                  required
                   options={COURSE_OPTIONS}
                   value={formData.course}
                   onChange={handleCourseChange}
@@ -528,14 +516,17 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
                 <SelectField 
                   label="Intake" 
                   name="intake" 
+                  required
                   options={formData.course ? INTAKE_OPTIONS[formData.course] || [] : []}
                   value={formData.intake}
                   onChange={handleChange}
                   placeholder="Select Intake"
                 />
-                <InputField label="Session" name="session" placeholder="e.g., 2024-2025" value={formData.session} onChange={handleChange} />
-                <SelectField label="Semester" name="semester" options={SEMESTER_OPTIONS} value={formData.semester} onChange={handleChange} placeholder="Select semester" />
+                <InputField label="Session" name="session" required placeholder="e.g., 2024-2025" value={formData.session} onChange={handleChange} />
+                <SelectField label="Semester" name="semester" required options={SEMESTER_OPTIONS} value={formData.semester} onChange={handleChange} placeholder="Select Semester" />
                 <InputField label="Admission Date" name="admission_date" type="date" required value={formData.admission_date} onChange={handleChange} />
+                <InputField label="Registration Number" name="registration_number" value={formData.registration_number} onChange={handleChange} />
+                <InputField label="National University ID" name="national_university_id" value={formData.national_university_id} onChange={handleChange} />
               </div>
             )}
           </div>

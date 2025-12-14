@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X, Upload, User, ChevronDown, ChevronUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -106,7 +106,6 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
     date_of_birth: '',
     blood_group: '',
     // Academic info
-    batch: '',
     session: '',
     semester: '',
     admission_date: new Date().toISOString().split('T')[0],
@@ -152,7 +151,6 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
   });
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
-  const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     account: true,
@@ -170,19 +168,7 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
-  useEffect(() => {
-    fetchBatches();
-  }, []);
-
-  const fetchBatches = async () => {
-    try {
-      const response = await api.get('/students/batches/');
-      setBatches(response.data.results || response.data || []);
-    } catch (error) {
-      console.error('Error fetching batches:', error);
-    }
-  };
-
+  
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -214,7 +200,10 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
     if (!formData.password.trim()) errors.push('Password is required');
     if (!formData.full_name.trim()) errors.push('Full Name is required');
     if (!formData.date_of_birth) errors.push('Date of Birth is required');
-    if (!formData.batch) errors.push('Batch is required');
+    if (!formData.course) errors.push('Course is required');
+    if (!formData.intake) errors.push('Intake is required');
+    if (!formData.session.trim()) errors.push('Session is required');
+    if (!formData.semester) errors.push('Semester is required');
     if (!formData.admission_date) errors.push('Admission Date is required');
     return errors;
   };
@@ -379,19 +368,9 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
             {expandedSections.academic && (
               <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <SelectField 
-                  label="Admitted Group (Batch)" 
-                  name="batch" 
-                  required 
-                  options={batches.map(b => ({ value: b.id, label: b.name }))}
-                  value={formData.batch}
-                  onChange={handleChange}
-                  placeholder="Select Batch"
-                />
-                <InputField label="Registration Number" name="registration_number" value={formData.registration_number} onChange={handleChange} />
-                <InputField label="National University ID" name="national_university_id" value={formData.national_university_id} onChange={handleChange} />
-                <SelectField 
                   label="Course" 
                   name="course" 
+                  required
                   options={COURSE_OPTIONS}
                   value={formData.course}
                   onChange={handleCourseChange}
@@ -400,14 +379,17 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
                 <SelectField 
                   label="Intake" 
                   name="intake" 
+                  required
                   options={formData.course ? INTAKE_OPTIONS[formData.course] || [] : []}
                   value={formData.intake}
                   onChange={handleChange}
                   placeholder="Select Intake"
                 />
-                <InputField label="Session" name="session" placeholder="e.g., 2024-2025" value={formData.session} onChange={handleChange} />
-                <SelectField label="Semester" name="semester" options={SEMESTER_OPTIONS} value={formData.semester} onChange={handleChange} />
+                <InputField label="Session" name="session" required placeholder="e.g., 2024-2025" value={formData.session} onChange={handleChange} />
+                <SelectField label="Semester" name="semester" required options={SEMESTER_OPTIONS} value={formData.semester} onChange={handleChange} placeholder="Select Semester" />
                 <InputField label="Admission Date" name="admission_date" type="date" required value={formData.admission_date} onChange={handleChange} />
+                <InputField label="Registration Number" name="registration_number" value={formData.registration_number} onChange={handleChange} />
+                <InputField label="National University ID" name="national_university_id" value={formData.national_university_id} onChange={handleChange} />
               </div>
             )}
           </div>
