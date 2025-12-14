@@ -17,7 +17,16 @@ from payments.models import FeeStructure, Payment, Expense
 class Command(BaseCommand):
     help = 'Creates test data for the LMS including users, courses, batches, subjects, exams, results, and payments'
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--clear',
+            action='store_true',
+            help='Clear existing test data before seeding',
+        )
+
     def handle(self, *args, **kwargs):
+        if kwargs.get('clear'):
+            self.clear_data()
         self.stdout.write(self.style.WARNING('\n🚀 Creating test data for IGMIS LMS...\n'))
 
         # Create users
@@ -58,6 +67,25 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS('\n✅ Test data created successfully!\n'))
         self.print_credentials()
+
+    def clear_data(self):
+        """Clear existing test data"""
+        self.stdout.write(self.style.WARNING('🗑️  Clearing existing test data...'))
+        # Clear in order of dependencies
+        Payment.objects.all().delete()
+        Expense.objects.all().delete()
+        Result.objects.all().delete()
+        FeeStructure.objects.all().delete()
+        Exam.objects.all().delete()
+        Enrollment.objects.all().delete()
+        Student.objects.all().delete()
+        Teacher.objects.all().delete()
+        Subject.objects.all().delete()
+        Batch.objects.all().delete()
+        Course.objects.all().delete()
+        User.objects.filter(role='STUDENT').delete()
+        User.objects.filter(role='TEACHER').delete()
+        self.stdout.write(self.style.SUCCESS('✓ Cleared existing test data'))
 
     def create_admin(self):
         """Create admin user"""
@@ -109,12 +137,18 @@ class Command(BaseCommand):
         return teachers
 
     def create_students(self):
-        """Create student users"""
+        """Create student users with variety"""
         students = []
-        first_names = ['John', 'Emma', 'Michael', 'Sophia', 'William', 'Olivia', 'James', 'Ava', 'Robert', 'Isabella']
-        last_names = ['Smith', 'Johnson', 'Brown', 'Davis', 'Wilson', 'Moore', 'Taylor', 'Anderson', 'Thomas', 'Jackson']
+        # 20 students with diverse names
+        student_data = [
+            ('Rahim', 'Uddin'), ('Fatima', 'Begum'), ('Karim', 'Ahmed'), ('Ayesha', 'Khan'),
+            ('Jamal', 'Hossain'), ('Nusrat', 'Jahan'), ('Imran', 'Ali'), ('Sabrina', 'Akter'),
+            ('Tanvir', 'Rahman'), ('Maliha', 'Islam'), ('Arif', 'Chowdhury'), ('Tasneem', 'Sultana'),
+            ('Rafiq', 'Mahmud'), ('Sadia', 'Parvin'), ('Habib', 'Miah'), ('Roksana', 'Khatun'),
+            ('Shakil', 'Hasan'), ('Munira', 'Nahar'), ('Faisal', 'Kabir'), ('Lamia', 'Akhter'),
+        ]
 
-        for i in range(1, 11):
+        for i, (first_name, last_name) in enumerate(student_data, 1):
             username = f'student{i}'
             if User.objects.filter(username=username).exists():
                 student = User.objects.get(username=username)
@@ -123,8 +157,8 @@ class Command(BaseCommand):
                     username=username,
                     email=f'student{i}@igmis.edu',
                     password='student123',
-                    first_name=first_names[i-1],
-                    last_name=last_names[i-1],
+                    first_name=first_name,
+                    last_name=last_name,
                     role='STUDENT',
                     phone_number=f'+880170000{i:04d}',
                     is_active=True
@@ -275,18 +309,28 @@ class Command(BaseCommand):
         students = []
         student_batch_map = {}
 
-        # Predefined spread across courses/intakes/sessions/semesters
+        # Predefined spread across courses/intakes/sessions/semesters (20 students)
         profile_matrix = [
             ('BBA', '15th', '2023-2024', '1st'),
-            ('BBA', '16th', '2024-2025', '2nd'),
+            ('BBA', '15th', '2023-2024', '2nd'),
+            ('BBA', '16th', '2024-2025', '1st'),
+            ('BBA', '16th', '2024-2025', '3rd'),
+            ('BBA', '17th', '2024-2025', '2nd'),
             ('MBA', '9th', '2024-2025', '1st'),
+            ('MBA', '9th', '2024-2025', '2nd'),
+            ('MBA', '10th', '2024-2025', '1st'),
             ('MBA', '10th', '2025-2026', '2nd'),
+            ('CSE', '1st', '2023-2024', '1st'),
+            ('CSE', '1st', '2023-2024', '2nd'),
             ('CSE', '1st', '2023-2024', '3rd'),
             ('CSE', '2nd', '2024-2025', '1st'),
+            ('CSE', '2nd', '2024-2025', '2nd'),
+            ('THM', '1st', '2024-2025', '1st'),
             ('THM', '1st', '2024-2025', '2nd'),
-            ('BBA', '17th', '2025-2026', '1st'),
-            ('CSE', '1st', '2023-2024', '4th'),
-            ('MBA', '9th', '2024-2025', '3rd'),
+            ('THM', '1st', '2024-2025', '3rd'),
+            ('BBA', '18th', '2025-2026', '1st'),
+            ('CSE', '2nd', '2024-2025', '4th'),
+            ('MBA', '9th', '2023-2024', '3rd'),
         ]
 
         for i, user in enumerate(student_users):
@@ -308,7 +352,7 @@ class Command(BaseCommand):
             
             student = Student.objects.create(
                 user=user,
-                date_of_birth=datetime(2000 + i, 1 + i, 15).date(),
+                date_of_birth=datetime(1998 + (i % 5), ((i % 12) + 1), 15).date(),
                 guardian_name=f'Guardian {user.last_name}',
                 guardian_phone=f'+880170{i:07d}',
                 admission_date=timezone.now().date() - timedelta(days=random.randint(30, 365)),

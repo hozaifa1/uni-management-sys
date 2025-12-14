@@ -149,11 +149,10 @@ const ResultsPage = () => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return (
-      result.student?.student_id?.toLowerCase().includes(search) ||
-      result.student?.user?.first_name?.toLowerCase().includes(search) ||
-      result.student?.user?.last_name?.toLowerCase().includes(search) ||
-      result.subject?.name?.toLowerCase().includes(search) ||
-      result.exam?.name?.toLowerCase().includes(search)
+      result.student_id?.toLowerCase().includes(search) ||
+      result.student_name?.toLowerCase().includes(search) ||
+      result.subject_name?.toLowerCase().includes(search) ||
+      result.exam_name?.toLowerCase().includes(search)
     );
   });
 
@@ -356,13 +355,13 @@ const ResultsPage = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-gray-900">
-                            {result.student?.user?.first_name} {result.student?.user?.last_name}
+                            {result.student_name}
                           </div>
-                          <div className="text-sm text-gray-500">{result.student?.student_id}</div>
+                          <div className="text-sm text-gray-500">{result.student_id}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {result.exam?.name}
+                        {result.exam_name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {result.subject_name || result.subject?.name}
