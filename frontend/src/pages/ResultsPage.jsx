@@ -32,6 +32,9 @@ const ResultsPage = () => {
   const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedSession, setSelectedSession] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingResult, setEditingResult] = useState(null);
+  const [editMarks, setEditMarks] = useState('');
+  const [editRemarks, setEditRemarks] = useState('');
 
   // Load all dropdown data first, then results
   useEffect(() => {
@@ -88,7 +91,36 @@ const ResultsPage = () => {
 
   const handleCourseChange = (value) => {
     setSelectedCourse(value);
-    setSelectedIntake(''); // Reset intake when course changes
+    setSelectedIntake('');
+    setSelectedStudent('');
+  };
+
+  const openEditModal = (result) => {
+    setEditingResult(result);
+    setEditMarks(result.marks_obtained);
+    setEditRemarks(result.remarks || '');
+  };
+
+  const closeEditModal = () => {
+    setEditingResult(null);
+    setEditMarks('');
+    setEditRemarks('');
+  };
+
+  const handleUpdate = async () => {
+    if (!editingResult) return;
+    try {
+      await api.patch(`/academics/results/${editingResult.id}/`, {
+        marks_obtained: Number(editMarks),
+        remarks: editRemarks,
+      });
+      toast.success('Result updated successfully');
+      closeEditModal();
+      fetchResults();
+    } catch (error) {
+      console.error('Error updating result:', error);
+      toast.error('Failed to update result');
+    }
   };
 
   // Filter students based on selected course/intake/semester/session
@@ -314,9 +346,10 @@ const ResultsPage = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredResults.map((result) => {
-                  const percentage = result.subject?.total_marks 
-                    ? ((result.marks_obtained / result.subject.total_marks) * 100).toFixed(2)
-                    : '0.00';
+                  const totalMarks = result.subject_total_marks || result.subject?.total_marks || 0;
+                  const percentage = totalMarks
+                    ? ((Number(result.marks_obtained) / Number(totalMarks)) * 100).toFixed(2)
+                    : (Number(result.percentage) || 0).toFixed(2);
 
                   return (
                     <tr key={result.id} className="hover:bg-gray-50">
@@ -332,13 +365,13 @@ const ResultsPage = () => {
                         {result.exam?.name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {result.subject?.name}
+                        {result.subject_name || result.subject?.name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {result.marks_obtained}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {result.subject?.total_marks || 100}
+                        {totalMarks || 100}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {percentage}%
@@ -361,6 +394,12 @@ const ResultsPage = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <button
+                            onClick={() => openEditModal(result)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            <Edit className="w-5 h-5" />
+                          </button>
+                          <button
                             onClick={() => handleDelete(result.id)}
                             className="text-red-600 hover:text-red-900"
                           >
@@ -376,6 +415,54 @@ const ResultsPage = () => {
           </div>
         )}
       </div>
+
+      {editingResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Edit Result</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Marks Obtained
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editMarks}
+                  onChange={(e) => setEditMarks(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Remarks
+                </label>
+                <textarea
+                  value={editRemarks}
+                  onChange={(e) => setEditRemarks(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={closeEditModal}
+                className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdate}
+                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
