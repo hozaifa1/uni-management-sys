@@ -44,27 +44,17 @@ npm install -g vercel
 
 ---
 
-## Phase 3: Neon Database Setup (If Migrating from Railway DB)
+## Phase 3: Database (Neon - Already Configured)
 
-> **Skip this phase if you're keeping your existing Railway/hosted PostgreSQL database.**
+> **✅ ALREADY DONE** - Your PostgreSQL database has always been hosted on **Neon**. Railway was only used for backend API hosting (similar to how Vercel is now used). No database migration is needed.
 
-### 3.1 Create Neon Account
-- [ ] Go to [https://neon.tech](https://neon.tech)
-- [ ] Click **"Sign Up"** → **"Continue with GitHub"**
-- [ ] Create a new project:
-  - **Project Name**: `igmis-lms`
-  - **Region**: Choose closest to your users
-  - **PostgreSQL Version**: `16` (latest)
-- [ ] Copy the **Connection String** (looks like: `postgres://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require`)
+### Current Setup
+- **Database**: Neon PostgreSQL (unchanged)
+- **Previous Backend Host**: Railway (deprecated)
+- **New Backend Host**: Vercel (serverless)
 
-### 3.2 Migrate Data from Railway (If Applicable)
-```bash
-# Export from Railway
-pg_dump "YOUR_RAILWAY_DATABASE_URL" -F c -f backup.dump
-
-# Import to Neon
-pg_restore -d "YOUR_NEON_DATABASE_URL" backup.dump
-```
+### Your Neon Connection String
+Your `DATABASE_URL` is already configured in Vercel environment variables and points to your existing Neon database. No action required here.
 
 ---
 

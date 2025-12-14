@@ -10,3 +10,5 @@ TODO.md
 PROJECT_STATUS.md
 *.md
 file2cloudinary
+.vercel
+.env*.local
