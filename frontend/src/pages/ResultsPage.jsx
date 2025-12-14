@@ -69,11 +69,21 @@ const ResultsPage = () => {
     loadInitialData();
   }, []);
 
-  // Fetch results when filters change
+  // Fetch exams filtered by course when course changes
   useEffect(() => {
-    if (!dataLoaded) return;
-    fetchResults();
-  }, [dataLoaded, fetchResults]);
+    const fetchExamsByCourse = async () => {
+      try {
+        const params = selectedCourse ? { course: selectedCourse } : {};
+        const examsRes = await api.get('/academics/exams/', { params });
+        setExams(examsRes.data.results || examsRes.data || []);
+      } catch (err) {
+        console.error('Error fetching exams:', err);
+      }
+    };
+    if (dataLoaded) {
+      fetchExamsByCourse();
+    }
+  }, [selectedCourse, dataLoaded]);
 
   const fetchResults = useCallback(async () => {
     try {
@@ -98,10 +108,17 @@ const ResultsPage = () => {
     }
   }, [selectedCourse, selectedExam, selectedIntake, selectedSemester, selectedSession, selectedStudent, selectedSubject]);
 
+  // Fetch results when filters change
+  useEffect(() => {
+    if (!dataLoaded) return;
+    fetchResults();
+  }, [dataLoaded, fetchResults]);
+
   const handleCourseChange = (value) => {
     setSelectedCourse(value);
     setSelectedIntake('');
     setSelectedStudent('');
+    setSelectedExam(''); // Reset exam when course changes
   };
 
   const openEditModal = (result) => {

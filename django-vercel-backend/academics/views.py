@@ -40,13 +40,25 @@ class ExamViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Exam model CRUD operations
     """
-    queryset = Exam.objects.select_related('batch').all()
+    queryset = Exam.objects.select_related('batch', 'batch__course').all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['exam_type', 'batch', 'exam_date']
     search_fields = ['name', 'batch__name', 'description']
     ordering_fields = ['exam_date', 'name']
     ordering = ['-exam_date']
+    
+    def get_queryset(self):
+        """
+        Optionally filter exams by course code.
+        """
+        queryset = super().get_queryset()
+        course = self.request.query_params.get('course')
+        
+        if course:
+            queryset = queryset.filter(batch__course__code=course)
+        
+        return queryset
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -127,7 +139,7 @@ class ResultViewSet(viewsets.ModelViewSet):
     ViewSet for Result model CRUD operations
     """
     queryset = Result.objects.select_related(
-        'student', 'student__user', 'exam', 'subject'
+        'student', 'student__user', 'exam', 'exam__batch', 'exam__batch__course', 'subject'
     ).all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -138,6 +150,28 @@ class ResultViewSet(viewsets.ModelViewSet):
     ]
     ordering_fields = ['exam__exam_date', 'marks_obtained']
     ordering = ['-exam__exam_date']
+    
+    def get_queryset(self):
+        """
+        Filter results by course, intake, semester, and session through the student.
+        """
+        queryset = super().get_queryset()
+        
+        course = self.request.query_params.get('course')
+        intake = self.request.query_params.get('intake')
+        semester = self.request.query_params.get('semester')
+        session = self.request.query_params.get('session')
+        
+        if course:
+            queryset = queryset.filter(student__course=course)
+        if intake:
+            queryset = queryset.filter(student__intake=intake)
+        if semester:
+            queryset = queryset.filter(student__semester=semester)
+        if session:
+            queryset = queryset.filter(student__session=session)
+        
+        return queryset
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
