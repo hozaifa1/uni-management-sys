@@ -80,9 +80,9 @@ INFO 2025-11-09 23:15:05,004 basehttp "GET /api/accounts/students/ HTTP/1.1" 200
 INFO 2025-11-09 23:15:05,012 basehttp "GET /api/students/teachers/ HTTP/1.1" 200 52
 INFO 2025-11-09 23:15:05,030 basehttp "GET /api/payments/payments/statistics/ HTTP/1.1" 200 929
 INFO 2025-11-09 23:15:05,061 basehttp "GET /api/payments/payments/statistics/ HTTP/1.1" 200 929
-INFO 2025-11-09 23:29:34,493 autoreload F:\IGMIS LMS\django-railway-backend\config\settings.py changed, reloading.
+INFO 2025-11-09 23:29:34,493 autoreload F:\IGMIS LMS\django-vercel-backend\config\settings.py changed, reloading.
 INFO 2025-11-09 23:29:39,739 autoreload Watching for file changes with StatReloader
-INFO 2025-11-09 23:29:48,512 autoreload F:\IGMIS LMS\django-railway-backend\config\settings.py changed, reloading.
+INFO 2025-11-09 23:29:48,512 autoreload F:\IGMIS LMS\django-vercel-backend\config\settings.py changed, reloading.
 INFO 2025-11-09 23:29:50,143 autoreload Watching for file changes with StatReloader
 INFO 2025-11-09 23:30:04,422 basehttp "GET /admin/ HTTP/1.1" 200 14724
 INFO 2025-11-09 23:30:04,632 basehttp "GET /static/admin/css/base.css HTTP/1.1" 304 0

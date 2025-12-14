@@ -63,13 +63,13 @@ Your `DATABASE_URL` is already configured in Vercel environment variables and po
 The following files have been modified/created:
 
 ### 4.1 Files Modified
-- [ ] `django-railway-backend/requirements.txt` - Added Cloudinary packages
-- [ ] `django-railway-backend/config/settings.py` - Added Cloudinary storage, Vercel-compatible DB config
-- [ ] `django-railway-backend/config/wsgi.py` - Added `app = application` for Vercel
+- [ ] `django-vercel-backend/requirements.txt` - Added Cloudinary packages
+- [ ] `django-vercel-backend/config/settings.py` - Added Cloudinary storage, Vercel-compatible DB config
+- [ ] `django-vercel-backend/config/wsgi.py` - Added `app = application` for Vercel
 
 ### 4.2 Files Created
-- [ ] `django-railway-backend/vercel.json` - Vercel build/routing configuration
-- [ ] `django-railway-backend/build_files.sh` - Build script for Vercel
+- [ ] `django-vercel-backend/vercel.json` - Vercel build/routing configuration
+- [ ] `django-vercel-backend/build_files.sh` - Build script for Vercel
 
 ---
 
@@ -89,7 +89,7 @@ git push origin main
 3. [ ] Select your repository: `uni-management-sys` (or your repo name)
 4. [ ] Configure project:
    - **Framework Preset**: Select `Other`
-   - **Root Directory**: Click **"Edit"** → Enter `django-railway-backend` → Click **"Continue"**
+   - **Root Directory**: Click **"Edit"** → Enter `django-vercel-backend` → Click **"Continue"**
    - **Build Command**: Leave as `sh build_files.sh`
    - **Output Directory**: Leave empty
    - **Install Command**: Leave empty
@@ -123,7 +123,7 @@ You need to run migrations manually since Vercel is serverless:
 
 **Option A: Using Vercel CLI**
 ```bash
-cd django-railway-backend
+cd django-vercel-backend
 vercel env pull .env.local
 python manage.py migrate
 ```

@@ -254,7 +254,7 @@ sudo apt-get install -y python3 python3-venv python3-pip git nginx
 mkdir -p ~/apps
 cd ~/apps
 git clone YOUR_GITHUB_REPO_URL igmis
-cd igmis/django-railway-backend
+cd igmis/django-vercel-backend
 
 python3 -m venv venv
 source venv/bin/activate
@@ -304,9 +304,9 @@ After=network.target
 
 [Service]
 User=ubuntu
-WorkingDirectory=/home/ubuntu/apps/igmis/django-railway-backend
-EnvironmentFile=/home/ubuntu/apps/igmis/django-railway-backend/.env
-ExecStart=/home/ubuntu/apps/igmis/django-railway-backend/venv/bin/gunicorn config.wsgi:application --bind 127.0.0.1:8000
+WorkingDirectory=/home/ubuntu/apps/igmis/django-vercel-backend
+EnvironmentFile=/home/ubuntu/apps/igmis/django-vercel-backend/.env
+ExecStart=/home/ubuntu/apps/igmis/django-vercel-backend/venv/bin/gunicorn config.wsgi:application --bind 127.0.0.1:8000
 Restart=always
 
 [Install]
@@ -755,7 +755,7 @@ Pull updates on the VM and restart the service:
 ```bash
 ssh -i path\to\your_private_key ubuntu@YOUR_SERVER_PUBLIC_IP
 
-cd ~/apps/igmis/django-railway-backend
+cd ~/apps/igmis/django-vercel-backend
 source venv/bin/activate
 
 git pull
@@ -1274,7 +1274,7 @@ git push origin main
 
 # Wait for deploy, then:
 ssh -i path\to\your_private_key ubuntu@YOUR_SERVER_PUBLIC_IP
-cd ~/apps/igmis/django-railway-backend
+cd ~/apps/igmis/django-vercel-backend
 source venv/bin/activate
 git pull
 pip install -r requirements.txt

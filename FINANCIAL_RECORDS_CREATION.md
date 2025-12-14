@@ -33,7 +33,7 @@ All endpoints require a valid JWT access token (see `/api/token/`).
 
 A management command exists to generate sample data (including FeeStructure, Payment, Expense):
 
-- Run from `django-railway-backend/`:
+- Run from `django-vercel-backend/`:
   - `python manage.py create_test_data`
 
 This is the fastest way to satisfy the `VERIFICATION_TODO.md` precondition for payments/financial stats.
