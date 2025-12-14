@@ -17,7 +17,7 @@ const StatCard = ({ title, value, icon: IconComponent, color, trend }) => (
         )}
       </div>
       <div className={`p-4 ${color} rounded-xl`}>
-        <IconComponent className="w-8 h-8 text-white" />
+        {IconComponent && <IconComponent className="w-8 h-8 text-white" />}
       </div>
     </div>
   </div>
