@@ -43,11 +43,16 @@ const MyPayments = () => {
         setPayments(studentPayments);
 
         // Fetch fee structures for the batch
-        const feeResponse = await api.get(`/payments/fee-structures/?batch=${studentProfile.batch?.id}`);
-        const fees = feeResponse.data.results || feeResponse.data;
+        // Handle both cases: batch as object or batch as ID
+        const batchId = typeof studentProfile.batch === 'object' ? studentProfile.batch?.id : studentProfile.batch;
+        let fees = [];
+        if (batchId) {
+          const feeResponse = await api.get(`/payments/fee-structures/?batch=${batchId}`);
+          fees = feeResponse.data.results || feeResponse.data;
+        }
         setFeeStructures(fees);
 
-        // Calculate stats
+        // Calculate stats from actual payments data
         calculateStats(studentPayments, fees);
       }
     } catch (error) {

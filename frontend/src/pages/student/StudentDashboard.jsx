@@ -48,12 +48,16 @@ const StudentDashboard = () => {
         setPayments(studentPayments.slice(0, 5)); // Latest 5 payments
 
         // Fetch upcoming exams
-        const examsResponse = await api.get('/academics/exams/', {
-          params: { batch: studentProfile.batch?.id }
-        });
-        const allExams = examsResponse.data.results || examsResponse.data;
-        const upcoming = allExams.filter(exam => new Date(exam.exam_date) > new Date());
-        setUpcomingExams(upcoming.slice(0, 3)); // Next 3 exams
+        // Handle both cases: batch as object or batch as ID
+        const batchId = typeof studentProfile.batch === 'object' ? studentProfile.batch?.id : studentProfile.batch;
+        if (batchId) {
+          const examsResponse = await api.get('/academics/exams/', {
+            params: { batch: batchId }
+          });
+          const allExams = examsResponse.data.results || examsResponse.data;
+          const upcoming = allExams.filter(exam => new Date(exam.exam_date) > new Date());
+          setUpcomingExams(upcoming.slice(0, 3)); // Next 3 exams
+        }
 
         // Calculate stats
         calculateStats(studentResults, studentPayments);

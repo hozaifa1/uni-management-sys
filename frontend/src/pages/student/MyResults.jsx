@@ -29,8 +29,8 @@ const MyResults = () => {
       setLoading(true);
       
       // Fetch student profile
-      const studentResponse = await api.get('/students/students/', {
-        params: { user_id: user?.id }
+      const studentResponse = await api.get('/accounts/students/', {
+        params: { user: user?.id }
       });
       const students = studentResponse.data.results || studentResponse.data;
       const studentProfile = students.find(s => s.user?.id === user?.id) || students[0];
@@ -48,10 +48,14 @@ const MyResults = () => {
         setResults(studentResults);
 
         // Fetch exams for filter
-        const examsResponse = await api.get('/academics/exams/', {
-          params: { batch: studentProfile.batch?.id }
-        });
-        setExams(examsResponse.data.results || examsResponse.data);
+        // Handle both cases: batch as object or batch as ID
+        const batchId = typeof studentProfile.batch === 'object' ? studentProfile.batch?.id : studentProfile.batch;
+        if (batchId) {
+          const examsResponse = await api.get('/academics/exams/', {
+            params: { batch: batchId }
+          });
+          setExams(examsResponse.data.results || examsResponse.data);
+        }
 
         // Calculate stats
         calculateStats(studentResults);
