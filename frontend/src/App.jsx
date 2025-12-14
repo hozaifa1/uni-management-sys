@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -41,6 +42,21 @@ const DefaultRedirect = () => {
   return <Navigate to="/dashboard" replace />;
 };
 
+const AdminRedirect = () => {
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+    const backendBaseUrl = apiUrl.replace(/\/api\/?$/, '');
+    const targetUrl = `${backendBaseUrl}${window.location.pathname}${window.location.search}${window.location.hash}`;
+    window.location.assign(targetUrl);
+  }, []);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+  );
+};
+
 function App() {
   return (
     <ErrorBoundary>
@@ -49,6 +65,8 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
+
+          <Route path="/admin/*" element={<AdminRedirect />} />
 
           {/* Protected Routes */}
           <Route

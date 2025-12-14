@@ -9,6 +9,7 @@ Personal Info.xlsx
 TODO.md
 PROJECT_STATUS.md
 *.md
+!FINANCIAL_RECORDS_CREATION.md
 file2cloudinary
 .vercel
 .env*.local
