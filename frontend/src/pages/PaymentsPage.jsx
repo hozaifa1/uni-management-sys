@@ -1,15 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Download, DollarSign, TrendingUp, Calendar, CreditCard, Eye, Edit, Trash2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Plus, Search, Download, DollarSign, TrendingUp, Calendar, CreditCard, Eye, Trash2, RotateCcw } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import AddPaymentModal from '../components/payments/AddPaymentModal';
 import PaymentHistory from '../components/payments/PaymentHistory';
-
-const PAYMENT_STATUS_OPTIONS = [
-  { value: '', label: 'All Status' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'pending', label: 'Pending' },
-];
 
 const PAYMENT_METHOD_OPTIONS = [
   { value: '', label: 'All Methods' },
@@ -18,13 +12,28 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: 'online', label: 'Online Payment' },
 ];
 
+const FEE_TYPE_OPTIONS = [
+  { value: '', label: 'All Types' },
+  { value: 'tuition', label: 'Tuition Fee' },
+  { value: 'exam', label: 'Examination Fee' },
+  { value: 'admission', label: 'Admission Fee' },
+];
+
 const PaymentsPage = () => {
   const [payments, setPayments] = useState([]);
   const [students, setStudents] = useState([]);
+  const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [selectedIntake, setSelectedIntake] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedSession, setSelectedSession] = useState('');
   const [selectedMethod, setSelectedMethod] = useState('');
+  const [selectedFeeType, setSelectedFeeType] = useState('');
+  const [selectedExam, setSelectedExam] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -41,22 +50,31 @@ const PaymentsPage = () => {
   });
 
   useEffect(() => {
-    fetchStudents();
+    const loadInitialData = async () => {
+      try {
+        setLoading(true);
+        const [studentsRes, paymentsRes, examsRes] = await Promise.all([
+          api.get('/accounts/students/', { params: { page_size: 1000 } }),
+          api.get('/payments/payments/'),
+          api.get('/academics/exams/'),
+        ]);
+        setStudents(studentsRes.data.results || studentsRes.data || []);
+        setPayments(paymentsRes.data.results || paymentsRes.data || []);
+        setExams(examsRes.data.results || examsRes.data || []);
+        if (paymentsRes.data.count) {
+          setTotalCount(paymentsRes.data.count);
+          setTotalPages(Math.ceil(paymentsRes.data.count / 20));
+        }
+        setDataLoaded(true);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadInitialData();
     fetchStatistics();
   }, []);
-
-  useEffect(() => {
-    fetchPayments();
-  }, [currentPage, searchTerm, selectedStudent, selectedMethod, dateFrom, dateTo]);
-
-  const fetchStudents = async () => {
-    try {
-      const response = await api.get('/accounts/students/', { params: { page_size: 1000 } });
-      setStudents(response.data.results || response.data || []);
-    } catch (error) {
-      console.error('Error fetching students:', error);
-    }
-  };
 
   const fetchStatistics = async () => {
     try {
@@ -67,7 +85,7 @@ const PaymentsPage = () => {
     }
   };
 
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
@@ -92,7 +110,202 @@ const PaymentsPage = () => {
     } finally {
       setLoading(false);
     }
+  }, [currentPage, searchTerm, selectedStudent, selectedMethod, dateFrom, dateTo]);
+
+  // Derive options that actually have payments
+  const availableOptions = useMemo(() => {
+    const studentIdsWithPayments = new Set(
+      payments
+        .map((p) => p.student ?? p.student_id)
+        .filter(Boolean)
+        .map((id) => (typeof id === 'number' ? id : parseInt(id, 10) || id))
+    );
+
+    const studentsWithPayments = students.filter((s) => studentIdsWithPayments.has(s.id));
+    const courses = [...new Set(studentsWithPayments.map((s) => s.course).filter(Boolean))];
+    const intakes = [...new Set(studentsWithPayments.map((s) => s.intake).filter(Boolean))];
+    const semesters = [...new Set(studentsWithPayments.map((s) => s.semester).filter(Boolean))];
+    const sessions = [...new Set(studentsWithPayments.map((s) => s.session).filter(Boolean))];
+
+    return {
+      courses,
+      intakes,
+      semesters,
+      sessions,
+      studentsWithPayments,
+      studentIdsWithPayments,
+    };
+  }, [payments, students]);
+
+  // Filter options based on current selections
+  const filteredOptions = useMemo(() => {
+    let filteredStudents = availableOptions.studentsWithPayments;
+
+    if (selectedCourse) {
+      filteredStudents = filteredStudents.filter((s) => s.course === selectedCourse);
+    }
+    if (selectedIntake) {
+      filteredStudents = filteredStudents.filter((s) => s.intake === selectedIntake);
+    }
+    if (selectedSemester) {
+      filteredStudents = filteredStudents.filter((s) => s.semester === selectedSemester);
+    }
+    if (selectedSession) {
+      filteredStudents = filteredStudents.filter((s) => s.session === selectedSession);
+    }
+
+    let availableIntakes = availableOptions.intakes;
+    if (selectedCourse) {
+      availableIntakes = [
+        ...new Set(
+          availableOptions.studentsWithPayments
+            .filter((s) => s.course === selectedCourse)
+            .map((s) => s.intake)
+            .filter(Boolean)
+        ),
+      ];
+    }
+
+    let availableSemesters = availableOptions.semesters;
+    if (selectedCourse || selectedIntake) {
+      availableSemesters = [
+        ...new Set(
+          availableOptions.studentsWithPayments
+            .filter(
+              (s) =>
+                (!selectedCourse || s.course === selectedCourse) &&
+                (!selectedIntake || s.intake === selectedIntake)
+            )
+            .map((s) => s.semester)
+            .filter(Boolean)
+        ),
+      ];
+    }
+
+    let availableSessions = availableOptions.sessions;
+    if (selectedCourse || selectedIntake || selectedSemester) {
+      availableSessions = [
+        ...new Set(
+          availableOptions.studentsWithPayments
+            .filter(
+              (s) =>
+                (!selectedCourse || s.course === selectedCourse) &&
+                (!selectedIntake || s.intake === selectedIntake) &&
+                (!selectedSemester || s.semester === selectedSemester)
+            )
+            .map((s) => s.session)
+            .filter(Boolean)
+        ),
+      ];
+    }
+
+    // Filter exams based on course/intake/semester
+    let filteredExams = exams;
+    if (selectedCourse || selectedIntake || selectedSemester) {
+      filteredExams = exams.filter(
+        (e) =>
+          (!selectedCourse || e.course === selectedCourse) &&
+          (!selectedIntake || e.intake === selectedIntake) &&
+          (!selectedSemester || e.semester === selectedSemester)
+      );
+    }
+
+    return {
+      students: filteredStudents,
+      intakes: availableIntakes,
+      semesters: availableSemesters,
+      sessions: availableSessions,
+      exams: filteredExams,
+    };
+  }, [
+    availableOptions,
+    selectedCourse,
+    selectedIntake,
+    selectedSemester,
+    selectedSession,
+    exams,
+  ]);
+
+  // Filter handlers with cascade reset
+  const handleCourseChange = (value) => {
+    setSelectedCourse(value);
+    setSelectedIntake('');
+    setSelectedSemester('');
+    setSelectedSession('');
+    setSelectedStudent('');
+    setSelectedExam('');
   };
+
+  const handleIntakeChange = (value) => {
+    setSelectedIntake(value);
+    setSelectedStudent('');
+    setSelectedExam('');
+  };
+
+  const handleSemesterChange = (value) => {
+    setSelectedSemester(value);
+    setSelectedStudent('');
+    setSelectedExam('');
+  };
+
+  const handleSessionChange = (value) => {
+    setSelectedSession(value);
+    setSelectedStudent('');
+    setSelectedExam('');
+  };
+
+  const handleStudentChange = (studentId) => {
+    setSelectedStudent(studentId);
+    if (studentId) {
+      const student = students.find(s => s.id === parseInt(studentId) || s.id === studentId);
+      if (student) {
+        // Back-propagate student's course/intake/semester/session
+        if (student.course) setSelectedCourse(student.course);
+        if (student.intake) setSelectedIntake(student.intake);
+        if (student.semester) setSelectedSemester(student.semester);
+        if (student.session) setSelectedSession(student.session);
+      }
+    }
+  };
+
+  const handleFeeTypeChange = (value) => {
+    setSelectedFeeType(value);
+    if (value !== 'exam') {
+      setSelectedExam('');
+    }
+  };
+
+  const handleResetFilters = () => {
+    setSelectedCourse('');
+    setSelectedIntake('');
+    setSelectedSemester('');
+    setSelectedSession('');
+    setSelectedStudent('');
+    setSelectedMethod('');
+    setSelectedFeeType('');
+    setSelectedExam('');
+    setDateFrom('');
+    setDateTo('');
+    setSearchTerm('');
+  };
+
+  // Filter payments based on fee type and exam
+  const filteredPayments = useMemo(() => {
+    return payments.filter((payment) => {
+      if (selectedFeeType && payment.fee_type !== selectedFeeType) {
+        return false;
+      }
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        const matchesSearch =
+          payment.student_name?.toLowerCase().includes(search) ||
+          payment.student_id?.toLowerCase().includes(search) ||
+          payment.transaction_id?.toLowerCase().includes(search);
+        if (!matchesSearch) return false;
+      }
+      return true;
+    });
+  }, [payments, selectedFeeType, searchTerm]);
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this payment record?')) {
@@ -244,15 +457,141 @@ const PaymentsPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        {/* Row 1: Course/Intake/Semester/Session Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
+          {/* Course Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Course</label>
+            <select
+              value={selectedCourse}
+              onChange={(e) => handleCourseChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Courses ({availableOptions.courses.length})</option>
+              {availableOptions.courses.map((course) => (
+                <option key={course} value={course}>
+                  {course}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Intake Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Intake</label>
+            <select
+              value={selectedIntake}
+              onChange={(e) => handleIntakeChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Intakes ({filteredOptions.intakes.length})</option>
+              {filteredOptions.intakes.map((intake) => (
+                <option key={intake} value={intake}>
+                  {intake}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Semester Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Semester</label>
+            <select
+              value={selectedSemester}
+              onChange={(e) => handleSemesterChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Semesters ({filteredOptions.semesters.length})</option>
+              {filteredOptions.semesters.map((sem) => (
+                <option key={sem} value={sem}>
+                  {sem}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Session Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Session</label>
+            <select
+              value={selectedSession}
+              onChange={(e) => handleSessionChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Sessions ({filteredOptions.sessions.length})</option>
+              {filteredOptions.sessions.map((session) => (
+                <option key={session} value={session}>
+                  {session}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Fee Type Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Fee Type</label>
+            <select
+              value={selectedFeeType}
+              onChange={(e) => handleFeeTypeChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {FEE_TYPE_OPTIONS.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Exam Filter - Only shown when fee type is 'exam' */}
+          {selectedFeeType === 'exam' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Exam</label>
+              <select
+                value={selectedExam}
+                onChange={(e) => setSelectedExam(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Exams ({filteredOptions.exams.length})</option>
+                {filteredOptions.exams.map((exam) => (
+                  <option key={exam.id} value={exam.id}>
+                    {exam.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Payment Method Filter - moves based on exam visibility */}
+          {selectedFeeType !== 'exam' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Method</label>
+              <select
+                value={selectedMethod}
+                onChange={(e) => setSelectedMethod(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {PAYMENT_METHOD_OPTIONS.map((method) => (
+                  <option key={method.value} value={method.value}>
+                    {method.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* Row 2: Search, Student, Method (if exam type), Dates, Reset */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           {/* Search */}
-          <div className="md:col-span-2">
+          <div className="relative">
+            <label className="block text-xs font-medium text-gray-500 mb-1">Search</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search by name, ID, or transaction..."
+                placeholder="Name, ID, transaction..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -262,55 +601,71 @@ const PaymentsPage = () => {
 
           {/* Student Filter */}
           <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Student</label>
             <select
               value={selectedStudent}
-              onChange={(e) => setSelectedStudent(e.target.value)}
+              onChange={(e) => handleStudentChange(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Students</option>
-              {students.map((student) => (
+              <option value="">All Students ({filteredOptions.students.length})</option>
+              {filteredOptions.students.map((student) => (
                 <option key={student.id} value={student.id}>
-                  {getStudentDisplayName(student)}
+                  {student.student_id} - {student.user?.first_name} {student.user?.last_name}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Payment Method Filter */}
-          <div>
-            <select
-              value={selectedMethod}
-              onChange={(e) => setSelectedMethod(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {PAYMENT_METHOD_OPTIONS.map((method) => (
-                <option key={method.value} value={method.value}>
-                  {method.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Payment Method Filter - shown here when exam type is selected */}
+          {selectedFeeType === 'exam' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Method</label>
+              <select
+                value={selectedMethod}
+                onChange={(e) => setSelectedMethod(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {PAYMENT_METHOD_OPTIONS.map((method) => (
+                  <option key={method.value} value={method.value}>
+                    {method.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Date From */}
           <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">From Date</label>
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="From Date"
             />
           </div>
 
           {/* Date To */}
           <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">To Date</label>
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="To Date"
             />
+          </div>
+
+          {/* Reset Filters */}
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="flex items-center justify-center w-full px-4 py-2 border border-red-200 text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:ring-2 focus:ring-red-500 transition-colors"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Reset Filters
+            </button>
           </div>
         </div>
       </div>
@@ -345,8 +700,8 @@ const PaymentsPage = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {payments.length > 0 ? (
-                payments.map((payment) => (
+              {filteredPayments.length > 0 ? (
+                filteredPayments.map((payment) => (
                   <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
