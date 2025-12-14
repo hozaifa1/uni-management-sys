@@ -298,6 +298,8 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
+_admin_css_path = STATIC_ROOT / 'admin' / 'css' / 'base.css'
+WHITENOISE_USE_FINDERS = not _admin_css_path.exists()
 
 
 # Media files
