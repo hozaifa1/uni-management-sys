@@ -3,38 +3,67 @@ import { Download, Eye, FileText, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
+const COURSE_OPTIONS = [
+  { value: 'BBA', label: 'BBA' },
+  { value: 'MBA', label: 'MBA' },
+  { value: 'CSE', label: 'CSE' },
+  { value: 'THM', label: 'THM' },
+];
+const INTAKE_OPTIONS = {
+  BBA: ['15th', '16th', '17th', '18th', '19th', '20th'],
+  MBA: ['9th', '10th'],
+  CSE: ['1st', '2nd'],
+  THM: ['1st'],
+};
+const SEMESTER_OPTIONS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
+
 const ReportCardViewer = () => {
   const [students, setStudents] = useState([]);
   const [exams, setExams] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedExam, setSelectedExam] = useState('');
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [selectedIntake, setSelectedIntake] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedSession, setSelectedSession] = useState('');
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchStudents();
-    fetchExams();
+    const loadData = async () => {
+      try {
+        setDataLoading(true);
+        const [studentsRes, examsRes] = await Promise.all([
+          api.get('/accounts/students/'),
+          api.get('/academics/exams/')
+        ]);
+        setStudents(studentsRes.data.results || studentsRes.data || []);
+        setExams(examsRes.data.results || examsRes.data || []);
+      } catch (err) {
+        console.error('Error loading data:', err);
+        setError('Failed to load data');
+      } finally {
+        setDataLoading(false);
+      }
+    };
+    loadData();
   }, []);
 
-  const fetchStudents = async () => {
-    try {
-      const response = await api.get('/accounts/students/');
-      setStudents(response.data.results || response.data);
-    } catch (error) {
-      console.error('Error fetching students:', error);
-      setError('Failed to load students');
-    }
+  const handleCourseChange = (value) => {
+    setSelectedCourse(value);
+    setSelectedIntake('');
+    setSelectedStudent('');
   };
 
-  const fetchExams = async () => {
-    try {
-      const response = await api.get('/academics/exams/');
-      setExams(response.data.results || response.data);
-    } catch (error) {
-      console.error('Error fetching exams:', error);
-      setError('Failed to load exams');
-    }
-  };
+  // Filter students based on selected course/intake/semester/session
+  const filteredStudents = students.filter(student => {
+    if (selectedCourse && student.course !== selectedCourse) return false;
+    if (selectedIntake && student.intake !== selectedIntake) return false;
+    if (selectedSemester && student.semester !== selectedSemester) return false;
+    if (selectedSession && student.session !== selectedSession) return false;
+    return true;
+  });
 
   const handlePreview = () => {
     if (!selectedStudent || !selectedExam) {
@@ -111,47 +140,124 @@ const ReportCardViewer = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Student Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Select Student
-          </label>
-          <select
-            value={selectedStudent}
-            onChange={(e) => setSelectedStudent(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">Choose a student...</option>
-            {students.map((student) => (
-              <option key={student.id} value={student.id}>
-                {student.student_id} - {student.user?.first_name} {student.user?.last_name}
-              </option>
-            ))}
-          </select>
+      {dataLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-600">Loading data...</span>
         </div>
+      ) : (
+        <>
+          {/* Row 1: Course/Intake/Semester/Session Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            {/* Course Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Course</label>
+              <select
+                value={selectedCourse}
+                onChange={(e) => handleCourseChange(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">All Courses</option>
+                {COURSE_OPTIONS.map((course) => (
+                  <option key={course.value} value={course.value}>
+                    {course.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        {/* Exam Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Select Exam
-          </label>
-          <select
-            value={selectedExam}
-            onChange={(e) => setSelectedExam(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">Choose an exam...</option>
-            {exams.map((exam) => (
-              <option key={exam.id} value={exam.id}>
-                {exam.name} - {new Date(exam.exam_date).toLocaleDateString()}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+            {/* Intake Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Intake</label>
+              <select
+                value={selectedIntake}
+                onChange={(e) => { setSelectedIntake(e.target.value); setSelectedStudent(''); }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">All Intakes</option>
+                {(selectedCourse ? INTAKE_OPTIONS[selectedCourse] || [] : Object.values(INTAKE_OPTIONS).flat().filter((v, i, a) => a.indexOf(v) === i)).map((intake) => (
+                  <option key={intake} value={intake}>
+                    {intake}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Semester Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Semester</label>
+              <select
+                value={selectedSemester}
+                onChange={(e) => { setSelectedSemester(e.target.value); setSelectedStudent(''); }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">All Semesters</option>
+                {SEMESTER_OPTIONS.map((sem) => (
+                  <option key={sem} value={sem}>
+                    {sem}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Session Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Session</label>
+              <input
+                type="text"
+                placeholder="e.g. 2024-2025"
+                value={selectedSession}
+                onChange={(e) => { setSelectedSession(e.target.value); setSelectedStudent(''); }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {/* Row 2: Student and Exam Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Student Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Student ({filteredStudents.length} available)
+              </label>
+              <select
+                value={selectedStudent}
+                onChange={(e) => setSelectedStudent(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Choose a student...</option>
+                {filteredStudents.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.student_id} - {student.user?.first_name} {student.user?.last_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Exam Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Exam
+              </label>
+              <select
+                value={selectedExam}
+                onChange={(e) => setSelectedExam(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Choose an exam...</option>
+                {exams.map((exam) => (
+                  <option key={exam.id} value={exam.id}>
+                    {exam.name} - {new Date(exam.exam_date).toLocaleDateString()}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Action Buttons */}
+      {!dataLoading && (
       <div className="flex flex-wrap gap-4">
         <button
           onClick={handlePreview}
@@ -180,6 +286,7 @@ const ReportCardViewer = () => {
           Print
         </button>
       </div>
+      )}
 
       {/* Info Box */}
       <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
