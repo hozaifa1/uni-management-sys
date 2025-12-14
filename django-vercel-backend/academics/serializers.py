@@ -79,6 +79,8 @@ class ResultSerializer(serializers.ModelSerializer):
     """
     Serializer for Result model
     """
+    exam_date = serializers.DateField(source='exam.exam_date', read_only=True)
+    exam_type = serializers.CharField(source='exam.exam_type', read_only=True)
     subject_total_marks = serializers.IntegerField(
         source='subject.total_marks',
         read_only=True
@@ -101,7 +103,8 @@ class ResultSerializer(serializers.ModelSerializer):
         model = Result
         fields = [
             'id', 'student', 'student_name', 'student_id',
-            'exam', 'exam_name', 'subject', 'subject_name', 'subject_code',
+            'exam', 'exam_name', 'exam_date', 'exam_type',
+            'subject', 'subject_name', 'subject_code',
             'subject_total_marks',
             'marks_obtained', 'grade', 'percentage', 'remarks',
             'created_at', 'updated_at'

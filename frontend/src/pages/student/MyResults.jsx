@@ -24,6 +24,11 @@ const MyResults = () => {
     fetchStudentResults();
   }, [selectedExam]);
 
+  const getSubjectTotal = (result) =>
+    result.subject_total_marks ??
+    result.subject?.total_marks ??
+    0;
+
   const fetchStudentResults = async () => {
     try {
       setLoading(true);
@@ -72,12 +77,13 @@ const MyResults = () => {
     }
 
     // Get unique exams
-    const uniqueExams = [...new Set(results.map(r => r.exam?.id))];
+    const uniqueExams = [...new Set(results.map(r => r.exam ?? r.exam_id))];
     
     // Calculate average percentage
-    const percentages = results.map(r => 
-      (r.marks_obtained / r.subject?.total_marks) * 100
-    );
+    const percentages = results.map((r) => {
+      const total = getSubjectTotal(r);
+      return total ? (r.marks_obtained / total) * 100 : 0;
+    });
     const avgPercentage = percentages.reduce((a, b) => a + b, 0) / percentages.length;
 
     // Find highest grade
@@ -102,10 +108,15 @@ const MyResults = () => {
 
   // Group results by exam
   const groupedResults = results.reduce((acc, result) => {
-    const examId = result.exam?.id;
+    const examId = result.exam ?? result.exam_id;
     if (!acc[examId]) {
       acc[examId] = {
-        exam: result.exam,
+        exam: {
+          id: examId,
+          name: result.exam_name || result.exam?.name,
+          exam_date: result.exam_date || result.exam?.exam_date,
+          exam_type: result.exam_type || result.exam?.exam_type,
+        },
         results: []
       };
     }
@@ -212,7 +223,7 @@ const MyResults = () => {
         <div className="space-y-6">
           {Object.values(groupedResults).map(({ exam, results }) => {
             // Calculate exam-wise stats
-            const totalMarks = results.reduce((sum, r) => sum + (r.subject?.total_marks || 0), 0);
+            const totalMarks = results.reduce((sum, r) => sum + getSubjectTotal(r), 0);
             const obtainedMarks = results.reduce((sum, r) => sum + parseFloat(r.marks_obtained || 0), 0);
             const percentage = totalMarks > 0 ? ((obtainedMarks / totalMarks) * 100).toFixed(2) : 0;
 
@@ -224,7 +235,7 @@ const MyResults = () => {
                     <div>
                       <h3 className="text-2xl font-bold">{exam?.name}</h3>
                       <p className="text-blue-100 mt-1">
-                        {new Date(exam?.exam_date).toLocaleDateString()} • {exam?.exam_type}
+                        {exam?.exam_date ? new Date(exam.exam_date).toLocaleDateString() : '-'} • {exam?.exam_type || '-'}
                       </p>
                     </div>
                     <button
@@ -267,20 +278,21 @@ const MyResults = () => {
                       </thead>
                       <tbody>
                         {results.map((result) => {
-                          const subjectPercentage = result.subject?.total_marks 
-                            ? ((result.marks_obtained / result.subject.total_marks) * 100).toFixed(2)
+                          const subjectTotal = getSubjectTotal(result);
+                          const subjectPercentage = subjectTotal
+                            ? ((result.marks_obtained / subjectTotal) * 100).toFixed(2)
                             : 0;
 
                           return (
                             <tr key={result.id} className="border-b hover:bg-gray-50">
                               <td className="py-3 px-4 text-sm font-medium text-gray-800">
-                                {result.subject?.name}
+                                {result.subject_name || result.subject?.name}
                               </td>
                               <td className="py-3 px-4 text-sm text-gray-600">
-                                {result.subject?.code}
+                                {result.subject_code || result.subject?.code}
                               </td>
                               <td className="py-3 px-4 text-sm text-center text-gray-800">
-                                {result.subject?.total_marks}
+                                {subjectTotal}
                               </td>
                               <td className="py-3 px-4 text-sm text-center font-medium text-gray-800">
                                 {result.marks_obtained}

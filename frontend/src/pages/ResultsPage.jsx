@@ -1,22 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Search, Filter, Plus, Edit, Trash2, Eye, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import ReportCardViewer from '../components/academics/ReportCardViewer';
-
-const COURSE_OPTIONS = [
-  { value: 'BBA', label: 'BBA' },
-  { value: 'MBA', label: 'MBA' },
-  { value: 'CSE', label: 'CSE' },
-  { value: 'THM', label: 'THM' },
-];
-const INTAKE_OPTIONS = {
-  BBA: ['15th', '16th', '17th', '18th', '19th', '20th'],
-  MBA: ['9th', '10th'],
-  CSE: ['1st', '2nd'],
-  THM: ['1st'],
-};
-const SEMESTER_OPTIONS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 
 const ResultsPage = () => {
   const [results, setResults] = useState([]);
@@ -112,20 +98,180 @@ const ResultsPage = () => {
     }
   }, [selectedCourse, selectedExam, selectedIntake, selectedSemester, selectedSession, selectedStudent, selectedSubject]);
 
-  // Fetch results when filters change
-  useEffect(() => {
-    if (!dataLoaded) return;
-    fetchResults();
-  }, [dataLoaded, fetchResults]);
-
   const handleCourseChange = (value) => {
     setSelectedCourse(value);
     setSelectedIntake('');
+    setSelectedSemester('');
+    setSelectedSession('');
     setSelectedStudent('');
     setSelectedExam('');
   };
 
-  // Handle student selection - back-propagate course/intake/semester/session
+  const handleIntakeChange = (value) => {
+    setSelectedIntake(value);
+    setSelectedStudent('');
+    setSelectedExam('');
+  };
+
+  const handleSemesterChange = (value) => {
+    setSelectedSemester(value);
+    setSelectedStudent('');
+    setSelectedExam('');
+  };
+
+  const handleSessionChange = (value) => {
+    setSelectedSession(value);
+    setSelectedStudent('');
+    setSelectedExam('');
+  };
+
+  const handleResetFilters = () => {
+    setSelectedCourse('');
+    setSelectedIntake('');
+    setSelectedSemester('');
+    setSelectedSession('');
+    setSelectedExam('');
+    setSelectedSubject('');
+    setSelectedStudent('');
+    setSearchTerm('');
+  };
+
+  // Derive options that actually have results
+  const availableOptions = useMemo(() => {
+    const studentIdsWithResults = new Set(
+      results
+        .map((r) => r.student ?? r.student_id)
+        .filter(Boolean)
+        .map((id) => (typeof id === 'number' ? id : parseInt(id, 10) || id))
+    );
+    const examIdsWithResults = new Set(
+      results
+        .map((r) => r.exam ?? r.exam_id)
+        .filter(Boolean)
+        .map((id) => (typeof id === 'number' ? id : parseInt(id, 10) || id))
+    );
+
+    const studentsWithResults = students.filter((s) => studentIdsWithResults.has(s.id));
+    const courses = [...new Set(studentsWithResults.map((s) => s.course).filter(Boolean))];
+    const intakes = [...new Set(studentsWithResults.map((s) => s.intake).filter(Boolean))];
+    const semesters = [...new Set(studentsWithResults.map((s) => s.semester).filter(Boolean))];
+    const sessions = [...new Set(studentsWithResults.map((s) => s.session).filter(Boolean))];
+    const examsWithResults = exams.filter((e) => examIdsWithResults.has(e.id));
+
+    return {
+      courses,
+      intakes,
+      semesters,
+      sessions,
+      studentsWithResults,
+      examsWithResults,
+      studentIdsWithResults,
+      examIdsWithResults,
+    };
+  }, [results, students, exams]);
+
+  // Filter options based on current selections
+  const filteredOptions = useMemo(() => {
+    let filteredStudents = availableOptions.studentsWithResults;
+
+    if (selectedCourse) {
+      filteredStudents = filteredStudents.filter((s) => s.course === selectedCourse);
+    }
+    if (selectedIntake) {
+      filteredStudents = filteredStudents.filter((s) => s.intake === selectedIntake);
+    }
+    if (selectedSemester) {
+      filteredStudents = filteredStudents.filter((s) => s.semester === selectedSemester);
+    }
+    if (selectedSession) {
+      filteredStudents = filteredStudents.filter((s) => s.session === selectedSession);
+    }
+
+    let availableIntakes = availableOptions.intakes;
+    if (selectedCourse) {
+      availableIntakes = [
+        ...new Set(
+          availableOptions.studentsWithResults
+            .filter((s) => s.course === selectedCourse)
+            .map((s) => s.intake)
+            .filter(Boolean)
+        ),
+      ];
+    }
+
+    let availableSemesters = availableOptions.semesters;
+    if (selectedCourse || selectedIntake) {
+      availableSemesters = [
+        ...new Set(
+          availableOptions.studentsWithResults
+            .filter(
+              (s) =>
+                (!selectedCourse || s.course === selectedCourse) &&
+                (!selectedIntake || s.intake === selectedIntake)
+            )
+            .map((s) => s.semester)
+            .filter(Boolean)
+        ),
+      ];
+    }
+
+    let availableSessions = availableOptions.sessions;
+    if (selectedCourse || selectedIntake || selectedSemester) {
+      availableSessions = [
+        ...new Set(
+          availableOptions.studentsWithResults
+            .filter(
+              (s) =>
+                (!selectedCourse || s.course === selectedCourse) &&
+                (!selectedIntake || s.intake === selectedIntake) &&
+                (!selectedSemester || s.semester === selectedSemester)
+            )
+            .map((s) => s.session)
+            .filter(Boolean)
+        ),
+      ];
+    }
+
+    let filteredExams = availableOptions.examsWithResults;
+    if (selectedStudent) {
+      const studentExamIds = new Set(
+        results
+          .filter(
+            (r) =>
+              r.student === parseInt(selectedStudent, 10) ||
+              r.student === selectedStudent ||
+              r.student_id === parseInt(selectedStudent, 10) ||
+              r.student_id === selectedStudent
+          )
+          .map((r) => r.exam ?? r.exam_id)
+      );
+      filteredExams = filteredExams.filter((e) => studentExamIds.has(e.id));
+    } else if (selectedCourse || selectedIntake || selectedSemester) {
+      filteredExams = filteredExams.filter(
+        (e) =>
+          (!selectedCourse || e.course === selectedCourse) &&
+          (!selectedIntake || e.intake === selectedIntake) &&
+          (!selectedSemester || e.semester === selectedSemester)
+      );
+    }
+
+    return {
+      students: filteredStudents,
+      exams: filteredExams,
+      intakes: availableIntakes,
+      semesters: availableSemesters,
+      sessions: availableSessions,
+    };
+  }, [
+    availableOptions,
+    selectedCourse,
+    selectedIntake,
+    selectedSemester,
+    selectedSession,
+    selectedStudent,
+    results,
+  ]);
+
   const handleStudentChange = (studentId) => {
     setSelectedStudent(studentId);
     if (studentId) {
@@ -172,15 +318,6 @@ const ResultsPage = () => {
       setActionLoading(false);
     }
   };
-
-  // Filter students based on selected course/intake/semester/session
-  const filteredStudents = students.filter(student => {
-    if (selectedCourse && student.course !== selectedCourse) return false;
-    if (selectedIntake && student.intake !== selectedIntake) return false;
-    if (selectedSemester && student.semester !== selectedSemester) return false;
-    if (selectedSession && student.session !== selectedSession) return false;
-    return true;
-  });
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this result?')) {
@@ -232,7 +369,7 @@ const ResultsPage = () => {
 
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        {/* Row 1: Course/Intake/Semester/Session Filters */}
+        {/* Row 1: Course/Intake/Semester/Session/Exam/Subject Filters */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
           {/* Course Filter */}
           <div>
@@ -242,10 +379,10 @@ const ResultsPage = () => {
               onChange={(e) => handleCourseChange(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Courses</option>
-              {COURSE_OPTIONS.map((course) => (
-                <option key={course.value} value={course.value}>
-                  {course.label}
+              <option value="">All Courses ({availableOptions.courses.length})</option>
+              {availableOptions.courses.map((course) => (
+                <option key={course} value={course}>
+                  {course}
                 </option>
               ))}
             </select>
@@ -256,11 +393,11 @@ const ResultsPage = () => {
             <label className="block text-xs font-medium text-gray-500 mb-1">Intake</label>
             <select
               value={selectedIntake}
-              onChange={(e) => setSelectedIntake(e.target.value)}
+              onChange={(e) => handleIntakeChange(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Intakes</option>
-              {(selectedCourse ? INTAKE_OPTIONS[selectedCourse] || [] : Object.values(INTAKE_OPTIONS).flat().filter((v, i, a) => a.indexOf(v) === i)).map((intake) => (
+              <option value="">All Intakes ({filteredOptions.intakes.length})</option>
+              {filteredOptions.intakes.map((intake) => (
                 <option key={intake} value={intake}>
                   {intake}
                 </option>
@@ -273,11 +410,11 @@ const ResultsPage = () => {
             <label className="block text-xs font-medium text-gray-500 mb-1">Semester</label>
             <select
               value={selectedSemester}
-              onChange={(e) => setSelectedSemester(e.target.value)}
+              onChange={(e) => handleSemesterChange(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Semesters</option>
-              {SEMESTER_OPTIONS.map((sem) => (
+              <option value="">All Semesters ({filteredOptions.semesters.length})</option>
+              {filteredOptions.semesters.map((sem) => (
                 <option key={sem} value={sem}>
                   {sem}
                 </option>
@@ -288,13 +425,18 @@ const ResultsPage = () => {
           {/* Session Filter */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Session</label>
-            <input
-              type="text"
-              placeholder="e.g. 2024-2025"
+            <select
               value={selectedSession}
-              onChange={(e) => setSelectedSession(e.target.value)}
+              onChange={(e) => handleSessionChange(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            >
+              <option value="">All Sessions ({filteredOptions.sessions.length})</option>
+              {filteredOptions.sessions.map((session) => (
+                <option key={session} value={session}>
+                  {session}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Exam Filter */}
@@ -305,8 +447,8 @@ const ResultsPage = () => {
               onChange={(e) => setSelectedExam(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Exams</option>
-              {exams.map((exam) => (
+              <option value="">All Exams ({filteredOptions.exams.length})</option>
+              {filteredOptions.exams.map((exam) => (
                 <option key={exam.id} value={exam.id}>
                   {exam.name}
                 </option>
@@ -332,8 +474,8 @@ const ResultsPage = () => {
           </div>
         </div>
 
-        {/* Row 2: Search and Student Filter */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {/* Row 2: Search, Student Filter, Reset, Add */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -353,13 +495,25 @@ const ResultsPage = () => {
               onChange={(e) => handleStudentChange(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Students ({filteredStudents.length})</option>
-              {filteredStudents.map((student) => (
+              <option value="">All Students ({filteredOptions.students.length})</option>
+              {filteredOptions.students.map((student) => (
                 <option key={student.id} value={student.id}>
                   {student.student_id} - {student.user?.first_name} {student.user?.last_name}
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Reset Filters */}
+          <div className="flex">
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="flex items-center justify-center w-full px-4 py-2 border border-red-200 text-red-700 bg-red-50 rounded-md hover:bg-red-100 focus:ring-2 focus:ring-red-500"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Reset Filters
+            </button>
           </div>
 
           <button

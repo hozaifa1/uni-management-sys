@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Download, FileText, Mail } from 'lucide-react';
+import { Download, FileText, Mail, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
@@ -230,39 +230,47 @@ const ReportCardViewer = () => {
     }
   };
 
-  const handleSendEmail = () => {
+  const handleSendEmail = async () => {
     if (!selectedStudent || !selectedExam) {
       setError('Please select both student and exam');
       return;
     }
 
-    const student = students.find(s => s.id === parseInt(selectedStudent) || s.id === selectedStudent);
-    const exam = exams.find(e => e.id === parseInt(selectedExam) || e.id === selectedExam);
-    
-    if (!student) {
-      setError('Student not found');
+    const student = filteredOptions.students.find(
+      (s) => s.id === parseInt(selectedStudent) || s.id === selectedStudent
+    );
+    const exam = filteredOptions.exams.find(
+      (e) => e.id === parseInt(selectedExam) || e.id === selectedExam
+    );
+
+    if (!student || !student.user?.email) {
+      const errorMsg = 'Selected student does not have an email address on file.';
+      setError(errorMsg);
+      toast.error(errorMsg);
       return;
     }
 
-    const studentEmail = student.user?.email || '';
-    const studentName = student.user?.first_name 
+    const studentName = student.user?.first_name
       ? `${student.user.first_name} ${student.user.last_name || ''}`.trim()
       : student.student_id;
     const examName = exam?.name || 'Exam';
-    
-    if (!studentEmail) {
-      toast.error('Student does not have an email address registered');
-      setError('Student does not have an email address registered');
-      return;
-    }
-
-    const subject = encodeURIComponent(`Report Card - ${examName}`);
     const body = encodeURIComponent(
-      `Dear ${studentName},\n\nPlease find attached your report card for ${examName}.\n\nBest regards,\nIGMIS Administration`
+      `Dear ${studentName},\n\nYour report card for ${examName} is ready. Please log in to the portal to view your results.\n\nCourse: ${student.course || 'N/A'}\nIntake: ${student.intake || 'N/A'}\nSemester: ${student.semester || 'N/A'}\nSession: ${student.session || 'N/A'}\n\nBest regards,\nIGMIS Administration`
     );
-    
-    window.open(`mailto:${studentEmail}?subject=${subject}&body=${body}`, '_blank');
-    toast.success(`Opening email client for ${studentEmail}`);
+    const subject = encodeURIComponent(`Report Card - ${examName}`);
+
+    window.open(`mailto:${student.user.email}?subject=${subject}&body=${body}`, '_blank');
+    toast.success(`Opening email client for ${student.user.email}`);
+  };
+
+  const handleResetFilters = () => {
+    setSelectedCourse('');
+    setSelectedIntake('');
+    setSelectedSemester('');
+    setSelectedSession('');
+    setSelectedStudent('');
+    setSelectedExam('');
+    setError('');
   };
 
   return (
@@ -357,7 +365,7 @@ const ReportCardViewer = () => {
           </div>
 
           {/* Row 2: Student and Exam Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
             {/* Student Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -395,6 +403,18 @@ const ReportCardViewer = () => {
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Reset Filters Row */}
+          <div className="flex justify-end mb-6">
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="flex items-center px-4 py-2 border border-red-200 text-red-700 bg-red-50 rounded-md hover:bg-red-100 focus:ring-2 focus:ring-red-500"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Reset Filters
+            </button>
           </div>
         </>
       )}
