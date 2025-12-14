@@ -14,6 +14,15 @@ try:
 except ImportError:
     HAS_DJ_DATABASE_URL = False
 
+# Try to import cloudinary packages
+try:
+    import cloudinary
+    import cloudinary.uploader
+    import cloudinary.api
+    HAS_CLOUDINARY = True
+except ImportError:
+    HAS_CLOUDINARY = False
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -38,11 +47,17 @@ RAILWAY_PUBLIC_DOMAIN = os.getenv('RAILWAY_PUBLIC_DOMAIN')
 if RAILWAY_PUBLIC_DOMAIN:
     ALLOWED_HOSTS.append(RAILWAY_PUBLIC_DOMAIN)
 
-# In production, also allow Railway's internal domain
+# Add Vercel domain if VERCEL_URL is set
+VERCEL_URL = os.getenv('VERCEL_URL')
+if VERCEL_URL:
+    ALLOWED_HOSTS.append(VERCEL_URL)
+
+# In production, also allow Railway's and Vercel's domains
 if not DEBUG:
     ALLOWED_HOSTS.extend([
         '.railway.app',
         '.up.railway.app',
+        '.vercel.app',
     ])
     
 # Allow all hosts if explicitly set (for debugging only)
@@ -64,6 +79,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'cloudinary',
+    'cloudinary_storage',
     
     # Local apps
     'accounts',
@@ -113,8 +130,14 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 
 if DATABASE_URL and HAS_DJ_DATABASE_URL:
     # Parse database URL if dj_database_url is available
+    # Use conn_max_age=0 for serverless (Vercel) to close connections immediately
+    # This prevents connection pooling issues with Neon/serverless PostgreSQL
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=0,  # Critical for serverless: close connections after each request
+            conn_health_checks=True,
+        )
     }
 else:
     # Fallback to SQLite for local development
@@ -244,7 +267,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+# Use staticfiles_build/static for Vercel compatibility
+STATIC_ROOT = BASE_DIR / 'staticfiles_build' / 'static'
 
 # Only add static dir if it exists
 STATIC_DIR = BASE_DIR / 'static'
@@ -271,10 +295,35 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 
-# Google Drive Storage Backend Configuration
+# Cloudinary Storage Backend Configuration
+USE_CLOUDINARY = os.getenv('USE_CLOUDINARY', 'False') == 'True'
+
+if USE_CLOUDINARY and HAS_CLOUDINARY:
+    # Configure Cloudinary
+    cloudinary.config(
+        cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
+        api_key=os.environ.get('CLOUDINARY_API_KEY'),
+        api_secret=os.environ.get('CLOUDINARY_API_SECRET'),
+        secure=True
+    )
+    
+    # Cloudinary storage settings for django-cloudinary-storage
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME'),
+        'API_KEY': os.environ.get('CLOUDINARY_API_KEY'),
+        'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET'),
+    }
+    
+    # Use Cloudinary for media files (user uploads)
+    STORAGES["default"]["BACKEND"] = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    
+    # Optionally use Cloudinary for static files too (uncomment if needed)
+    # STORAGES["staticfiles"]["BACKEND"] = 'cloudinary_storage.storage.StaticHashedCloudinaryStorage'
+
+# Legacy Google Drive Storage Backend Configuration (deprecated, use Cloudinary instead)
 USE_GOOGLE_DRIVE = os.getenv('USE_GOOGLE_DRIVE', 'False') == 'True'
 
-if USE_GOOGLE_DRIVE:
+if USE_GOOGLE_DRIVE and not USE_CLOUDINARY:
     # Use custom Google Drive Storage backend
     STORAGES["default"]["BACKEND"] = 'config.storage_backends.GoogleDriveStorage'
     
