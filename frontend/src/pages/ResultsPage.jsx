@@ -4,63 +4,101 @@ import toast from 'react-hot-toast';
 import api from '../services/api';
 import ReportCardViewer from '../components/academics/ReportCardViewer';
 
+const COURSE_OPTIONS = [
+  { value: 'BBA', label: 'BBA' },
+  { value: 'MBA', label: 'MBA' },
+  { value: 'CSE', label: 'CSE' },
+  { value: 'THM', label: 'THM' },
+];
+const INTAKE_OPTIONS = {
+  BBA: ['15th', '16th', '17th', '18th', '19th', '20th'],
+  MBA: ['9th', '10th'],
+  CSE: ['1st', '2nd'],
+  THM: ['1st'],
+};
+const SEMESTER_OPTIONS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
+
 const ResultsPage = () => {
   const [results, setResults] = useState([]);
   const [exams, setExams] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [error, setError] = useState('');
   const [selectedExam, setSelectedExam] = useState('');
   const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [selectedIntake, setSelectedIntake] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedSession, setSelectedSession] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Load all dropdown data first, then results
   useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        setLoading(true);
+        // Load exams and students in parallel first
+        const [examsRes, studentsRes] = await Promise.all([
+          api.get('/academics/exams/'),
+          api.get('/accounts/students/')
+        ]);
+        setExams(examsRes.data.results || examsRes.data || []);
+        setStudents(studentsRes.data.results || studentsRes.data || []);
+        setDataLoaded(true);
+        
+        // Then load results
+        const resultsRes = await api.get('/academics/results/');
+        setResults(resultsRes.data.results || resultsRes.data || []);
+        setError('');
+      } catch (err) {
+        console.error('Error loading data:', err);
+        setError('Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadInitialData();
+  }, []);
+
+  // Fetch results when filters change
+  useEffect(() => {
+    if (!dataLoaded) return;
     fetchResults();
-    fetchExams();
-    fetchStudents();
-  }, [selectedExam, selectedStudent]);
+  }, [selectedExam, selectedStudent, selectedCourse, selectedIntake, selectedSemester, selectedSession, dataLoaded]);
 
   const fetchResults = async () => {
     try {
-      setLoading(true);
-      let url = '/academics/results/';
-      const params = [];
-      
-      if (selectedExam) params.push(`exam=${selectedExam}`);
-      if (selectedStudent) params.push(`student=${selectedStudent}`);
-      
-      if (params.length > 0) {
-        url += `?${params.join('&')}`;
-      }
+      const params = {};
+      if (selectedExam) params.exam = selectedExam;
+      if (selectedStudent) params.student = selectedStudent;
+      if (selectedCourse) params.course = selectedCourse;
+      if (selectedIntake) params.intake = selectedIntake;
+      if (selectedSemester) params.semester = selectedSemester;
+      if (selectedSession) params.session = selectedSession;
 
-      const response = await api.get(url);
-      setResults(response.data.results || response.data);
+      const response = await api.get('/academics/results/', { params });
+      setResults(response.data.results || response.data || []);
       setError('');
-    } catch (error) {
-      console.error('Error fetching results:', error);
+    } catch (err) {
+      console.error('Error fetching results:', err);
       setError('Failed to load results');
-    } finally {
-      setLoading(false);
     }
   };
 
-  const fetchExams = async () => {
-    try {
-      const response = await api.get('/academics/exams/');
-      setExams(response.data.results || response.data);
-    } catch (error) {
-      console.error('Error fetching exams:', error);
-    }
+  const handleCourseChange = (value) => {
+    setSelectedCourse(value);
+    setSelectedIntake(''); // Reset intake when course changes
   };
 
-  const fetchStudents = async () => {
-    try {
-      const response = await api.get('/accounts/students/');
-      setStudents(response.data.results || response.data);
-    } catch (error) {
-      console.error('Error fetching students:', error);
-    }
-  };
+  // Filter students based on selected course/intake/semester/session
+  const filteredStudents = students.filter(student => {
+    if (selectedCourse && student.course !== selectedCourse) return false;
+    if (selectedIntake && student.intake !== selectedIntake) return false;
+    if (selectedSemester && student.semester !== selectedSemester) return false;
+    if (selectedSession && student.session !== selectedSession) return false;
+    return true;
+  });
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this result?')) {
@@ -108,6 +146,90 @@ const ResultsPage = () => {
 
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        {/* Row 1: Course/Intake/Semester/Session Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+          {/* Course Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Course</label>
+            <select
+              value={selectedCourse}
+              onChange={(e) => handleCourseChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Courses</option>
+              {COURSE_OPTIONS.map((course) => (
+                <option key={course.value} value={course.value}>
+                  {course.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Intake Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Intake</label>
+            <select
+              value={selectedIntake}
+              onChange={(e) => setSelectedIntake(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Intakes</option>
+              {(selectedCourse ? INTAKE_OPTIONS[selectedCourse] || [] : Object.values(INTAKE_OPTIONS).flat().filter((v, i, a) => a.indexOf(v) === i)).map((intake) => (
+                <option key={intake} value={intake}>
+                  {intake}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Semester Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Semester</label>
+            <select
+              value={selectedSemester}
+              onChange={(e) => setSelectedSemester(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Semesters</option>
+              {SEMESTER_OPTIONS.map((sem) => (
+                <option key={sem} value={sem}>
+                  {sem}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Session Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Session</label>
+            <input
+              type="text"
+              placeholder="e.g. 2024-2025"
+              value={selectedSession}
+              onChange={(e) => setSelectedSession(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Exam Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Exam</label>
+            <select
+              value={selectedExam}
+              onChange={(e) => setSelectedExam(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Exams</option>
+              {exams.map((exam) => (
+                <option key={exam.id} value={exam.id}>
+                  {exam.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Row 2: Search and Student Filter */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           {/* Search */}
           <div className="relative">
@@ -121,22 +243,6 @@ const ResultsPage = () => {
             />
           </div>
 
-          {/* Exam Filter */}
-          <div>
-            <select
-              value={selectedExam}
-              onChange={(e) => setSelectedExam(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">All Exams</option>
-              {exams.map((exam) => (
-                <option key={exam.id} value={exam.id}>
-                  {exam.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {/* Student Filter */}
           <div>
             <select
@@ -144,23 +250,23 @@ const ResultsPage = () => {
               onChange={(e) => setSelectedStudent(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Students</option>
-              {students.map((student) => (
+              <option value="">All Students ({filteredStudents.length})</option>
+              {filteredStudents.map((student) => (
                 <option key={student.id} value={student.id}>
                   {student.student_id} - {student.user?.first_name} {student.user?.last_name}
                 </option>
               ))}
             </select>
           </div>
-        </div>
 
-        <button
-          onClick={() => {}}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Add Result
-        </button>
+          <button
+            onClick={() => {}}
+            className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add Result
+          </button>
+        </div>
       </div>
 
       {/* Results Table */}

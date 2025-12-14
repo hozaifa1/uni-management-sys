@@ -5,12 +5,28 @@ import AddStudentModal from '../components/students/AddStudentModal';
 import StudentDetailModal from '../components/students/StudentDetailModal';
 import EditStudentModal from '../components/students/EditStudentModal';
 
+const COURSE_OPTIONS = [
+  { value: 'BBA', label: 'BBA' },
+  { value: 'MBA', label: 'MBA' },
+  { value: 'CSE', label: 'CSE' },
+  { value: 'THM', label: 'THM' },
+];
+const INTAKE_OPTIONS = {
+  BBA: ['15th', '16th', '17th', '18th', '19th', '20th'],
+  MBA: ['9th', '10th'],
+  CSE: ['1st', '2nd'],
+  THM: ['1st'],
+};
+const SEMESTER_OPTIONS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
+
 const StudentsPage = () => {
   const [students, setStudents] = useState([]);
-  const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedBatch, setSelectedBatch] = useState('');
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [selectedIntake, setSelectedIntake] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedSession, setSelectedSession] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -19,8 +35,7 @@ const StudentsPage = () => {
 
   useEffect(() => {
     fetchStudents();
-    fetchBatches();
-  }, [currentPage, searchTerm, selectedBatch]);
+  }, [currentPage, searchTerm, selectedCourse, selectedIntake, selectedSemester, selectedSession]);
 
   const fetchStudents = async () => {
     try {
@@ -28,7 +43,10 @@ const StudentsPage = () => {
       const params = {
         page: currentPage,
         search: searchTerm,
-        batch: selectedBatch,
+        ...(selectedCourse && { course: selectedCourse }),
+        ...(selectedIntake && { intake: selectedIntake }),
+        ...(selectedSemester && { semester: selectedSemester }),
+        ...(selectedSession && { session: selectedSession }),
       };
       
       const response = await api.get('/accounts/students/', { params });
@@ -44,13 +62,9 @@ const StudentsPage = () => {
     }
   };
 
-  const fetchBatches = async () => {
-    try {
-      const response = await api.get('/students/batches/');
-      setBatches(response.data.results || response.data || []);
-    } catch (error) {
-      console.error('Error fetching batches:', error);
-    }
+  const handleCourseChange = (value) => {
+    setSelectedCourse(value);
+    setSelectedIntake(''); // Reset intake when course changes
   };
 
   const handleDelete = async (id) => {
@@ -102,7 +116,7 @@ const StudentsPage = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           {/* Search */}
           <div className="md:col-span-2">
             <div className="relative">
@@ -117,21 +131,63 @@ const StudentsPage = () => {
             </div>
           </div>
 
-          {/* Batch Filter */}
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          {/* Course Filter */}
+          <div>
             <select
-              value={selectedBatch}
-              onChange={(e) => setSelectedBatch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+              value={selectedCourse}
+              onChange={(e) => handleCourseChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Batches</option>
-              {batches.map((batch) => (
-                <option key={batch.id} value={batch.id}>
-                  {batch.name}
+              <option value="">All Courses</option>
+              {COURSE_OPTIONS.map((course) => (
+                <option key={course.value} value={course.value}>
+                  {course.label}
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Intake Filter */}
+          <div>
+            <select
+              value={selectedIntake}
+              onChange={(e) => setSelectedIntake(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Intakes</option>
+              {(selectedCourse ? INTAKE_OPTIONS[selectedCourse] || [] : Object.values(INTAKE_OPTIONS).flat().filter((v, i, a) => a.indexOf(v) === i)).map((intake) => (
+                <option key={intake} value={intake}>
+                  {intake}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Semester Filter */}
+          <div>
+            <select
+              value={selectedSemester}
+              onChange={(e) => setSelectedSemester(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Semesters</option>
+              {SEMESTER_OPTIONS.map((sem) => (
+                <option key={sem} value={sem}>
+                  {sem}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Session Filter */}
+          <div>
+            <input
+              type="text"
+              placeholder="Session (e.g. 2024-2025)"
+              value={selectedSession}
+              onChange={(e) => setSelectedSession(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
         </div>
       </div>
@@ -149,7 +205,7 @@ const StudentsPage = () => {
                   Student ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Batch / Course
+                  Course / Intake
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Session
@@ -200,10 +256,10 @@ const StudentsPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                          {student.batch_name || 'N/A'}
+                          {student.course || 'N/A'}
                         </span>
-                        {student.course_code && (
-                          <span className="ml-1 text-xs text-gray-500">({student.course_code})</span>
+                        {student.intake && (
+                          <span className="ml-1 text-xs text-gray-500">({student.intake} Intake)</span>
                         )}
                       </div>
                     </td>
@@ -301,7 +357,6 @@ const StudentsPage = () => {
       {selectedStudentForEdit && (
         <EditStudentModal
           student={selectedStudentForEdit}
-          batches={batches}
           onClose={() => setSelectedStudentForEdit(null)}
           onSuccess={handleEditSuccess}
         />
