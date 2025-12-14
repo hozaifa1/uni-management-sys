@@ -125,6 +125,13 @@ const ResultsPage = () => {
     }
   }, [selectedCourse, selectedExam, selectedIntake, selectedSemester, selectedSession, selectedStudent, selectedSubject]);
 
+  // Fetch results when any filter changes
+  useEffect(() => {
+    if (dataLoaded) {
+      fetchResults();
+    }
+  }, [dataLoaded, fetchResults]);
+
   const handleCourseChange = (value) => {
     setSelectedCourse(value);
     setSelectedIntake('');

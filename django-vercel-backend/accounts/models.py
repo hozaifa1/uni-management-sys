@@ -461,6 +461,14 @@ class Student(models.Model):
         ordering = ['-admission_date']
         verbose_name = 'Student'
         verbose_name_plural = 'Students'
+        indexes = [
+            models.Index(fields=['course']),
+            models.Index(fields=['intake']),
+            models.Index(fields=['semester']),
+            models.Index(fields=['session']),
+            models.Index(fields=['course', 'intake', 'semester', 'session']),
+            models.Index(fields=['student_id']),
+        ]
     
     def __str__(self):
         return f"{self.student_id} - {self.user.get_full_name()}"

@@ -24,7 +24,6 @@ const PaymentsPage = () => {
   const [students, setStudents] = useState([]);
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [dataLoaded, setDataLoaded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
@@ -65,7 +64,6 @@ const PaymentsPage = () => {
           setTotalCount(paymentsRes.data.count);
           setTotalPages(Math.ceil(paymentsRes.data.count / 20));
         }
-        setDataLoaded(true);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -289,12 +287,60 @@ const PaymentsPage = () => {
     setSearchTerm('');
   };
 
-  // Filter payments based on fee type and exam
+  // Filter payments based on all filter criteria
   const filteredPayments = useMemo(() => {
     return payments.filter((payment) => {
+      // Fee type filter
       if (selectedFeeType && payment.fee_type !== selectedFeeType) {
         return false;
       }
+      
+      // Payment method filter
+      if (selectedMethod && payment.payment_method !== selectedMethod) {
+        return false;
+      }
+      
+      // Student filter
+      if (selectedStudent) {
+        const paymentStudentId = payment.student ?? payment.student_id;
+        if (paymentStudentId != selectedStudent) {
+          return false;
+        }
+      }
+      
+      // Exam filter (for exam fee type)
+      if (selectedExam && payment.exam_id && payment.exam_id != selectedExam) {
+        return false;
+      }
+      
+      // Date range filters
+      if (dateFrom) {
+        const paymentDate = new Date(payment.payment_date);
+        const fromDate = new Date(dateFrom);
+        if (paymentDate < fromDate) return false;
+      }
+      
+      if (dateTo) {
+        const paymentDate = new Date(payment.payment_date);
+        const toDate = new Date(dateTo);
+        toDate.setHours(23, 59, 59, 999); // Include the entire "to" day
+        if (paymentDate > toDate) return false;
+      }
+      
+      // Course/Intake/Semester/Session filters - filter by student's attributes
+      if (selectedCourse || selectedIntake || selectedSemester || selectedSession) {
+        const paymentStudentId = payment.student ?? payment.student_id;
+        const student = students.find(s => s.id === paymentStudentId || s.id === parseInt(paymentStudentId));
+        
+        if (!student) return false;
+        
+        if (selectedCourse && student.course !== selectedCourse) return false;
+        if (selectedIntake && student.intake !== selectedIntake) return false;
+        if (selectedSemester && student.semester !== selectedSemester) return false;
+        if (selectedSession && student.session !== selectedSession) return false;
+      }
+      
+      // Search term filter
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         const matchesSearch =
@@ -303,9 +349,10 @@ const PaymentsPage = () => {
           payment.transaction_id?.toLowerCase().includes(search);
         if (!matchesSearch) return false;
       }
+      
       return true;
     });
-  }, [payments, selectedFeeType, searchTerm]);
+  }, [payments, students, selectedFeeType, selectedMethod, selectedStudent, selectedExam, selectedCourse, selectedIntake, selectedSemester, selectedSession, dateFrom, dateTo, searchTerm]);
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this payment record?')) {
@@ -359,14 +406,6 @@ const PaymentsPage = () => {
     link.click();
     document.body.removeChild(link);
     toast.success('Payments exported successfully');
-  };
-
-  const getStudentDisplayName = (student) => {
-    if (!student) return 'N/A';
-    const name = student.user?.first_name && student.user?.last_name
-      ? `${student.user.first_name} ${student.user.last_name}`
-      : student.user?.username || 'N/A';
-    return `${name} (${student.student_id || 'N/A'})`;
   };
 
   if (loading && payments.length === 0) {

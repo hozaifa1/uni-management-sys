@@ -176,6 +176,11 @@ class Payment(models.Model):
         ordering = ['-payment_date']
         verbose_name = 'Payment'
         verbose_name_plural = 'Payments'
+        indexes = [
+            models.Index(fields=['payment_date']),
+            models.Index(fields=['payment_method']),
+            models.Index(fields=['student', 'payment_date']),
+        ]
     
     def __str__(self):
         return f"{self.student.user.get_full_name()} - ${self.amount_paid} on {self.payment_date}"

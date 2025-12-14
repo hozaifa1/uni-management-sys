@@ -152,6 +152,14 @@ class Exam(models.Model):
         ordering = ['-exam_date']
         verbose_name = 'Exam'
         verbose_name_plural = 'Exams'
+        indexes = [
+            models.Index(fields=['course']),
+            models.Index(fields=['intake']),
+            models.Index(fields=['semester']),
+            models.Index(fields=['session']),
+            models.Index(fields=['exam_date']),
+            models.Index(fields=['course', 'intake', 'semester', 'session']),
+        ]
     
     def __str__(self):
         return f"{self.name} - {self.course} {self.intake} Intake - {self.semester} Sem"
@@ -203,6 +211,12 @@ class Result(models.Model):
         verbose_name = 'Result'
         verbose_name_plural = 'Results'
         unique_together = ['student', 'exam', 'subject']
+        indexes = [
+            models.Index(fields=['student']),
+            models.Index(fields=['exam']),
+            models.Index(fields=['subject']),
+            models.Index(fields=['student', 'exam']),
+        ]
     
     def __str__(self):
         return f"{self.student.user.get_full_name()} - {self.exam.name} - {self.subject.name}"
