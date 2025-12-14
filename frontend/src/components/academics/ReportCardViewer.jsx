@@ -50,10 +50,46 @@ const ReportCardViewer = () => {
     loadData();
   }, []);
 
+  // Fetch exams filtered by course/intake/semester when filters change
+  useEffect(() => {
+    const fetchFilteredExams = async () => {
+      try {
+        const params = {};
+        if (selectedCourse) params.course = selectedCourse;
+        if (selectedIntake) params.intake = selectedIntake;
+        if (selectedSemester) params.semester = selectedSemester;
+        if (selectedSession) params.session = selectedSession;
+        const examsRes = await api.get('/academics/exams/', { params });
+        setExams(examsRes.data.results || examsRes.data || []);
+      } catch (err) {
+        console.error('Error fetching exams:', err);
+      }
+    };
+    if (!dataLoading) {
+      fetchFilteredExams();
+    }
+  }, [selectedCourse, selectedIntake, selectedSemester, selectedSession, dataLoading]);
+
   const handleCourseChange = (value) => {
     setSelectedCourse(value);
     setSelectedIntake('');
     setSelectedStudent('');
+    setSelectedExam('');
+  };
+
+  // Handle student selection - back-propagate course/intake/semester/session
+  const handleStudentChange = (studentId) => {
+    setSelectedStudent(studentId);
+    if (studentId) {
+      const student = students.find(s => s.id === parseInt(studentId) || s.id === studentId);
+      if (student) {
+        // Back-propagate student's course/intake/semester/session
+        if (student.course) setSelectedCourse(student.course);
+        if (student.intake) setSelectedIntake(student.intake);
+        if (student.semester) setSelectedSemester(student.semester);
+        if (student.session) setSelectedSession(student.session);
+      }
+    }
   };
 
   // Filter students based on selected course/intake/semester/session
@@ -65,14 +101,35 @@ const ReportCardViewer = () => {
     return true;
   });
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
     if (!selectedStudent || !selectedExam) {
       setError('Please select both student and exam');
       return;
     }
 
-    const url = `${import.meta.env.VITE_API_URL}/academics/results/generate_report_card/?student_id=${selectedStudent}&exam_id=${selectedExam}`;
-    window.open(url, '_blank');
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await api.get(
+        `/academics/results/generate_report_card/?student_id=${selectedStudent}&exam_id=${selectedExam}`,
+        {
+          responseType: 'blob'
+        }
+      );
+
+      // Create a blob URL and open in new tab
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Error previewing report card:', error);
+      const errorMsg = 'Failed to preview report card. Please ensure the student has results for this exam.';
+      setError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDownload = async () => {
@@ -111,19 +168,40 @@ const ReportCardViewer = () => {
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!selectedStudent || !selectedExam) {
       setError('Please select both student and exam');
       return;
     }
 
-    const url = `${import.meta.env.VITE_API_URL}/academics/results/generate_report_card/?student_id=${selectedStudent}&exam_id=${selectedExam}`;
-    const printWindow = window.open(url, '_blank');
-    
-    if (printWindow) {
-      printWindow.addEventListener('load', () => {
-        printWindow.print();
-      });
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await api.get(
+        `/academics/results/generate_report_card/?student_id=${selectedStudent}&exam_id=${selectedExam}`,
+        {
+          responseType: 'blob'
+        }
+      );
+
+      // Create a blob URL and open in new tab for printing
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      
+      if (printWindow) {
+        printWindow.addEventListener('load', () => {
+          printWindow.print();
+        });
+      }
+    } catch (error) {
+      console.error('Error printing report card:', error);
+      const errorMsg = 'Failed to print report card. Please ensure the student has results for this exam.';
+      setError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -222,7 +300,7 @@ const ReportCardViewer = () => {
               </label>
               <select
                 value={selectedStudent}
-                onChange={(e) => setSelectedStudent(e.target.value)}
+                onChange={(e) => handleStudentChange(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Choose a student...</option>

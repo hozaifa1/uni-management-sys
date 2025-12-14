@@ -86,22 +86,29 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'Seeded {subjects_created} subjects.'))
 
     def seed_exams(self):
-        """Seed exams for each course/intake/semester/session combination"""
+        """Seed exams for each course/intake/semester/session combination based on existing students"""
         exam_types = [
             {'type': 'midterm', 'name_suffix': 'Mid Term Exam'},
             {'type': 'final', 'name_suffix': 'Final Exam'},
         ]
         
-        # Define course/intake/semester/session combinations
-        combinations = [
-            {'course': 'BBA', 'intake': '15th', 'semester': '1st', 'session': '2024-2025'},
-            {'course': 'BBA', 'intake': '15th', 'semester': '2nd', 'session': '2024-2025'},
-            {'course': 'MBA', 'intake': '9th', 'semester': '1st', 'session': '2024-2025'},
-            {'course': 'MBA', 'intake': '9th', 'semester': '2nd', 'session': '2024-2025'},
-            {'course': 'CSE', 'intake': '1st', 'semester': '1st', 'session': '2024-2025'},
-            {'course': 'CSE', 'intake': '1st', 'semester': '2nd', 'session': '2024-2025'},
-            {'course': 'THM', 'intake': '1st', 'semester': '1st', 'session': '2024-2025'},
-        ]
+        # Get unique course/intake/semester/session combinations from existing students
+        combinations = list(
+            Student.objects.values('course', 'intake', 'semester', 'session')
+            .distinct()
+        )
+        
+        if not combinations:
+            # Fallback to default combinations if no students exist
+            combinations = [
+                {'course': 'BBA', 'intake': '15th', 'semester': '1st', 'session': '2024-2025'},
+                {'course': 'BBA', 'intake': '15th', 'semester': '2nd', 'session': '2024-2025'},
+                {'course': 'MBA', 'intake': '9th', 'semester': '1st', 'session': '2024-2025'},
+                {'course': 'MBA', 'intake': '9th', 'semester': '2nd', 'session': '2024-2025'},
+                {'course': 'CSE', 'intake': '1st', 'semester': '1st', 'session': '2024-2025'},
+                {'course': 'CSE', 'intake': '1st', 'semester': '2nd', 'session': '2024-2025'},
+                {'course': 'THM', 'intake': '1st', 'semester': '1st', 'session': '2024-2025'},
+            ]
         
         exams_created = 0
         base_date = date.today() - timedelta(days=30)

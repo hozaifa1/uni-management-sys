@@ -69,11 +69,15 @@ const ResultsPage = () => {
     loadInitialData();
   }, []);
 
-  // Fetch exams filtered by course when course changes
+  // Fetch exams filtered by course/intake/semester when filters change
   useEffect(() => {
-    const fetchExamsByCourse = async () => {
+    const fetchFilteredExams = async () => {
       try {
-        const params = selectedCourse ? { course: selectedCourse } : {};
+        const params = {};
+        if (selectedCourse) params.course = selectedCourse;
+        if (selectedIntake) params.intake = selectedIntake;
+        if (selectedSemester) params.semester = selectedSemester;
+        if (selectedSession) params.session = selectedSession;
         const examsRes = await api.get('/academics/exams/', { params });
         setExams(examsRes.data.results || examsRes.data || []);
       } catch (err) {
@@ -81,9 +85,9 @@ const ResultsPage = () => {
       }
     };
     if (dataLoaded) {
-      fetchExamsByCourse();
+      fetchFilteredExams();
     }
-  }, [selectedCourse, dataLoaded]);
+  }, [selectedCourse, selectedIntake, selectedSemester, selectedSession, dataLoaded]);
 
   const fetchResults = useCallback(async () => {
     try {
@@ -118,7 +122,22 @@ const ResultsPage = () => {
     setSelectedCourse(value);
     setSelectedIntake('');
     setSelectedStudent('');
-    setSelectedExam(''); // Reset exam when course changes
+    setSelectedExam('');
+  };
+
+  // Handle student selection - back-propagate course/intake/semester/session
+  const handleStudentChange = (studentId) => {
+    setSelectedStudent(studentId);
+    if (studentId) {
+      const student = students.find(s => s.id === parseInt(studentId) || s.id === studentId);
+      if (student) {
+        // Back-propagate student's course/intake/semester/session
+        if (student.course) setSelectedCourse(student.course);
+        if (student.intake) setSelectedIntake(student.intake);
+        if (student.semester) setSelectedSemester(student.semester);
+        if (student.session) setSelectedSession(student.session);
+      }
+    }
   };
 
   const openEditModal = (result) => {
@@ -331,7 +350,7 @@ const ResultsPage = () => {
           <div>
             <select
               value={selectedStudent}
-              onChange={(e) => setSelectedStudent(e.target.value)}
+              onChange={(e) => handleStudentChange(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All Students ({filteredStudents.length})</option>
