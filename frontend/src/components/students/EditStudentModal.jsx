@@ -194,6 +194,14 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Check file size (max 2MB for Vercel serverless)
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      if (file.size > maxSize) {
+        toast.error(`Image too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 2MB.`);
+        e.target.value = ''; // Reset input
+        return;
+      }
+      
       setPhoto(file);
       setRemovePhoto(false);
       const reader = new FileReader();
@@ -325,20 +333,27 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
         onSuccess();
       }
     } catch (err) {
-      // Parse and display errors as toast
-      const errorData = err.response?.data;
-      if (errorData && typeof errorData === 'object') {
-        // Handle field-specific errors
-        Object.entries(errorData).forEach(([field, messages]) => {
-          const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          if (Array.isArray(messages)) {
-            messages.forEach(msg => toast.error(`${fieldName}: ${msg}`));
-          } else {
-            toast.error(`${fieldName}: ${messages}`);
-          }
-        });
+      // Handle specific HTTP errors
+      if (err.response?.status === 413) {
+        toast.error('Image file is too large. Please use an image smaller than 2MB.');
+      } else if (err.message?.includes('Network Error') || !err.response) {
+        toast.error('Network error. If uploading an image, try a smaller file (under 2MB).');
       } else {
-        toast.error(err.response?.data?.detail || 'Failed to update student. Please try again.');
+        // Parse and display errors as toast
+        const errorData = err.response?.data;
+        if (errorData && typeof errorData === 'object') {
+          // Handle field-specific errors
+          Object.entries(errorData).forEach(([field, messages]) => {
+            const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            if (Array.isArray(messages)) {
+              messages.forEach(msg => toast.error(`${fieldName}: ${msg}`));
+            } else {
+              toast.error(`${fieldName}: ${messages}`);
+            }
+          });
+        } else {
+          toast.error(err.response?.data?.detail || 'Failed to update student. Please try again.');
+        }
       }
     } finally {
       setLoading(false);
