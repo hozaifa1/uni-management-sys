@@ -375,33 +375,34 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-          {/* Photo Upload */}
-          <div className="flex flex-col items-center pb-4">
-            <div className="relative">
-              {photoPreview ? (
-                <img src={photoPreview} alt="Preview" className="w-24 h-24 rounded-full object-cover border-4 border-blue-500" />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300">
-                  <User className="w-12 h-12 text-gray-400" />
-                </div>
+        <form onSubmit={handleSubmit} className="flex flex-col max-h-[70vh]">
+          <div className="p-6 space-y-4 overflow-y-auto flex-1">
+            {/* Photo Upload */}
+            <div className="flex flex-col items-center pb-4">
+              <div className="relative">
+                {photoPreview ? (
+                  <img src={photoPreview} alt="Preview" className="w-24 h-24 rounded-full object-cover border-4 border-blue-500" />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300">
+                    <User className="w-12 h-12 text-gray-400" />
+                  </div>
+                )}
+                <label className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full cursor-pointer hover:bg-blue-700">
+                  <Upload className="w-4 h-4" />
+                  <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+                </label>
+              </div>
+              {(photoPreview || student.photo) && (
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  className="mt-2 flex items-center gap-1 text-sm text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Remove Photo
+                </button>
               )}
-              <label className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full cursor-pointer hover:bg-blue-700">
-                <Upload className="w-4 h-4" />
-                <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
-              </label>
             </div>
-            {(photoPreview || student.photo) && (
-              <button
-                type="button"
-                onClick={handleRemovePhoto}
-                className="mt-2 flex items-center gap-1 text-sm text-red-600 hover:text-red-700"
-              >
-                <Trash2 className="w-4 h-4" />
-                Remove Photo
-              </button>
-            )}
-          </div>
 
           {/* Account Information */}
           <div className="border border-gray-200 rounded-lg">
@@ -586,7 +587,9 @@ const EditStudentModal = ({ student, batches, onClose, onSuccess }) => {
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+          </div>
+
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-white sticky bottom-0">
             <button
               type="button"
               onClick={onClose}
