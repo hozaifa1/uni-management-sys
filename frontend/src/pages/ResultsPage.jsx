@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, Filter, Plus, Edit, Trash2, Eye, RotateCcw } from 'lucide-react';
+import { Search, Filter, Plus, Edit, Trash2, Eye, RotateCcw, Users, TrendingUp, Award, XCircle, BarChart3 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import ReportCardViewer from '../components/academics/ReportCardViewer';
+import AddResultModal from '../components/academics/AddResultModal';
 
 const ResultsPage = () => {
   const [results, setResults] = useState([]);
@@ -24,6 +26,10 @@ const ResultsPage = () => {
   const [editMarks, setEditMarks] = useState('');
   const [editRemarks, setEditRemarks] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [modalEditResult, setModalEditResult] = useState(null);
+  const [examStats, setExamStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
 
   // Load all dropdown data first, then results
   useEffect(() => {
@@ -74,6 +80,27 @@ const ResultsPage = () => {
       fetchFilteredExams();
     }
   }, [selectedCourse, selectedIntake, selectedSemester, selectedSession, dataLoaded]);
+
+  // Fetch exam statistics when an exam is selected
+  useEffect(() => {
+    const fetchExamStats = async () => {
+      if (!selectedExam) {
+        setExamStats(null);
+        return;
+      }
+      try {
+        setStatsLoading(true);
+        const response = await api.get(`/academics/exams/${selectedExam}/statistics/`);
+        setExamStats(response.data);
+      } catch (err) {
+        console.error('Error fetching exam statistics:', err);
+        setExamStats(null);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+    fetchExamStats();
+  }, [selectedExam]);
 
   const fetchResults = useCallback(async () => {
     try {
@@ -298,6 +325,47 @@ const ResultsPage = () => {
     setEditRemarks('');
   };
 
+  const openAddResultModal = (result = null) => {
+    setModalEditResult(result);
+    setShowAddModal(true);
+  };
+
+  const closeAddResultModal = () => {
+    setShowAddModal(false);
+    setModalEditResult(null);
+  };
+
+  const handleAddResultSuccess = async () => {
+    closeAddResultModal();
+    await fetchResults();
+    if (selectedExam) {
+      try {
+        const response = await api.get(`/academics/exams/${selectedExam}/statistics/`);
+        setExamStats(response.data);
+      } catch (err) {
+        console.error('Error refreshing exam statistics:', err);
+      }
+    }
+  };
+
+  const getGradeChartData = () => {
+    if (!examStats?.grade_distribution) return [];
+    const colors = {
+      'A+': '#10b981',
+      'A': '#34d399',
+      'A-': '#3b82f6',
+      'B': '#60a5fa',
+      'C': '#fbbf24',
+      'D': '#f97316',
+      'F': '#ef4444'
+    };
+    return Object.entries(examStats.grade_distribution).map(([grade, count]) => ({
+      grade,
+      count,
+      color: colors[grade] || '#6b7280'
+    }));
+  };
+
   const handleUpdate = async () => {
     if (!editingResult) return;
     setActionLoading(true);
@@ -517,7 +585,7 @@ const ResultsPage = () => {
           </div>
 
           <button
-            onClick={() => {}}
+            onClick={() => openAddResultModal()}
             className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <Plus className="w-5 h-5 mr-2" />
@@ -525,6 +593,146 @@ const ResultsPage = () => {
           </button>
         </div>
       </div>
+
+      {/* Exam Statistics Section */}
+      {selectedExam && (
+        <div className="mb-6">
+          {statsLoading ? (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p className="mt-2 text-gray-600">Loading statistics...</p>
+            </div>
+          ) : examStats && examStats.total_students > 0 ? (
+            <>
+              {/* Statistics Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {/* Total Students Card */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Total Students</p>
+                      <p className="text-3xl font-bold text-gray-900">{examStats.total_students}</p>
+                    </div>
+                    <div className="p-3 bg-blue-100 rounded-full">
+                      <Users className="w-6 h-6 text-blue-600" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Average Marks Card */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Average Marks</p>
+                      <p className="text-3xl font-bold text-gray-900">{examStats.average_marks?.toFixed(1)}</p>
+                      <p className="text-xs text-gray-400">out of {examStats.exam?.total_marks || 100}</p>
+                    </div>
+                    <div className="p-3 bg-purple-100 rounded-full">
+                      <TrendingUp className="w-6 h-6 text-purple-600" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pass Rate Card */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Pass Rate</p>
+                      <p className="text-3xl font-bold text-green-600">{examStats.pass_rate?.toFixed(1)}%</p>
+                      <p className="text-xs text-gray-400">{examStats.passed} passed / {examStats.failed} failed</p>
+                    </div>
+                    <div className="p-3 bg-green-100 rounded-full">
+                      <Award className="w-6 h-6 text-green-600" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fail Count Card */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Failed Students</p>
+                      <p className="text-3xl font-bold text-red-600">{examStats.failed}</p>
+                      <p className="text-xs text-gray-400">{((examStats.failed / examStats.total_students) * 100).toFixed(1)}% of total</p>
+                    </div>
+                    <div className="p-3 bg-red-100 rounded-full">
+                      <XCircle className="w-6 h-6 text-red-600" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Charts Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Grade Distribution Bar Chart */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <BarChart3 className="w-5 h-5 text-gray-600" />
+                    <h3 className="text-lg font-semibold text-gray-800">Grade Distribution</h3>
+                  </div>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={getGradeChartData()} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis dataKey="grade" tick={{ fontSize: 12 }} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                          formatter={(value) => [`${value} students`, 'Count']}
+                        />
+                        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                          {getGradeChartData().map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Pass/Fail Pie Chart */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Award className="w-5 h-5 text-gray-600" />
+                    <h3 className="text-lg font-semibold text-gray-800">Pass/Fail Distribution</h3>
+                  </div>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'Passed', value: examStats.passed, color: '#10b981' },
+                            { name: 'Failed', value: examStats.failed, color: '#ef4444' }
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        >
+                          <Cell fill="#10b981" />
+                          <Cell fill="#ef4444" />
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                          formatter={(value) => [`${value} students`, 'Count']}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : examStats?.message ? (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center text-yellow-700">
+              {examStats.message}
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Results Table */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -689,6 +897,18 @@ const ResultsPage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Add/Edit Result Modal */}
+      {showAddModal && (
+        <AddResultModal
+          onClose={closeAddResultModal}
+          onSuccess={handleAddResultSuccess}
+          students={students}
+          exams={exams}
+          subjects={subjects}
+          editingResult={modalEditResult}
+        />
       )}
     </div>
   );
