@@ -1,17 +1,15 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, Search, Award, Plus, ChevronDown, ChevronUp, Calendar, BookOpen } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { X, Search, Award } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
 const EXAM_TYPE_OPTIONS = [
-  { value: 'midterm', label: 'Mid Term' },
+  { value: 'incourse_1st', label: '1st Incourse' },
+  { value: 'incourse_2nd', label: '2nd Incourse' },
   { value: 'final', label: 'Final Exam' },
-  { value: 'ssc', label: 'SSC Exam' },
-  { value: 'hsc', label: 'HSC Exam' },
-  { value: 'monthly', label: 'Monthly Test' },
 ];
 
-const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams = [], subjects: initialSubjects = [], editingResult = null, onExamsUpdate, onSubjectsUpdate }) => {
+const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams = [], subjects: initialSubjects = [], editingResult = null }) => {
   const [formData, setFormData] = useState({
     student: '',
     exam: '',
@@ -25,51 +23,11 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
 
-  // Local copies of exams/subjects that can be updated after creation
+  // Local copies of exams/subjects
   const [exams, setExams] = useState(initialExams);
   const [subjects, setSubjects] = useState(initialSubjects);
-  const [courses, setCourses] = useState([]);
-
-  // Inline creation forms
-  const [showAddExam, setShowAddExam] = useState(false);
-  const [showAddSubject, setShowAddSubject] = useState(false);
-  const [examLoading, setExamLoading] = useState(false);
-  const [subjectLoading, setSubjectLoading] = useState(false);
-
-  const [newExam, setNewExam] = useState({
-    name: '',
-    exam_type: 'midterm',
-    course: '',
-    intake: '',
-    semester: '',
-    session: '',
-    exam_date: new Date().toISOString().split('T')[0],
-    total_marks: 100,
-    description: '',
-  });
-
-  const [newSubject, setNewSubject] = useState({
-    name: '',
-    code: '',
-    course: '',
-    total_marks: 100,
-    description: '',
-  });
 
   const isEditMode = !!editingResult;
-
-  // Fetch courses for subject creation
-  useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const response = await api.get('/students/courses/');
-        setCourses(response.data.results || response.data || []);
-      } catch (err) {
-        console.error('Error fetching courses:', err);
-      }
-    };
-    fetchCourses();
-  }, []);
 
   // Sync initial props
   useEffect(() => {
@@ -324,165 +282,11 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
     return { grade: 'F', color: 'text-red-600 bg-red-100' };
   };
 
-  // Pre-fill exam form when student is selected
-  const initExamFormFromStudent = useCallback(() => {
-    if (selectedStudent) {
-      setNewExam((prev) => ({
-        ...prev,
-        course: selectedStudent.course || '',
-        intake: selectedStudent.intake || '',
-        semester: selectedStudent.semester || '',
-        session: selectedStudent.session || '',
-      }));
-    }
-  }, [selectedStudent]);
-
-  // Pre-fill subject form when student is selected
-  const initSubjectFormFromStudent = useCallback(() => {
-    if (selectedStudent) {
-      // Find the course ID that matches student's course code
-      const courseObj = courses.find((c) => c.code === selectedStudent.course);
-      setNewSubject((prev) => ({
-        ...prev,
-        course: courseObj?.id || '',
-      }));
-    }
-  }, [selectedStudent, courses]);
-
-  // Handle opening add exam form
-  const handleOpenAddExam = () => {
-    initExamFormFromStudent();
-    setShowAddExam(true);
-  };
-
-  // Handle opening add subject form
-  const handleOpenAddSubject = () => {
-    initSubjectFormFromStudent();
-    setShowAddSubject(true);
-  };
-
-  // Create new exam
-  const handleCreateExam = async () => {
-    if (!newExam.name || !newExam.exam_type || !newExam.course || !newExam.exam_date) {
-      toast.error('Please fill in all required exam fields');
-      return;
-    }
-
-    setExamLoading(true);
-    try {
-      const response = await api.post('/academics/exams/', {
-        ...newExam,
-        total_marks: parseInt(newExam.total_marks, 10) || 100,
-      });
-      const createdExam = response.data;
-      toast.success('Exam created successfully!');
-      
-      // Update local exams list
-      setExams((prev) => [...prev, createdExam]);
-      
-      // Notify parent if callback provided
-      if (onExamsUpdate) {
-        onExamsUpdate([...exams, createdExam]);
-      }
-      
-      // Select the new exam
-      setFormData((prev) => ({ ...prev, exam: createdExam.id }));
-      
-      // Reset and close form
-      setNewExam({
-        name: '',
-        exam_type: 'midterm',
-        course: selectedStudent?.course || '',
-        intake: selectedStudent?.intake || '',
-        semester: selectedStudent?.semester || '',
-        session: selectedStudent?.session || '',
-        exam_date: new Date().toISOString().split('T')[0],
-        total_marks: 100,
-        description: '',
-      });
-      setShowAddExam(false);
-    } catch (error) {
-      console.error('Error creating exam:', error);
-      const errorData = error.response?.data;
-      if (errorData && typeof errorData === 'object') {
-        Object.entries(errorData).forEach(([field, messages]) => {
-          const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-          if (Array.isArray(messages)) {
-            messages.forEach((msg) => toast.error(`${fieldName}: ${msg}`));
-          } else {
-            toast.error(`${fieldName}: ${messages}`);
-          }
-        });
-      } else {
-        toast.error('Failed to create exam');
-      }
-    } finally {
-      setExamLoading(false);
-    }
-  };
-
-  // Create new subject
-  const handleCreateSubject = async () => {
-    if (!newSubject.name || !newSubject.code || !newSubject.course) {
-      toast.error('Please fill in all required subject fields');
-      return;
-    }
-
-    setSubjectLoading(true);
-    try {
-      const response = await api.post('/academics/subjects/', {
-        ...newSubject,
-        total_marks: parseInt(newSubject.total_marks, 10) || 100,
-      });
-      const createdSubject = response.data;
-      toast.success('Subject created successfully!');
-      
-      // Update local subjects list
-      setSubjects((prev) => [...prev, createdSubject]);
-      
-      // Notify parent if callback provided
-      if (onSubjectsUpdate) {
-        onSubjectsUpdate([...subjects, createdSubject]);
-      }
-      
-      // Select the new subject
-      setFormData((prev) => ({ ...prev, subject: createdSubject.id }));
-      setSelectedSubject(createdSubject);
-      
-      // Reset and close form
-      setNewSubject({
-        name: '',
-        code: '',
-        course: '',
-        total_marks: 100,
-        description: '',
-      });
-      setShowAddSubject(false);
-    } catch (error) {
-      console.error('Error creating subject:', error);
-      const errorData = error.response?.data;
-      if (errorData && typeof errorData === 'object') {
-        Object.entries(errorData).forEach(([field, messages]) => {
-          const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-          if (Array.isArray(messages)) {
-            messages.forEach((msg) => toast.error(`${fieldName}: ${msg}`));
-          } else {
-            toast.error(`${fieldName}: ${messages}`);
-          }
-        });
-      } else {
-        toast.error('Failed to create subject');
-      }
-    } finally {
-      setSubjectLoading(false);
-    }
-  };
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full my-8">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+        {/* Header - Fixed at top */}
+        <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
               <Award className="w-6 h-6 text-blue-600" />
@@ -499,8 +303,8 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {/* Form - Scrollable middle section */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Student Search */}
           <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -563,22 +367,10 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
           )}
 
           {/* Exam Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-gray-700">
-                Exam <span className="text-red-500">*</span>
-              </label>
-              {selectedStudent && !isEditMode && (
-                <button
-                  type="button"
-                  onClick={handleOpenAddExam}
-                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add New Exam
-                </button>
-              )}
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Exam <span className="text-red-500">*</span>
+            </label>
             <select
               name="exam"
               value={formData.exam}
@@ -593,179 +385,22 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
               </option>
               {filteredExams.map((exam) => (
                 <option key={exam.id} value={exam.id}>
-                  {exam.name} ({exam.exam_type}) - {exam.course} {exam.intake} Sem {exam.semester}
+                  {exam.course} - {exam.semester} Sem - {exam.exam_type?.replace('_', ' ')}
                 </option>
               ))}
             </select>
-
-            {/* No exams hint */}
-            {filteredExams.length === 0 && selectedStudent && !showAddExam && (
-              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm text-yellow-800">
-                  No exams found for <strong>{selectedStudent.course}</strong> - <strong>{selectedStudent.intake}</strong> Intake - <strong>Semester {selectedStudent.semester}</strong>.
-                  <button
-                    type="button"
-                    onClick={handleOpenAddExam}
-                    className="ml-2 text-blue-600 hover:underline font-medium"
-                  >
-                    Create one now
-                  </button>
-                </p>
-              </div>
-            )}
-
-            {/* Inline Add Exam Form */}
-            {showAddExam && (
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-gray-800 flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Create New Exam
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddExam(false)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Exam Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newExam.name}
-                      onChange={(e) => setNewExam((prev) => ({ ...prev, name: e.target.value }))}
-                      placeholder="e.g., Mid Term 2024"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Exam Type <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={newExam.exam_type}
-                      onChange={(e) => setNewExam((prev) => ({ ...prev, exam_type: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      {EXAM_TYPE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Course</label>
-                    <input
-                      type="text"
-                      value={newExam.course}
-                      onChange={(e) => setNewExam((prev) => ({ ...prev, course: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100"
-                      readOnly
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Intake</label>
-                    <input
-                      type="text"
-                      value={newExam.intake}
-                      onChange={(e) => setNewExam((prev) => ({ ...prev, intake: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100"
-                      readOnly
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Semester</label>
-                    <input
-                      type="text"
-                      value={newExam.semester}
-                      onChange={(e) => setNewExam((prev) => ({ ...prev, semester: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100"
-                      readOnly
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Session</label>
-                    <input
-                      type="text"
-                      value={newExam.session}
-                      onChange={(e) => setNewExam((prev) => ({ ...prev, session: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
-                      placeholder="2024-2025"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Exam Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={newExam.exam_date}
-                      onChange={(e) => setNewExam((prev) => ({ ...prev, exam_date: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Total Marks</label>
-                    <input
-                      type="number"
-                      value={newExam.total_marks}
-                      onChange={(e) => setNewExam((prev) => ({ ...prev, total_marks: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddExam(false)}
-                    className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCreateExam}
-                    disabled={examLoading}
-                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {examLoading ? 'Creating...' : 'Create Exam'}
-                  </button>
-                </div>
-              </div>
+            {filteredExams.length === 0 && selectedStudent && (
+              <p className="text-sm text-yellow-600 mt-1">
+                No exams found for this student's course/semester. Please ensure exams are seeded.
+              </p>
             )}
           </div>
 
           {/* Subject Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-gray-700">
-                Subject <span className="text-red-500">*</span>
-              </label>
-              {selectedStudent && !isEditMode && (
-                <button
-                  type="button"
-                  onClick={handleOpenAddSubject}
-                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add New Subject
-                </button>
-              )}
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Subject <span className="text-red-500">*</span>
+            </label>
             <select
               name="subject"
               value={formData.subject}
@@ -784,125 +419,10 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
                 </option>
               ))}
             </select>
-
-            {/* No subjects hint */}
-            {filteredSubjects.length === 0 && selectedStudent && !showAddSubject && (
-              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm text-yellow-800">
-                  No subjects found for <strong>{selectedStudent.course}</strong>.
-                  <button
-                    type="button"
-                    onClick={handleOpenAddSubject}
-                    className="ml-2 text-blue-600 hover:underline font-medium"
-                  >
-                    Create one now
-                  </button>
-                </p>
-              </div>
-            )}
-
-            {/* Inline Add Subject Form */}
-            {showAddSubject && (
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-gray-800 flex items-center gap-2">
-                    <BookOpen className="w-4 h-4" />
-                    Create New Subject
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddSubject(false)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Subject Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newSubject.name}
-                      onChange={(e) => setNewSubject((prev) => ({ ...prev, name: e.target.value }))}
-                      placeholder="e.g., Mathematics"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Subject Code <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newSubject.code}
-                      onChange={(e) => setNewSubject((prev) => ({ ...prev, code: e.target.value }))}
-                      placeholder="e.g., MATH101"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Course <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={newSubject.course}
-                      onChange={(e) => setNewSubject((prev) => ({ ...prev, course: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select Course</option>
-                      {courses.map((course) => (
-                        <option key={course.id} value={course.id}>
-                          {course.code} - {course.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Total Marks</label>
-                    <input
-                      type="number"
-                      value={newSubject.total_marks}
-                      onChange={(e) => setNewSubject((prev) => ({ ...prev, total_marks: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
-                  <textarea
-                    value={newSubject.description}
-                    onChange={(e) => setNewSubject((prev) => ({ ...prev, description: e.target.value }))}
-                    rows="2"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="Optional description..."
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddSubject(false)}
-                    className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCreateSubject}
-                    disabled={subjectLoading}
-                    className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                  >
-                    {subjectLoading ? 'Creating...' : 'Create Subject'}
-                  </button>
-                </div>
-              </div>
+            {filteredSubjects.length === 0 && selectedStudent && (
+              <p className="text-sm text-yellow-600 mt-1">
+                No subjects found for this student's course. Please ensure subjects are seeded.
+              </p>
             )}
           </div>
 
@@ -964,8 +484,8 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
           </div>
         </form>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+        {/* Footer - Fixed at bottom */}
+        <div className="flex-shrink-0 flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-white">
           <button
             type="button"
             onClick={onClose}

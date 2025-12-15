@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   BarChart3, DollarSign, TrendingUp, Users, FileText, Download, 
-  AlertCircle, Calendar, Filter, RefreshCw 
+  AlertCircle, Calendar, Filter, RefreshCw, Search, RotateCcw 
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import toast from 'react-hot-toast';
@@ -17,6 +17,9 @@ const ReportsPage = () => {
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedIntake, setSelectedIntake] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
+  const [students, setStudents] = useState([]);
   
   // Payment Reports Data
   const [semesterWiseData, setSemesterWiseData] = useState([]);
@@ -31,12 +34,62 @@ const ReportsPage = () => {
   const intakes = Array.from({ length: 20 }, (_, i) => `${i + 1}`);
   const semesters = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 
+  // Fetch students for filter
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const response = await api.get('/accounts/students/', { params: { page_size: 10000 } });
+        setStudents(response.data.results || response.data || []);
+      } catch (error) {
+        console.error('Error fetching students:', error);
+      }
+    };
+    fetchStudents();
+  }, []);
+
+  // Filter students based on course/intake/semester
+  const filteredStudents = useMemo(() => {
+    let list = students;
+    if (selectedCourse) list = list.filter(s => s.course === selectedCourse);
+    if (selectedIntake) list = list.filter(s => s.intake === selectedIntake);
+    if (selectedSemester) list = list.filter(s => s.semester === selectedSemester);
+    if (studentSearch) {
+      const search = studentSearch.toLowerCase();
+      list = list.filter(s => 
+        s.student_id?.toLowerCase().includes(search) ||
+        `${s.user?.first_name} ${s.user?.last_name}`.toLowerCase().includes(search)
+      );
+    }
+    return list;
+  }, [students, selectedCourse, selectedIntake, selectedSemester, studentSearch]);
+
+  const handleStudentSelect = (studentId) => {
+    setSelectedStudent(studentId);
+    if (studentId) {
+      const student = students.find(s => s.id === parseInt(studentId));
+      if (student) {
+        if (student.course) setSelectedCourse(student.course);
+        if (student.intake) setSelectedIntake(student.intake);
+        if (student.semester) setSelectedSemester(student.semester);
+      }
+    }
+  };
+
+  const handleResetFilters = () => {
+    setSelectedCourse('');
+    setSelectedIntake('');
+    setSelectedSemester('');
+    setSelectedStudent('');
+    setStudentSearch('');
+  };
+
   const fetchPaymentReports = useCallback(async () => {
     setLoading(true);
     try {
       const params = {};
       if (selectedCourse) params.course = selectedCourse;
       if (selectedIntake) params.intake = selectedIntake;
+      if (selectedStudent) params.student = selectedStudent;
 
       const [semesterRes, currentRes, duesRes] = await Promise.all([
         api.get('/reports/payments/semester_wise/', { params }),
@@ -53,7 +106,7 @@ const ReportsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedCourse, selectedIntake, selectedSemester]);
+  }, [selectedCourse, selectedIntake, selectedSemester, selectedStudent]);
 
   const fetchResultReports = useCallback(async () => {
     setLoading(true);
@@ -62,6 +115,7 @@ const ReportsPage = () => {
       if (selectedCourse) params.course = selectedCourse;
       if (selectedIntake) params.intake = selectedIntake;
       if (selectedSemester) params.semester = selectedSemester;
+      if (selectedStudent) params.student = selectedStudent;
 
       const [examRes, gradeRes] = await Promise.all([
         api.get('/reports/results/exam_summary/', { params }),
@@ -76,7 +130,7 @@ const ReportsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedCourse, selectedIntake, selectedSemester]);
+  }, [selectedCourse, selectedIntake, selectedSemester, selectedStudent]);
 
   useEffect(() => {
     if (activeTab === 'payments') {
@@ -84,70 +138,136 @@ const ReportsPage = () => {
     } else {
       fetchResultReports();
     }
-  }, [activeTab, selectedCourse, selectedIntake, selectedSemester, fetchPaymentReports, fetchResultReports]);
+  }, [activeTab, selectedCourse, selectedIntake, selectedSemester, selectedStudent, fetchPaymentReports, fetchResultReports]);
 
-  const exportSemesterWisePDF = () => {
-    if (semesterWiseData.length === 0) {
-      toast.error('No data to export');
-      return;
+  // Single comprehensive PDF export that respects all filters
+  const exportComprehensiveReportPDF = () => {
+    const doc = new jsPDF();
+    let yPos = 22;
+    
+    // Get selected student info if any
+    const studentInfo = selectedStudent 
+      ? students.find(s => s.id === parseInt(selectedStudent))
+      : null;
+
+    // Title
+    doc.setFontSize(18);
+    doc.text('Comprehensive Payment Report', 14, yPos);
+    yPos += 10;
+    
+    // Filter info
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, yPos);
+    yPos += 6;
+    
+    // Show applied filters
+    const filters = [];
+    if (selectedCourse) filters.push(`Course: ${selectedCourse}`);
+    if (selectedIntake) filters.push(`Intake: ${selectedIntake}`);
+    if (selectedSemester) filters.push(`Semester: ${selectedSemester}`);
+    if (studentInfo) filters.push(`Student: ${studentInfo.user?.first_name} ${studentInfo.user?.last_name} (${studentInfo.student_id})`);
+    
+    if (filters.length > 0) {
+      doc.text(`Filters: ${filters.join(' | ')}`, 14, yPos);
+      yPos += 10;
+    } else {
+      doc.text('Filters: All Data', 14, yPos);
+      yPos += 10;
     }
 
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text('Semester-wise Payment Report', 14, 22);
-    doc.setFontSize(10);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
+    // Section 1: Semester-wise Payment Summary
+    if (semesterWiseData.length > 0) {
+      doc.setFontSize(14);
+      doc.setTextColor(59, 130, 246);
+      doc.text('1. Semester-wise Payment Summary', 14, yPos);
+      doc.setTextColor(0, 0, 0);
+      yPos += 6;
 
-    autoTable(doc, {
-      startY: 36,
-      head: [['Semester', 'Total Amount', 'Discount', 'Net Amount', 'Payments', 'Students']],
-      body: semesterWiseData.map(s => [
-        s.semester || 'N/A',
-        `৳${s.total_amount?.toLocaleString() || 0}`,
-        `৳${s.total_discount?.toLocaleString() || 0}`,
-        `৳${s.net_amount?.toLocaleString() || 0}`,
-        s.payment_count || 0,
-        s.student_count || 0,
-      ]),
-      headStyles: { fillColor: [59, 130, 246] },
-    });
-
-    doc.save(`semester_wise_payments_${new Date().toISOString().split('T')[0]}.pdf`);
-    toast.success('Report exported successfully');
-  };
-
-  const exportDuesPDF = () => {
-    if (duesData.data.length === 0) {
-      toast.error('No data to export');
-      return;
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Semester', 'Total Amount', 'Discount', 'Net Amount', 'Payments', 'Students']],
+        body: semesterWiseData.map(s => [
+          s.semester || 'N/A',
+          `TK ${s.total_amount?.toLocaleString() || 0}`,
+          `TK ${s.total_discount?.toLocaleString() || 0}`,
+          `TK ${s.net_amount?.toLocaleString() || 0}`,
+          s.payment_count || 0,
+          s.student_count || 0,
+        ]),
+        headStyles: { fillColor: [59, 130, 246] },
+        styles: { fontSize: 9 },
+      });
+      yPos = doc.lastAutoTable.finalY + 15;
     }
 
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text('Due Amounts Report', 14, 22);
-    doc.setFontSize(10);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
-    doc.text(`Total Due: ৳${duesData.summary?.total_due?.toLocaleString() || 0}`, 14, 36);
+    // Section 2: Current Semester Summary
+    if (currentSemesterData.stats && Object.keys(currentSemesterData.stats).length > 0) {
+      doc.setFontSize(14);
+      doc.setTextColor(16, 185, 129);
+      doc.text(`2. Current Semester Summary (${selectedSemester || '1st'})`, 14, yPos);
+      doc.setTextColor(0, 0, 0);
+      yPos += 6;
 
-    autoTable(doc, {
-      startY: 42,
-      head: [['Student ID', 'Name', 'Course', 'Intake', 'Semester', 'Total Fee', 'Paid', 'Due']],
-      body: duesData.data.map(d => [
-        d.student_id,
-        d.student_name,
-        d.course,
-        d.intake,
-        d.semester,
-        `৳${d.total_fee?.toLocaleString() || 0}`,
-        `৳${d.total_paid?.toLocaleString() || 0}`,
-        `৳${d.due_amount?.toLocaleString() || 0}`,
-      ]),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [239, 68, 68] },
-    });
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Metric', 'Value']],
+        body: [
+          ['Total Amount', `TK ${currentSemesterData.stats.total_amount?.toLocaleString() || 0}`],
+          ['Net Amount (After Discounts)', `TK ${currentSemesterData.stats.net_amount?.toLocaleString() || 0}`],
+          ['Number of Payments', currentSemesterData.stats.payment_count || 0],
+          ['Number of Students', currentSemesterData.stats.student_count || 0],
+        ],
+        headStyles: { fillColor: [16, 185, 129] },
+        styles: { fontSize: 9 },
+      });
+      yPos = doc.lastAutoTable.finalY + 15;
+    }
 
-    doc.save(`dues_report_${new Date().toISOString().split('T')[0]}.pdf`);
-    toast.success('Report exported successfully');
+    // Section 3: Due Amounts for Course Completion
+    if (duesData.data?.length > 0) {
+      // Check if we need a new page
+      if (yPos > 200) {
+        doc.addPage();
+        yPos = 22;
+      }
+
+      doc.setFontSize(14);
+      doc.setTextColor(239, 68, 68);
+      doc.text('3. Due Amounts for Course Completion', 14, yPos);
+      doc.setTextColor(0, 0, 0);
+      yPos += 6;
+
+      // Summary stats
+      doc.setFontSize(10);
+      doc.text(`Total Students: ${duesData.summary?.total_students || 0} | Students with Dues: ${duesData.summary?.students_with_dues || 0} | Total Due: TK ${duesData.summary?.total_due?.toLocaleString() || 0}`, 14, yPos);
+      yPos += 8;
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Student ID', 'Name', 'Course', 'Intake', 'Semester', 'Total Fee', 'Paid', 'Due']],
+        body: duesData.data.map(d => [
+          d.student_id,
+          d.student_name,
+          d.course,
+          d.intake,
+          d.semester,
+          `TK ${d.total_fee?.toLocaleString() || 0}`,
+          `TK ${d.total_paid?.toLocaleString() || 0}`,
+          `TK ${d.due_amount?.toLocaleString() || 0}`,
+        ]),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [239, 68, 68] },
+      });
+    }
+
+    // Generate filename with filters
+    const filenameParts = ['payment_report'];
+    if (selectedCourse) filenameParts.push(selectedCourse);
+    if (studentInfo) filenameParts.push(studentInfo.student_id);
+    filenameParts.push(new Date().toISOString().split('T')[0]);
+    
+    doc.save(`${filenameParts.join('_')}.pdf`);
+    toast.success('Comprehensive report exported successfully');
   };
 
   const gradeChartData = Object.entries(gradeDistribution.distribution || {}).map(([grade, count]) => ({
@@ -199,24 +319,18 @@ const ReportsPage = () => {
             <Filter className="w-5 h-5 text-gray-500" />
             <h3 className="font-semibold text-gray-700">Filters</h3>
           </div>
-          <div className="flex gap-2">
+          {activeTab === 'payments' && (
             <button
-              onClick={exportSemesterWisePDF}
-              className="flex items-center gap-2 px-3 py-2 text-sm bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100"
+              onClick={exportComprehensiveReportPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md"
             >
-              <Download className="w-4 h-4" />
-              Export Semester PDF
+              <FileText className="w-4 h-4" />
+              Export Report PDF
             </button>
-            <button
-              onClick={exportDuesPDF}
-              className="flex items-center gap-2 px-3 py-2 text-sm bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100"
-            >
-              <Download className="w-4 h-4" />
-              Export Dues PDF
-            </button>
-          </div>
+          )}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Row 1: Course/Intake/Semester */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Course</label>
             <select
@@ -250,16 +364,39 @@ const ReportsPage = () => {
               {semesters.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
-          <div className="flex items-end">
-            <button
-              onClick={() => activeTab === 'payments' ? fetchPaymentReports() : fetchResultReports()}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Student</label>
+            <select
+              value={selectedStudent}
+              onChange={(e) => handleStudentSelect(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
+              <option value="">All Students ({filteredStudents.length})</option>
+              {filteredStudents.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.student_id} - {s.user?.first_name} {s.user?.last_name}
+                </option>
+              ))}
+            </select>
           </div>
+        </div>
+        {/* Row 2: Actions */}
+        <div className="flex gap-4">
+          <button
+            onClick={() => activeTab === 'payments' ? fetchPaymentReports() : fetchResultReports()}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <button
+            onClick={handleResetFilters}
+            className="flex items-center justify-center gap-2 px-4 py-2 border border-red-200 text-red-700 bg-red-50 rounded-lg hover:bg-red-100"
+          >
+            <RotateCcw className="w-4 h-4" />
+            Reset Filters
+          </button>
         </div>
       </div>
 
@@ -274,19 +411,10 @@ const ReportsPage = () => {
             <div className="space-y-6">
               {/* Semester-wise Payment Chart */}
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                    Semester-wise Payments
-                  </h3>
-                  <button
-                    onClick={exportSemesterWisePDF}
-                    className="flex items-center gap-2 px-3 py-2 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100"
-                  >
-                    <Download className="w-4 h-4" />
-                    Export PDF
-                  </button>
-                </div>
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                  Semester-wise Payments
+                </h3>
                 {semesterWiseData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={semesterWiseData}>
@@ -338,19 +466,10 @@ const ReportsPage = () => {
 
               {/* Dues Report */}
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-red-600" />
-                    Due for Course Completion
-                  </h3>
-                  <button
-                    onClick={exportDuesPDF}
-                    className="flex items-center gap-2 px-3 py-2 text-sm bg-red-50 text-red-700 rounded-lg hover:bg-red-100"
-                  >
-                    <Download className="w-4 h-4" />
-                    Export PDF
-                  </button>
-                </div>
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                  Due for Course Completion
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <p className="text-sm text-gray-600">Total Students</p>

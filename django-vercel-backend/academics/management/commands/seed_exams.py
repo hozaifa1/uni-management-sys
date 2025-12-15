@@ -86,51 +86,68 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'Seeded {subjects_created} subjects.'))
 
     def seed_exams(self):
-        """Seed exams for each course/intake/semester/session combination based on existing students"""
+        """
+        Seed exams for each course/semester combination.
+        Each course-semester has exactly 3 exam types: incourse_1st, incourse_2nd, final.
+        Exams are identified by course-semester-type (no separate exam name needed).
+        Students across different intakes in the same course/semester share the same exams.
+        """
         exam_types = [
-            {'type': 'midterm', 'name_suffix': 'Mid Term Exam'},
-            {'type': 'final', 'name_suffix': 'Final Exam'},
+            {'type': 'incourse_1st', 'name_suffix': '1st Incourse', 'day_offset': 0},
+            {'type': 'incourse_2nd', 'name_suffix': '2nd Incourse', 'day_offset': 30},
+            {'type': 'final', 'name_suffix': 'Final Exam', 'day_offset': 60},
         ]
         
-        # Get unique course/intake/semester/session combinations from existing students
-        combinations = list(
-            Student.objects.values('course', 'intake', 'semester', 'session')
+        courses = ['BBA', 'MBA', 'CSE', 'THM']
+        semesters = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th']
+        
+        # Get unique course/intake/semester combinations from existing students
+        student_combinations = list(
+            Student.objects.values('course', 'intake', 'semester')
             .distinct()
         )
         
-        if not combinations:
-            # Fallback to default combinations if no students exist
-            combinations = [
-                {'course': 'BBA', 'intake': '15th', 'semester': '1st', 'session': '2024-2025'},
-                {'course': 'BBA', 'intake': '15th', 'semester': '2nd', 'session': '2024-2025'},
-                {'course': 'MBA', 'intake': '9th', 'semester': '1st', 'session': '2024-2025'},
-                {'course': 'MBA', 'intake': '9th', 'semester': '2nd', 'session': '2024-2025'},
-                {'course': 'CSE', 'intake': '1st', 'semester': '1st', 'session': '2024-2025'},
-                {'course': 'CSE', 'intake': '1st', 'semester': '2nd', 'session': '2024-2025'},
-                {'course': 'THM', 'intake': '1st', 'semester': '1st', 'session': '2024-2025'},
+        # If no students, create exams for common intakes
+        if not student_combinations:
+            student_combinations = [
+                {'course': 'BBA', 'intake': '15th', 'semester': '1st'},
+                {'course': 'BBA', 'intake': '15th', 'semester': '2nd'},
+                {'course': 'MBA', 'intake': '9th', 'semester': '1st'},
+                {'course': 'CSE', 'intake': '1st', 'semester': '1st'},
+                {'course': 'THM', 'intake': '1st', 'semester': '1st'},
             ]
+        
+        # Get unique course/semester combinations (exams are shared across intakes)
+        course_semester_combos = list({(c['course'], c['semester']) for c in student_combinations})
         
         exams_created = 0
         base_date = date.today() - timedelta(days=30)
         
-        for combo in combinations:
+        for course, semester in course_semester_combos:
+            # Get any intake for this course/semester (exams are shared)
+            intake = next(
+                (c['intake'] for c in student_combinations 
+                 if c['course'] == course and c['semester'] == semester),
+                '15th'
+            )
+            
             for exam_type in exam_types:
-                exam_name = f'{combo["course"]} {combo["intake"]} Intake - {combo["semester"]} Sem {exam_type["name_suffix"]}'
+                # Exam name is simply the course-semester-type concatenation
+                exam_name = f'{course} - {semester} Sem - {exam_type["name_suffix"]}'
                 
-                # Calculate exam date
-                exam_date = base_date + (timedelta(days=0) if exam_type['type'] == 'midterm' else timedelta(days=60))
+                # Calculate exam date based on type
+                exam_date = base_date + timedelta(days=exam_type['day_offset'])
                 
                 exam, created = Exam.objects.update_or_create(
-                    name=exam_name,
-                    course=combo['course'],
-                    intake=combo['intake'],
-                    semester=combo['semester'],
-                    session=combo['session'],
+                    course=course,
+                    semester=semester,
+                    exam_type=exam_type['type'],
                     defaults={
-                        'exam_type': exam_type['type'],
+                        'name': exam_name,
+                        'intake': intake,
                         'exam_date': exam_date,
                         'total_marks': 100,
-                        'description': f'{exam_type["name_suffix"]} for {combo["course"]} {combo["intake"]} Intake - {combo["semester"]} Semester',
+                        'description': f'{exam_type["name_suffix"]} for {course} {semester} Semester',
                     }
                 )
                 if created:
