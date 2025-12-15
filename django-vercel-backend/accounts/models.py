@@ -265,6 +265,20 @@ class Student(models.Model):
         help_text='Current semester'
     )
     
+    major = models.ForeignKey(
+        'academics.MajorMinorOption',
+        on_delete=models.SET_NULL,
+        related_name='students',
+        null=True,
+        blank=True,
+        help_text='Selected major (for BBA/MBA students in 7th+ semester)'
+    )
+    
+    major_locked = models.BooleanField(
+        default=False,
+        help_text='Whether the major selection is locked (cannot be changed)'
+    )
+    
     photo = models.ImageField(
         upload_to='students/photos/',
         blank=True,

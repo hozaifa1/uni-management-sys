@@ -6,26 +6,54 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Avg, Count, Q
 from django.http import FileResponse
 
-from .models import Subject, Exam, Result
+from .models import MajorMinorOption, Subject, Exam, Result
 from .serializers import (
-    SubjectSerializer, ExamSerializer, ExamDetailSerializer,
+    MajorMinorOptionSerializer, SubjectSerializer, ExamSerializer, ExamDetailSerializer,
     ResultSerializer, ResultDetailSerializer, BulkResultSerializer
 )
 from .utils import generate_report_card, generate_bulk_report_cards
+
+
+class MajorMinorOptionViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for MajorMinorOption model CRUD operations
+    """
+    queryset = MajorMinorOption.objects.filter(is_active=True)
+    serializer_class = MajorMinorOptionSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['course', 'option_type', 'is_active']
+    search_fields = ['name', 'code', 'description']
+    ordering_fields = ['name', 'course']
+    ordering = ['course', 'name']
+    
+    @action(detail=False, methods=['get'])
+    def by_course(self, request):
+        """Get major options filtered by course"""
+        course = request.query_params.get('course')
+        if not course:
+            return Response(
+                {'error': 'course parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        majors = self.queryset.filter(course=course)
+        serializer = self.get_serializer(majors, many=True)
+        return Response(serializer.data)
 
 
 class SubjectViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Subject model CRUD operations
     """
-    queryset = Subject.objects.select_related('course').all()
+    queryset = Subject.objects.select_related('course', 'major').all()
     serializer_class = SubjectSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['course']
+    filterset_fields = ['course', 'course_code', 'semester', 'subject_type', 'major', 'is_active']
     search_fields = ['name', 'code', 'description']
-    ordering_fields = ['name', 'code']
-    ordering = ['name']
+    ordering_fields = ['name', 'code', 'semester', 'course_code']
+    ordering = ['course_code', 'semester', 'code']
     
     @action(detail=True, methods=['get'])
     def results(self, request, pk=None):
@@ -34,6 +62,28 @@ class SubjectViewSet(viewsets.ModelViewSet):
         results = subject.results.select_related('student', 'exam').all()
         serializer = ResultSerializer(results, many=True)
         return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def by_semester(self, request):
+        """Get subjects grouped by semester for a course"""
+        course_code = request.query_params.get('course_code')
+        if not course_code:
+            return Response(
+                {'error': 'course_code parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        subjects = self.queryset.filter(course_code=course_code, is_active=True)
+        
+        # Group by semester
+        grouped = {}
+        for subject in subjects:
+            sem = subject.semester
+            if sem not in grouped:
+                grouped[sem] = []
+            grouped[sem].append(SubjectSerializer(subject).data)
+        
+        return Response(grouped)
 
 
 class ExamViewSet(viewsets.ModelViewSet):

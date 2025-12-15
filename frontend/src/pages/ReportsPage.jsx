@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   BarChart3, DollarSign, TrendingUp, Users, FileText, Download, 
   AlertCircle, Calendar, Filter, RefreshCw 
@@ -31,7 +31,7 @@ const ReportsPage = () => {
   const intakes = Array.from({ length: 20 }, (_, i) => `${i + 1}`);
   const semesters = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 
-  const fetchPaymentReports = async () => {
+  const fetchPaymentReports = useCallback(async () => {
     setLoading(true);
     try {
       const params = {};
@@ -53,9 +53,9 @@ const ReportsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCourse, selectedIntake, selectedSemester]);
 
-  const fetchResultReports = async () => {
+  const fetchResultReports = useCallback(async () => {
     setLoading(true);
     try {
       const params = {};
@@ -76,7 +76,7 @@ const ReportsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCourse, selectedIntake, selectedSemester]);
 
   useEffect(() => {
     if (activeTab === 'payments') {
@@ -84,7 +84,7 @@ const ReportsPage = () => {
     } else {
       fetchResultReports();
     }
-  }, [activeTab, selectedCourse, selectedIntake, selectedSemester]);
+  }, [activeTab, selectedCourse, selectedIntake, selectedSemester, fetchPaymentReports, fetchResultReports]);
 
   const exportSemesterWisePDF = () => {
     if (semesterWiseData.length === 0) {

@@ -1,32 +1,175 @@
 from django.db import models
 
 
-class Subject(models.Model):
+class MajorMinorOption(models.Model):
     """
-    Subject model for different courses
+    Available major/minor specializations for courses like BBA and MBA.
     """
+    OPTION_TYPE_CHOICES = [
+        ('major', 'Major'),
+    ]
+    
+    COURSE_CHOICES = [
+        ('BBA', 'BBA'),
+        ('MBA', 'MBA'),
+    ]
+    
+    course = models.CharField(
+        max_length=10,
+        choices=COURSE_CHOICES,
+        help_text='Course this major belongs to'
+    )
     
     name = models.CharField(
-        max_length=200,
-        help_text='Subject name (e.g., Mathematics, Physics)'
+        max_length=100,
+        help_text='Major name (e.g., Marketing, Finance & Banking)'
     )
     
     code = models.CharField(
         max_length=20,
         unique=True,
-        help_text='Unique subject code (e.g., MATH101)'
+        help_text='Unique code for this major (e.g., BBA_MKT, MBA_FIN)'
+    )
+    
+    option_type = models.CharField(
+        max_length=10,
+        choices=OPTION_TYPE_CHOICES,
+        default='major',
+        help_text='Type of specialization'
+    )
+    
+    available_from_semester = models.CharField(
+        max_length=10,
+        default='7th',
+        help_text='Semester when students can choose this major'
+    )
+    
+    description = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Description of this major'
+    )
+    
+    is_active = models.BooleanField(
+        default=True,
+        help_text='Is this major currently available?'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['course', 'name']
+        verbose_name = 'Major Option'
+        verbose_name_plural = 'Major Options'
+        unique_together = ['course', 'name']
+    
+    def __str__(self):
+        return f"{self.course} - {self.name}"
+
+
+class Subject(models.Model):
+    """
+    Subject model for different courses with semester and type information.
+    """
+    
+    SUBJECT_TYPE_CHOICES = [
+        ('core', 'Core/Compulsory'),
+        ('major', 'Major'),
+        ('elective', 'Elective'),
+        ('lab', 'Laboratory'),
+        ('project', 'Project/Internship'),
+        ('viva', 'Viva Voce'),
+    ]
+    
+    SEMESTER_CHOICES = [
+        ('1st', '1st'),
+        ('2nd', '2nd'),
+        ('3rd', '3rd'),
+        ('4th', '4th'),
+        ('5th', '5th'),
+        ('6th', '6th'),
+        ('7th', '7th'),
+        ('8th', '8th'),
+    ]
+    
+    COURSE_CHOICES = [
+        ('BBA', 'BBA'),
+        ('MBA', 'MBA'),
+        ('CSE', 'CSE'),
+        ('THM', 'THM'),
+    ]
+    
+    name = models.CharField(
+        max_length=200,
+        help_text='Subject name (e.g., Introduction to Business)'
+    )
+    
+    code = models.CharField(
+        max_length=20,
+        unique=True,
+        help_text='Unique subject code (e.g., 510101)'
     )
     
     course = models.ForeignKey(
         'students.Course',
         on_delete=models.CASCADE,
         related_name='subjects',
-        help_text='Associated course'
+        help_text='Associated course',
+        null=True,
+        blank=True
+    )
+    
+    course_code = models.CharField(
+        max_length=10,
+        choices=COURSE_CHOICES,
+        default='BBA',
+        help_text='Course code (BBA, MBA, CSE, THM)'
+    )
+    
+    semester = models.CharField(
+        max_length=10,
+        choices=SEMESTER_CHOICES,
+        default='1st',
+        help_text='Semester this subject belongs to'
+    )
+    
+    subject_type = models.CharField(
+        max_length=20,
+        choices=SUBJECT_TYPE_CHOICES,
+        default='core',
+        help_text='Type of subject'
+    )
+    
+    major = models.ForeignKey(
+        MajorMinorOption,
+        on_delete=models.SET_NULL,
+        related_name='subjects',
+        null=True,
+        blank=True,
+        help_text='Required major for this subject (if major-specific)'
+    )
+    
+    credit_hours = models.DecimalField(
+        max_digits=3,
+        decimal_places=1,
+        default=3.0,
+        help_text='Credit hours for this subject'
     )
     
     total_marks = models.PositiveIntegerField(
         default=100,
         help_text='Total marks for this subject'
+    )
+    
+    has_practical = models.BooleanField(
+        default=False,
+        help_text='Whether this subject has a practical component'
+    )
+    
+    practical_marks = models.PositiveIntegerField(
+        default=0,
+        help_text='Marks allocated for practical (if any)'
     )
     
     description = models.TextField(
@@ -35,13 +178,24 @@ class Subject(models.Model):
         help_text='Subject description'
     )
     
+    is_active = models.BooleanField(
+        default=True,
+        help_text='Is this subject currently offered?'
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        ordering = ['name']
+        ordering = ['course_code', 'semester', 'code']
         verbose_name = 'Subject'
         verbose_name_plural = 'Subjects'
+        indexes = [
+            models.Index(fields=['course_code']),
+            models.Index(fields=['semester']),
+            models.Index(fields=['subject_type']),
+            models.Index(fields=['course_code', 'semester']),
+        ]
     
     def __str__(self):
         return f"{self.code} - {self.name}"
@@ -227,25 +381,58 @@ class Result(models.Model):
     
     def calculate_grade(self):
         """
-        Calculate grade based on percentage
+        Calculate grade based on percentage using National University grading scale.
         """
-        # Calculate percentage based on subject's total marks
         percentage = (self.marks_obtained / self.subject.total_marks) * 100
         
+        # NU Grading Scale
         if percentage >= 80:
             return 'A+'
-        elif percentage >= 70:
+        elif percentage >= 75:
             return 'A'
-        elif percentage >= 60:
+        elif percentage >= 70:
             return 'A-'
-        elif percentage >= 50:
+        elif percentage >= 65:
+            return 'B+'
+        elif percentage >= 60:
             return 'B'
-        elif percentage >= 40:
+        elif percentage >= 55:
+            return 'B-'
+        elif percentage >= 50:
+            return 'C+'
+        elif percentage >= 45:
             return 'C'
-        elif percentage >= 33:
+        elif percentage >= 40:
             return 'D'
         else:
             return 'F'
+    
+    def get_grade_point(self):
+        """
+        Get grade point based on National University 4.0 scale.
+        """
+        percentage = (self.marks_obtained / self.subject.total_marks) * 100
+        
+        if percentage >= 80:
+            return 4.00
+        elif percentage >= 75:
+            return 3.75
+        elif percentage >= 70:
+            return 3.50
+        elif percentage >= 65:
+            return 3.25
+        elif percentage >= 60:
+            return 3.00
+        elif percentage >= 55:
+            return 2.75
+        elif percentage >= 50:
+            return 2.50
+        elif percentage >= 45:
+            return 2.25
+        elif percentage >= 40:
+            return 2.00
+        else:
+            return 0.00
     
     def get_percentage(self):
         """

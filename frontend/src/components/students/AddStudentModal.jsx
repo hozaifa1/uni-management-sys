@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Upload, User, ChevronDown, ChevronUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -98,6 +98,7 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
     phone_number: '',
     // New fields
     registration_number: '',
+    major: '',
     national_university_id: '',
     national_id_number: '',
     course: '',
@@ -149,6 +150,8 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
     // Other
     other_info: '',
   });
+  const [majorOptions, setMajorOptions] = useState([]);
+  const [loadingMajors, setLoadingMajors] = useState(false);
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -168,6 +171,47 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  // Check if major selection should be shown
+  const shouldShowMajor = () => {
+    const { course, semester } = formData;
+    if (course === 'BBA' && ['7th', '8th'].includes(semester)) return true;
+    if (course === 'MBA' && semester === '2nd') return true;
+    return false;
+  };
+
+  // Fetch major options when course changes or becomes eligible
+  useEffect(() => {
+    const { course, semester } = formData;
+    const needsMajor = (course === 'BBA' && ['7th', '8th'].includes(semester)) ||
+                       (course === 'MBA' && semester === '2nd');
+    
+    const fetchMajors = async () => {
+      if (!needsMajor) {
+        setMajorOptions([]);
+        return;
+      }
+      
+      setLoadingMajors(true);
+      try {
+        const response = await api.get('/academics/majors/by_course/', {
+          params: { course }
+        });
+        setMajorOptions(response.data || []);
+      } catch (error) {
+        console.error('Error fetching majors:', error);
+        setMajorOptions([]);
+      } finally {
+        setLoadingMajors(false);
+      }
+    };
+    
+    fetchMajors();
+    
+    // Clear major if no longer eligible
+    if (!needsMajor && formData.major) {
+      setFormData(prev => ({ ...prev, major: '' }));
+    }
+  }, [formData.course, formData.semester]); // eslint-disable-line react-hooks/exhaustive-deps
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -390,6 +434,38 @@ const AddStudentModal = ({ onClose, onSuccess }) => {
                 <InputField label="Admission Date" name="admission_date" type="date" required value={formData.admission_date} onChange={handleChange} />
                 <InputField label="Registration Number" name="registration_number" value={formData.registration_number} onChange={handleChange} />
                 <InputField label="National University ID" name="national_university_id" value={formData.national_university_id} onChange={handleChange} />
+                
+                {/* Major Selection - Only for BBA (7th/8th sem) and MBA (2nd sem) */}
+                {shouldShowMajor() && (
+                  <div className="md:col-span-3">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <label className="block text-sm font-medium text-blue-800 mb-2">
+                        Major Specialization <span className="text-red-500">*</span>
+                        <span className="text-xs font-normal text-blue-600 ml-2">
+                          (Required for {formData.course} students in {formData.semester} semester)
+                        </span>
+                      </label>
+                      {loadingMajors ? (
+                        <div className="text-sm text-gray-500">Loading majors...</div>
+                      ) : (
+                        <select
+                          name="major"
+                          value={formData.major}
+                          onChange={handleChange}
+                          required
+                          className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                        >
+                          <option value="">Select Major Specialization</option>
+                          {majorOptions.map(major => (
+                            <option key={major.id} value={major.id}>
+                              {major.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

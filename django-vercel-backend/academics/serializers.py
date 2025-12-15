@@ -1,19 +1,36 @@
 from rest_framework import serializers
-from .models import Subject, Exam, Result
+from .models import MajorMinorOption, Subject, Exam, Result
+
+
+class MajorMinorOptionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for MajorMinorOption model
+    """
+    class Meta:
+        model = MajorMinorOption
+        fields = [
+            'id', 'course', 'name', 'code', 'option_type',
+            'available_from_semester', 'description', 'is_active',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class SubjectSerializer(serializers.ModelSerializer):
     """
     Serializer for Subject model
     """
-    course_name = serializers.CharField(source='course.name', read_only=True)
-    course_code = serializers.CharField(source='course.code', read_only=True)
+    course_name = serializers.CharField(source='course.name', read_only=True, allow_null=True)
+    major_name = serializers.CharField(source='major.name', read_only=True, allow_null=True)
+    subject_type_display = serializers.CharField(source='get_subject_type_display', read_only=True)
     
     class Meta:
         model = Subject
         fields = [
             'id', 'name', 'code', 'course', 'course_name', 'course_code',
-            'total_marks', 'description', 'created_at', 'updated_at'
+            'semester', 'subject_type', 'subject_type_display', 'major', 'major_name',
+            'credit_hours', 'total_marks', 'has_practical', 'practical_marks',
+            'description', 'is_active', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 

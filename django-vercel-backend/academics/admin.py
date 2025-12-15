@@ -1,5 +1,34 @@
 from django.contrib import admin
-from .models import Subject, Exam, Result
+from .models import MajorMinorOption, Subject, Exam, Result
+
+
+@admin.register(MajorMinorOption)
+class MajorMinorOptionAdmin(admin.ModelAdmin):
+    """
+    Major/Minor Option Admin
+    """
+    list_display = ['code', 'name', 'course', 'available_from_semester', 'is_active']
+    list_filter = ['course', 'is_active']
+    search_fields = ['name', 'code', 'description']
+    ordering = ['course', 'name']
+    
+    fieldsets = (
+        ('Major Information', {
+            'fields': ('name', 'code', 'course', 'option_type', 'available_from_semester')
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+        ('Description', {
+            'fields': ('description',)
+        }),
+        ('System Information', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    readonly_fields = ['created_at', 'updated_at']
 
 
 @admin.register(Subject)
@@ -7,15 +36,25 @@ class SubjectAdmin(admin.ModelAdmin):
     """
     Subject Admin
     """
-    list_display = ['code', 'name', 'course', 'total_marks']
-    list_filter = ['course']
+    list_display = ['code', 'name', 'course_code', 'semester', 'subject_type', 'credit_hours', 'total_marks', 'is_active']
+    list_filter = ['course_code', 'semester', 'subject_type', 'is_active', 'major']
     search_fields = ['name', 'code', 'description']
-    ordering = ['name']
-    list_select_related = ['course']
+    ordering = ['course_code', 'semester', 'code']
+    list_select_related = ['course', 'major']
     
     fieldsets = (
         ('Subject Information', {
-            'fields': ('name', 'code', 'course', 'total_marks')
+            'fields': ('name', 'code', 'course', 'course_code', 'semester', 'subject_type')
+        }),
+        ('Credits & Marks', {
+            'fields': ('credit_hours', 'total_marks', 'has_practical', 'practical_marks')
+        }),
+        ('Major Association', {
+            'fields': ('major',),
+            'classes': ('collapse',)
+        }),
+        ('Status', {
+            'fields': ('is_active',)
         }),
         ('Description', {
             'fields': ('description',)
