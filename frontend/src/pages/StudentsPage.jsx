@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Edit, Trash2, Eye, Download, FileText, Phone, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
@@ -32,38 +32,54 @@ const StudentsPage = () => {
   const [selectedSession, setSelectedSession] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   const [selectedStudentForView, setSelectedStudentForView] = useState(null);
   const [selectedStudentForEdit, setSelectedStudentForEdit] = useState(null);
 
   useEffect(() => {
     fetchStudents();
-  }, [currentPage, searchTerm, selectedCourse, selectedIntake, selectedSemester, selectedSession]);
+  }, []);
 
   const fetchStudents = async () => {
     try {
       setLoading(true);
-      const params = {
-        page: currentPage,
-        search: searchTerm,
-        ...(selectedCourse && { course: selectedCourse }),
-        ...(selectedIntake && { intake: selectedIntake }),
-        ...(selectedSemester && { semester: selectedSemester }),
-        ...(selectedSession && { session: selectedSession }),
-      };
-      
-      const response = await api.get('/accounts/students/', { params });
+      const response = await api.get('/accounts/students/', { params: { page_size: 10000 } });
       setStudents(response.data.results || response.data || []);
-      
-      if (response.data.count) {
-        setTotalPages(Math.ceil(response.data.count / 20));
-      }
     } catch (error) {
       console.error('Error fetching students:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  // Client-side filtering
+  const filteredStudents = useMemo(() => {
+    return students.filter(student => {
+      if (selectedCourse && student.course !== selectedCourse) return false;
+      if (selectedIntake && student.intake !== selectedIntake) return false;
+      if (selectedSemester && student.semester !== selectedSemester) return false;
+      if (selectedSession && student.session !== selectedSession) return false;
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        const fullName = `${student.user?.first_name || ''} ${student.user?.last_name || ''}`.toLowerCase();
+        const studentId = (student.student_id || '').toLowerCase();
+        if (!fullName.includes(search) && !studentId.includes(search)) return false;
+      }
+      return true;
+    });
+  }, [students, selectedCourse, selectedIntake, selectedSemester, selectedSession, searchTerm]);
+
+  // Client-side pagination
+  const totalPages = Math.ceil(filteredStudents.length / ITEMS_PER_PAGE);
+  const paginatedStudents = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredStudents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredStudents, currentPage, ITEMS_PER_PAGE]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCourse, selectedIntake, selectedSemester, selectedSession, searchTerm]);
 
   const handleCourseChange = (value) => {
     setSelectedCourse(value);
@@ -92,8 +108,6 @@ const StudentsPage = () => {
     fetchStudents();
   };
 
-  // filteredStudents uses the students array (already filtered by API)
-  const filteredStudents = students;
 
   // Export all student info to PDF
   const exportStudentsPDF = () => {
@@ -353,8 +367,8 @@ const StudentsPage = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {students.length > 0 ? (
-                students.map((student) => (
+              {paginatedStudents.length > 0 ? (
+                paginatedStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -443,10 +457,10 @@ const StudentsPage = () => {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {filteredStudents.length > 0 && (
           <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
             <div className="text-sm text-gray-700">
-              Page {currentPage} of {totalPages}
+              Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredStudents.length)} of {filteredStudents.length} students
             </div>
             <div className="flex gap-2">
               <button
@@ -458,7 +472,7 @@ const StudentsPage = () => {
               </button>
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
+                disabled={currentPage >= totalPages}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next

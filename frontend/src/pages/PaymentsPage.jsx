@@ -43,25 +43,20 @@ const PaymentsPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedPaymentForHistory, setSelectedPaymentForHistory] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setLoading(true);
         const [studentsRes, paymentsRes, examsRes] = await Promise.all([
-          api.get('/accounts/students/', { params: { page_size: 1000 } }),
-          api.get('/payments/payments/'),
-          api.get('/academics/exams/'),
+          api.get('/accounts/students/', { params: { page_size: 10000 } }),
+          api.get('/payments/payments/', { params: { page_size: 10000 } }),
+          api.get('/academics/exams/', { params: { page_size: 10000 } }),
         ]);
         setStudents(studentsRes.data.results || studentsRes.data || []);
         setPayments(paymentsRes.data.results || paymentsRes.data || []);
         setExams(examsRes.data.results || examsRes.data || []);
-        if (paymentsRes.data.count) {
-          setTotalCount(paymentsRes.data.count);
-          setTotalPages(Math.ceil(paymentsRes.data.count / 20));
-        }
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -75,22 +70,9 @@ const PaymentsPage = () => {
   const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
-      const params = {
-        page: currentPage,
-        search: searchTerm,
-        ...(selectedStudent && { student: selectedStudent }),
-        ...(selectedMethod && { payment_method: selectedMethod }),
-        ...(dateFrom && { payment_date__gte: dateFrom }),
-        ...(dateTo && { payment_date__lte: dateTo }),
-      };
-
-      const response = await api.get('/payments/payments/', { params });
+      const response = await api.get('/payments/payments/', { params: { page_size: 10000 } });
       setPayments(response.data.results || response.data || []);
-
-      if (response.data.count) {
-        setTotalCount(response.data.count);
-        setTotalPages(Math.ceil(response.data.count / 20));
-      }
+      setCurrentPage(1);
     } catch (error) {
       console.error('Error fetching payments:', error);
       toast.error('Failed to fetch payments');
@@ -307,6 +289,18 @@ const PaymentsPage = () => {
       return true;
     });
   }, [payments, students, selectedFeeType, selectedMethod, selectedStudent, selectedExam, selectedCourse, selectedIntake, selectedSemester, dateFrom, dateTo, searchTerm]);
+
+  // Client-side pagination
+  const totalPages = Math.ceil(filteredPayments.length / ITEMS_PER_PAGE);
+  const paginatedPayments = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredPayments.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredPayments, currentPage, ITEMS_PER_PAGE]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedFeeType, selectedMethod, selectedStudent, selectedExam, selectedCourse, selectedIntake, selectedSemester, dateFrom, dateTo, searchTerm]);
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this payment record?')) {
@@ -676,8 +670,8 @@ const PaymentsPage = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredPayments.length > 0 ? (
-                filteredPayments.map((payment) => (
+              {paginatedPayments.length > 0 ? (
+                paginatedPayments.map((payment) => (
                   <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -762,10 +756,10 @@ const PaymentsPage = () => {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {filteredPayments.length > 0 && (
           <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
             <div className="text-sm text-gray-700">
-              Showing page {currentPage} of {totalPages} ({totalCount} total payments)
+              Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredPayments.length)} of {filteredPayments.length} payments
             </div>
             <div className="flex gap-2">
               <button
@@ -777,7 +771,7 @@ const PaymentsPage = () => {
               </button>
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
+                disabled={currentPage >= totalPages}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next

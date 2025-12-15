@@ -32,25 +32,26 @@ const ResultsPage = () => {
   const [examStats, setExamStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
   // Load all dropdown data first, then results
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setLoading(true);
-        // Load exams, subjects, and students in parallel first
-        const [examsRes, subjectsRes, studentsRes] = await Promise.all([
-          api.get('/academics/exams/'),
-          api.get('/academics/subjects/'),
-          api.get('/accounts/students/')
+        // Load exams, subjects, students, and results in parallel with large page_size
+        const [examsRes, subjectsRes, studentsRes, resultsRes] = await Promise.all([
+          api.get('/academics/exams/', { params: { page_size: 10000 } }),
+          api.get('/academics/subjects/', { params: { page_size: 10000 } }),
+          api.get('/accounts/students/', { params: { page_size: 10000 } }),
+          api.get('/academics/results/', { params: { page_size: 10000 } })
         ]);
         setExams(examsRes.data.results || examsRes.data || []);
         setSubjects(subjectsRes.data.results || subjectsRes.data || []);
         setStudents(studentsRes.data.results || studentsRes.data || []);
-        setDataLoaded(true);
-        
-        // Then load results
-        const resultsRes = await api.get('/academics/results/');
         setResults(resultsRes.data.results || resultsRes.data || []);
+        setDataLoaded(true);
         setError('');
       } catch (err) {
         console.error('Error loading data:', err);
@@ -377,16 +378,45 @@ const ResultsPage = () => {
     }
   };
 
-  const filteredResults = results.filter((result) => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
-    return (
-      result.student_id?.toLowerCase().includes(search) ||
-      result.student_name?.toLowerCase().includes(search) ||
-      result.subject_name?.toLowerCase().includes(search) ||
-      result.exam_name?.toLowerCase().includes(search)
-    );
-  });
+  const filteredResults = useMemo(() => {
+    return results.filter((result) => {
+      // Apply course/intake/semester/student/exam filters
+      if (selectedCourse || selectedIntake || selectedSemester) {
+        const student = students.find(s => s.id === result.student || s.student_id === result.student_id);
+        if (student) {
+          if (selectedCourse && student.course !== selectedCourse) return false;
+          if (selectedIntake && student.intake !== selectedIntake) return false;
+          if (selectedSemester && student.semester !== selectedSemester) return false;
+        }
+      }
+      if (selectedStudent && result.student !== parseInt(selectedStudent) && result.student_id !== selectedStudent) return false;
+      if (selectedExam && result.exam !== parseInt(selectedExam) && result.exam_id !== selectedExam) return false;
+      if (selectedSubject && result.subject !== parseInt(selectedSubject) && result.subject_id !== selectedSubject) return false;
+      
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        if (!(
+          result.student_id?.toLowerCase().includes(search) ||
+          result.student_name?.toLowerCase().includes(search) ||
+          result.subject_name?.toLowerCase().includes(search) ||
+          result.exam_name?.toLowerCase().includes(search)
+        )) return false;
+      }
+      return true;
+    });
+  }, [results, students, selectedCourse, selectedIntake, selectedSemester, selectedStudent, selectedExam, selectedSubject, searchTerm]);
+
+  // Client-side pagination
+  const totalPages = Math.ceil(filteredResults.length / ITEMS_PER_PAGE);
+  const paginatedResults = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredResults.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredResults, currentPage, ITEMS_PER_PAGE]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCourse, selectedIntake, selectedSemester, selectedStudent, selectedExam, selectedSubject, searchTerm]);
 
   const exportToCSV = () => {
     if (filteredResults.length === 0) {
@@ -817,7 +847,7 @@ const ResultsPage = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredResults.map((result) => {
+                {paginatedResults.map((result) => {
                   const totalMarks = result.subject_total_marks || result.subject?.total_marks || 0;
                   const percentage = totalMarks
                     ? ((Number(result.marks_obtained) / Number(totalMarks)) * 100).toFixed(2)
@@ -884,6 +914,31 @@ const ResultsPage = () => {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        
+        {/* Pagination */}
+        {filteredResults.length > 0 && (
+          <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
+            <div className="text-sm text-gray-700">
+              Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredResults.length)} of {filteredResults.length} results
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>
