@@ -3,7 +3,7 @@ import { Plus, Search, Download, FileText, Eye, Trash2, RotateCcw } from 'lucide
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import AddPaymentModal from '../components/payments/AddPaymentModal';
 import PaymentHistory from '../components/payments/PaymentHistory';
 
@@ -376,20 +376,25 @@ const PaymentsPage = () => {
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
     doc.text(`Total Records: ${filteredPayments.length}`, 14, 36);
 
-    // Table
-    doc.autoTable({
+    // Table - calculate received amount (amount - discount)
+    autoTable(doc, {
       startY: 42,
-      head: [['Student Name', 'Student ID', 'Amount', 'Date', 'Method', 'Fee Type', 'Regularity']],
-      body: filteredPayments.map(p => [
-        p.student_name || 'N/A',
-        p.student_id || 'N/A',
-        `${p.amount_paid}`,
-        p.payment_date,
-        p.payment_method?.replace('_', ' ') || 'N/A',
-        p.fee_type?.replace('_', ' ') || 'N/A',
-        p.payment_regularity || 'N/A',
-      ]),
-      styles: { fontSize: 8 },
+      head: [['Student Name', 'Student ID', 'Amount', 'Discount', 'Received', 'Date', 'Method', 'Fee Type', 'Regularity']],
+      body: filteredPayments.map(p => {
+        const received = parseFloat(p.amount_paid || 0) - parseFloat(p.discount_amount || 0);
+        return [
+          p.student_name || 'N/A',
+          p.student_id || 'N/A',
+          `${p.amount_paid}`,
+          `${p.discount_amount || 0}`,
+          `${received}`,
+          p.payment_date,
+          p.payment_method?.replace('_', ' ') || 'N/A',
+          p.fee_type?.replace('_', ' ') || 'N/A',
+          p.payment_regularity || 'N/A',
+        ];
+      }),
+      styles: { fontSize: 7 },
       headStyles: { fillColor: [59, 130, 246] },
     });
 
@@ -648,6 +653,9 @@ const PaymentsPage = () => {
                   Amount
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Received
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Payment Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -687,10 +695,15 @@ const PaymentsPage = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-green-600">৳{Number(payment.amount_paid).toLocaleString()}</div>
+                      <div className="text-sm font-medium text-gray-900">৳{Number(payment.amount_paid).toLocaleString()}</div>
                       {payment.discount_amount > 0 && (
                         <div className="text-xs text-gray-500">Discount: ৳{payment.discount_amount}</div>
                       )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-semibold text-green-600">
+                        ৳{(Number(payment.amount_paid) - Number(payment.discount_amount || 0)).toLocaleString()}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(payment.payment_date).toLocaleDateString()}

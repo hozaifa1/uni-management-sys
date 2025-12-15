@@ -6,7 +6,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import api from '../services/api';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
@@ -98,7 +98,7 @@ const ReportsPage = () => {
     doc.setFontSize(10);
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: 36,
       head: [['Semester', 'Total Amount', 'Discount', 'Net Amount', 'Payments', 'Students']],
       body: semesterWiseData.map(s => [
@@ -129,7 +129,7 @@ const ReportsPage = () => {
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
     doc.text(`Total Due: ৳${duesData.summary?.total_due?.toLocaleString() || 0}`, 14, 36);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: 42,
       head: [['Student ID', 'Name', 'Course', 'Intake', 'Semester', 'Total Fee', 'Paid', 'Due']],
       body: duesData.data.map(d => [
@@ -192,11 +192,29 @@ const ReportsPage = () => {
         </button>
       </div>
 
-      {/* Filters */}
+      {/* Filters and Export */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border border-gray-100">
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-5 h-5 text-gray-500" />
-          <h3 className="font-semibold text-gray-700">Filters</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-gray-500" />
+            <h3 className="font-semibold text-gray-700">Filters</h3>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={exportSemesterWisePDF}
+              className="flex items-center gap-2 px-3 py-2 text-sm bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100"
+            >
+              <Download className="w-4 h-4" />
+              Export Semester PDF
+            </button>
+            <button
+              onClick={exportDuesPDF}
+              className="flex items-center gap-2 px-3 py-2 text-sm bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100"
+            >
+              <Download className="w-4 h-4" />
+              Export Dues PDF
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>

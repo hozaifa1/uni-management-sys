@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X, Search, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -37,46 +37,14 @@ const AddPaymentModal = ({ onClose, onSuccess, students = [] }) => {
     transaction_id: '',
     remarks: '',
   });
-  const [feeStructures, setFeeStructures] = useState([]);
   const [loading, setLoading] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
 
-  useEffect(() => {
-    if (selectedStudent) {
-      fetchFeeStructures(selectedStudent);
-    }
-  }, [selectedStudent]);
-
-  const fetchFeeStructures = async (student) => {
-    try {
-      const params = {};
-      if (student.course) params.course = student.course;
-      if (student.semester) params.semester = student.semester;
-      
-      const response = await api.get('/payments/fee-structures/', { params });
-      setFeeStructures(response.data.results || response.data || []);
-    } catch (error) {
-      console.error('Error fetching fee structures:', error);
-    }
-  };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleFeeStructureChange = (e) => {
-    const feeId = e.target.value;
-    setFormData((prev) => ({ ...prev, fee_structure: feeId }));
-    
-    if (feeId) {
-      const fee = feeStructures.find(f => f.id === parseInt(feeId));
-      if (fee) {
-        setFormData((prev) => ({ ...prev, amount_paid: fee.amount }));
-      }
-    }
   };
 
   const handleStudentSelect = (student) => {
@@ -260,27 +228,6 @@ const AddPaymentModal = ({ onClose, onSuccess, students = [] }) => {
               </p>
             </div>
           )}
-
-          {/* Fee Structure */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Fee Type
-            </label>
-            <select
-              name="fee_structure"
-              value={formData.fee_structure}
-              onChange={handleFeeStructureChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={!selectedStudent}
-            >
-              <option value="">Select Fee Type (Optional)</option>
-              {feeStructures.map((fee) => (
-                <option key={fee.id} value={fee.id}>
-                  {fee.fee_type?.replace('_', ' ')} - ৳{fee.amount} (Due: {new Date(fee.due_date).toLocaleDateString()})
-                </option>
-              ))}
-            </select>
-          </div>
 
           {/* Fee Type and Regularity */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

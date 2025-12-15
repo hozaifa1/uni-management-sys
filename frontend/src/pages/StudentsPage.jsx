@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Eye, Download, FileText, Phone, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import api from '../services/api';
 import AddStudentModal from '../components/students/AddStudentModal';
 import StudentDetailModal from '../components/students/StudentDetailModal';
@@ -109,7 +109,7 @@ const StudentsPage = () => {
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
     doc.text(`Total Students: ${filteredStudents.length}`, 14, 36);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: 42,
       head: [['Student ID', 'Name', 'Course', 'Intake', 'Semester', 'Phone', 'Email']],
       body: filteredStudents.map(s => [
@@ -144,7 +144,7 @@ const StudentsPage = () => {
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
     doc.text(`Total: ${studentsWithPhone.length} students`, 14, 36);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: 42,
       head: [['Student ID', 'Name', 'Course', 'Phone Number']],
       body: studentsWithPhone.map(s => [
@@ -176,7 +176,7 @@ const StudentsPage = () => {
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
     doc.text(`Total: ${studentsWithAddress.length} students`, 14, 36);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: 42,
       head: [['Student ID', 'Name', 'Course', 'Present Address']],
       body: studentsWithAddress.map(s => [

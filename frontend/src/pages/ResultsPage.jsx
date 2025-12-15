@@ -3,7 +3,7 @@ import { Search, Plus, Edit, Trash2, Eye, RotateCcw, Users, TrendingUp, Award, X
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import api from '../services/api';
 import ReportCardViewer from '../components/academics/ReportCardViewer';
 import AddResultModal from '../components/academics/AddResultModal';
@@ -435,7 +435,7 @@ const ResultsPage = () => {
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
     doc.text(`Total Records: ${filteredResults.length}`, 14, 36);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: 42,
       head: [['Student', 'Student ID', 'Exam', 'Subject', 'Marks', 'Grade']],
       body: filteredResults.map(r => [

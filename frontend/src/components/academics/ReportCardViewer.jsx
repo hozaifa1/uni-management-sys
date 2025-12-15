@@ -247,11 +247,9 @@ const ReportCardViewer = () => {
     );
     const subject = encodeURIComponent(`Report Card - ${examName}`);
 
-    // Use window.location.href for better cross-browser compatibility with mailto
+    // Open mailto in new tab
     const mailtoUrl = `mailto:${student.user.email}?subject=${subject}&body=${body}`;
-    const link = document.createElement('a');
-    link.href = mailtoUrl;
-    link.click();
+    window.open(mailtoUrl, '_blank');
     toast.success(`Opening email client for ${student.user.email}`);
   };
 
