@@ -8,9 +8,13 @@ class FeeStructure(models.Model):
     """
     
     FEE_TYPE_CHOICES = [
-        ('tuition', 'Tuition Fee'),
-        ('exam', 'Examination Fee'),
-        ('admission', 'Admission Fee'),
+        ('lab_fee', 'Lab Fee'),
+        ('library_fee', 'Library Fee'),
+        ('fine', 'Fine'),
+        ('semester_fee', 'Semester Fee'),
+        ('tuition_fee', 'Tuition Fee'),
+        ('admission_fee', 'Admission Fee'),
+        ('exam_fee', 'Exam Fee'),
     ]
 
     COURSE_CHOICES = [
@@ -65,12 +69,6 @@ class FeeStructure(models.Model):
         help_text='Semester'
     )
 
-    session = models.CharField(
-        max_length=20,
-        default='2024-2025',
-        help_text='Academic session (e.g., 2024-2025)'
-    )
-    
     fee_type = models.CharField(
         max_length=20,
         choices=FEE_TYPE_CHOICES,
@@ -114,6 +112,21 @@ class Payment(models.Model):
         ('cash', 'Cash'),
         ('bank_transfer', 'Bank Transfer'),
         ('online', 'Online Payment'),
+    ]
+
+    REGULARITY_CHOICES = [
+        ('regular', 'Regular'),
+        ('irregular', 'Irregular'),
+    ]
+
+    FEE_TYPE_CHOICES = [
+        ('lab_fee', 'Lab Fee'),
+        ('library_fee', 'Library Fee'),
+        ('fine', 'Fine'),
+        ('semester_fee', 'Semester Fee'),
+        ('tuition_fee', 'Tuition Fee'),
+        ('admission_fee', 'Admission Fee'),
+        ('exam_fee', 'Exam Fee'),
     ]
     
     student = models.ForeignKey(
@@ -167,6 +180,21 @@ class Payment(models.Model):
         blank=True,
         null=True,
         help_text='Additional remarks'
+    )
+
+    payment_regularity = models.CharField(
+        max_length=20,
+        choices=REGULARITY_CHOICES,
+        default='regular',
+        help_text='Payment regularity status (Regular/Irregular)'
+    )
+
+    fee_type = models.CharField(
+        max_length=20,
+        choices=FEE_TYPE_CHOICES,
+        blank=True,
+        null=True,
+        help_text='Direct fee type (when not linked to FeeStructure)'
     )
     
     created_at = models.DateTimeField(auto_now_add=True)

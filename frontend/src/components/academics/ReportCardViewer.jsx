@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Download, FileText, Mail, RotateCcw } from 'lucide-react';
+import { Download, FileText, Mail, RotateCcw, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
@@ -12,7 +12,6 @@ const ReportCardViewer = () => {
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedIntake, setSelectedIntake] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
-  const [selectedSession, setSelectedSession] = useState('');
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState('');
@@ -82,10 +81,6 @@ const ReportCardViewer = () => {
     if (selectedSemester) {
       filteredStudents = filteredStudents.filter(s => s.semester === selectedSemester);
     }
-    if (selectedSession) {
-      filteredStudents = filteredStudents.filter(s => s.session === selectedSession);
-    }
-    
     // Get available intakes based on selected course
     let availableIntakes = availableOptions.intakes;
     if (selectedCourse) {
@@ -148,13 +143,12 @@ const ReportCardViewer = () => {
       semesters: availableSemesters,
       sessions: availableSessions
     };
-  }, [availableOptions, selectedCourse, selectedIntake, selectedSemester, selectedSession, selectedStudent, results]);
+  }, [availableOptions, selectedCourse, selectedIntake, selectedSemester, selectedStudent, results]);
 
   const handleCourseChange = (value) => {
     setSelectedCourse(value);
     setSelectedIntake('');
     setSelectedSemester('');
-    setSelectedSession('');
     setSelectedStudent('');
     setSelectedExam('');
   };
@@ -171,11 +165,6 @@ const ReportCardViewer = () => {
     setSelectedExam('');
   };
 
-  const handleSessionChange = (value) => {
-    setSelectedSession(value);
-    setSelectedStudent('');
-    setSelectedExam('');
-  };
 
   // Handle student selection - back-propagate course/intake/semester/session
   const handleStudentChange = (studentId) => {
@@ -187,7 +176,6 @@ const ReportCardViewer = () => {
         if (student.course) setSelectedCourse(student.course);
         if (student.intake) setSelectedIntake(student.intake);
         if (student.semester) setSelectedSemester(student.semester);
-        if (student.session) setSelectedSession(student.session);
       }
     }
   };
@@ -259,15 +247,57 @@ const ReportCardViewer = () => {
     );
     const subject = encodeURIComponent(`Report Card - ${examName}`);
 
-    window.open(`mailto:${student.user.email}?subject=${subject}&body=${body}`, '_blank');
+    // Use window.location.href for better cross-browser compatibility with mailto
+    const mailtoUrl = `mailto:${student.user.email}?subject=${subject}&body=${body}`;
+    const link = document.createElement('a');
+    link.href = mailtoUrl;
+    link.click();
     toast.success(`Opening email client for ${student.user.email}`);
+  };
+
+  const handleSendWhatsApp = () => {
+    if (!selectedStudent || !selectedExam) {
+      setError('Please select both student and exam');
+      return;
+    }
+
+    const student = filteredOptions.students.find(
+      (s) => s.id === parseInt(selectedStudent) || s.id === selectedStudent
+    );
+    const exam = filteredOptions.exams.find(
+      (e) => e.id === parseInt(selectedExam) || e.id === selectedExam
+    );
+
+    if (!student || !student.user?.phone_number) {
+      const errorMsg = 'Selected student does not have a phone number on file.';
+      setError(errorMsg);
+      toast.error(errorMsg);
+      return;
+    }
+
+    const studentName = student.user?.first_name
+      ? `${student.user.first_name} ${student.user.last_name || ''}`.trim()
+      : student.student_id;
+    const examName = exam?.name || 'Exam';
+    
+    // Format phone number (remove spaces, add country code if needed)
+    let phoneNumber = student.user.phone_number.replace(/\s+/g, '').replace(/-/g, '');
+    if (!phoneNumber.startsWith('+')) {
+      phoneNumber = '+880' + phoneNumber.replace(/^0/, ''); // Bangladesh country code
+    }
+    
+    const message = encodeURIComponent(
+      `Dear ${studentName},\n\nYour report card for ${examName} is ready.\n\nCourse: ${student.course || 'N/A'}\nIntake: ${student.intake || 'N/A'}\nSemester: ${student.semester || 'N/A'}\n\nPlease log in to the portal to view your detailed results.\n\nBest regards,\nIGMIS Administration`
+    );
+
+    window.open(`https://wa.me/${phoneNumber.replace('+', '')}?text=${message}`, '_blank');
+    toast.success(`Opening WhatsApp for ${student.user.phone_number}`);
   };
 
   const handleResetFilters = () => {
     setSelectedCourse('');
     setSelectedIntake('');
     setSelectedSemester('');
-    setSelectedSession('');
     setSelectedStudent('');
     setSelectedExam('');
     setError('');
@@ -346,22 +376,6 @@ const ReportCardViewer = () => {
               </select>
             </div>
 
-            {/* Session Filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Session</label>
-              <select
-                value={selectedSession}
-                onChange={(e) => handleSessionChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Sessions ({filteredOptions.sessions.length})</option>
-                {filteredOptions.sessions.map((session) => (
-                  <option key={session} value={session}>
-                    {session}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
 
           {/* Row 2: Student and Exam Selection */}
@@ -438,6 +452,15 @@ const ReportCardViewer = () => {
         >
           <Mail className="w-5 h-5 mr-2" />
           Send to Email
+        </button>
+
+        <button
+          onClick={handleSendWhatsApp}
+          disabled={!selectedStudent || !selectedExam || loading}
+          className="flex items-center px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+        >
+          <MessageCircle className="w-5 h-5 mr-2" />
+          Send via WhatsApp
         </button>
       </div>
       )}

@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage';
 import StudentsPage from './pages/StudentsPage';
 import ResultsPage from './pages/ResultsPage';
 import PaymentsPage from './pages/PaymentsPage';
+import ReportsPage from './pages/ReportsPage';
 import StudentDashboard from './pages/student/StudentDashboard';
 import MyResults from './pages/student/MyResults';
 import MyPayments from './pages/student/MyPayments';
@@ -141,10 +142,7 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['ADMIN', 'TEACHER']}>
                 <DashboardLayout>
-                  <div className="text-center py-12">
-                    <h2 className="text-2xl font-bold text-gray-900">Reports Page</h2>
-                    <p className="text-gray-600 mt-2">Coming soon...</p>
-                  </div>
+                  <ReportsPage />
                 </DashboardLayout>
               </ProtectedRoute>
             }

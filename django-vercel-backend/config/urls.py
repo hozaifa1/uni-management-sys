@@ -30,6 +30,7 @@ def api_root(request):
                 'students': '/api/students/',
                 'academics': '/api/academics/',
                 'payments': '/api/payments/',
+                'reports': '/api/reports/',
             },
             'auth': {
                 'token': '/api/token/',
@@ -55,6 +56,7 @@ urlpatterns = [
     path('api/students/', include('students.urls')),
     path('api/academics/', include('academics.urls')),
     path('api/payments/', include('payments.urls')),
+    path('api/reports/', include('reports.urls')),
     
     # DRF browsable API login/logout
     path('api-auth/', include('rest_framework.urls')),

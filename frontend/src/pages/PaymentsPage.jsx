@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, Search, Download, DollarSign, TrendingUp, Calendar, CreditCard, Eye, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, Search, Download, FileText, Eye, Trash2, RotateCcw } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import AddPaymentModal from '../components/payments/AddPaymentModal';
 import PaymentHistory from '../components/payments/PaymentHistory';
 
@@ -14,9 +16,13 @@ const PAYMENT_METHOD_OPTIONS = [
 
 const FEE_TYPE_OPTIONS = [
   { value: '', label: 'All Types' },
-  { value: 'tuition', label: 'Tuition Fee' },
-  { value: 'exam', label: 'Examination Fee' },
-  { value: 'admission', label: 'Admission Fee' },
+  { value: 'lab_fee', label: 'Lab Fee' },
+  { value: 'library_fee', label: 'Library Fee' },
+  { value: 'fine', label: 'Fine' },
+  { value: 'semester_fee', label: 'Semester Fee' },
+  { value: 'tuition_fee', label: 'Tuition Fee' },
+  { value: 'admission_fee', label: 'Admission Fee' },
+  { value: 'exam_fee', label: 'Exam Fee' },
 ];
 
 const PaymentsPage = () => {
@@ -29,7 +35,6 @@ const PaymentsPage = () => {
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedIntake, setSelectedIntake] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
-  const [selectedSession, setSelectedSession] = useState('');
   const [selectedMethod, setSelectedMethod] = useState('');
   const [selectedFeeType, setSelectedFeeType] = useState('');
   const [selectedExam, setSelectedExam] = useState('');
@@ -40,13 +45,6 @@ const PaymentsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [statistics, setStatistics] = useState({
-    total_revenue: 0,
-    total_expenses: 0,
-    net_profit: 0,
-    pending_payments: 0,
-    total_students: 0,
-  });
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -71,17 +69,8 @@ const PaymentsPage = () => {
       }
     };
     loadInitialData();
-    fetchStatistics();
   }, []);
 
-  const fetchStatistics = async () => {
-    try {
-      const response = await api.get('/payments/payments/statistics/');
-      setStatistics(response.data);
-    } catch (error) {
-      console.error('Error fetching statistics:', error);
-    }
-  };
 
   const fetchPayments = useCallback(async () => {
     try {
@@ -123,13 +112,11 @@ const PaymentsPage = () => {
     const courses = [...new Set(studentsWithPayments.map((s) => s.course).filter(Boolean))];
     const intakes = [...new Set(studentsWithPayments.map((s) => s.intake).filter(Boolean))];
     const semesters = [...new Set(studentsWithPayments.map((s) => s.semester).filter(Boolean))];
-    const sessions = [...new Set(studentsWithPayments.map((s) => s.session).filter(Boolean))];
 
     return {
       courses,
       intakes,
       semesters,
-      sessions,
       studentsWithPayments,
       studentIdsWithPayments,
     };
@@ -148,10 +135,6 @@ const PaymentsPage = () => {
     if (selectedSemester) {
       filteredStudents = filteredStudents.filter((s) => s.semester === selectedSemester);
     }
-    if (selectedSession) {
-      filteredStudents = filteredStudents.filter((s) => s.session === selectedSession);
-    }
-
     let availableIntakes = availableOptions.intakes;
     if (selectedCourse) {
       availableIntakes = [
@@ -180,23 +163,6 @@ const PaymentsPage = () => {
       ];
     }
 
-    let availableSessions = availableOptions.sessions;
-    if (selectedCourse || selectedIntake || selectedSemester) {
-      availableSessions = [
-        ...new Set(
-          availableOptions.studentsWithPayments
-            .filter(
-              (s) =>
-                (!selectedCourse || s.course === selectedCourse) &&
-                (!selectedIntake || s.intake === selectedIntake) &&
-                (!selectedSemester || s.semester === selectedSemester)
-            )
-            .map((s) => s.session)
-            .filter(Boolean)
-        ),
-      ];
-    }
-
     // Filter exams based on course/intake/semester
     let filteredExams = exams;
     if (selectedCourse || selectedIntake || selectedSemester) {
@@ -212,7 +178,6 @@ const PaymentsPage = () => {
       students: filteredStudents,
       intakes: availableIntakes,
       semesters: availableSemesters,
-      sessions: availableSessions,
       exams: filteredExams,
     };
   }, [
@@ -220,7 +185,6 @@ const PaymentsPage = () => {
     selectedCourse,
     selectedIntake,
     selectedSemester,
-    selectedSession,
     exams,
   ]);
 
@@ -229,7 +193,6 @@ const PaymentsPage = () => {
     setSelectedCourse(value);
     setSelectedIntake('');
     setSelectedSemester('');
-    setSelectedSession('');
     setSelectedStudent('');
     setSelectedExam('');
   };
@@ -246,22 +209,15 @@ const PaymentsPage = () => {
     setSelectedExam('');
   };
 
-  const handleSessionChange = (value) => {
-    setSelectedSession(value);
-    setSelectedStudent('');
-    setSelectedExam('');
-  };
-
   const handleStudentChange = (studentId) => {
     setSelectedStudent(studentId);
     if (studentId) {
       const student = students.find(s => s.id === parseInt(studentId) || s.id === studentId);
       if (student) {
-        // Back-propagate student's course/intake/semester/session
+        // Back-propagate student's course/intake/semester
         if (student.course) setSelectedCourse(student.course);
         if (student.intake) setSelectedIntake(student.intake);
         if (student.semester) setSelectedSemester(student.semester);
-        if (student.session) setSelectedSession(student.session);
       }
     }
   };
@@ -277,7 +233,6 @@ const PaymentsPage = () => {
     setSelectedCourse('');
     setSelectedIntake('');
     setSelectedSemester('');
-    setSelectedSession('');
     setSelectedStudent('');
     setSelectedMethod('');
     setSelectedFeeType('');
@@ -327,8 +282,8 @@ const PaymentsPage = () => {
         if (paymentDate > toDate) return false;
       }
       
-      // Course/Intake/Semester/Session filters - filter by student's attributes
-      if (selectedCourse || selectedIntake || selectedSemester || selectedSession) {
+      // Course/Intake/Semester filters - filter by student's attributes
+      if (selectedCourse || selectedIntake || selectedSemester) {
         const paymentStudentId = payment.student ?? payment.student_id;
         const student = students.find(s => s.id === paymentStudentId || s.id === parseInt(paymentStudentId));
         
@@ -337,7 +292,6 @@ const PaymentsPage = () => {
         if (selectedCourse && student.course !== selectedCourse) return false;
         if (selectedIntake && student.intake !== selectedIntake) return false;
         if (selectedSemester && student.semester !== selectedSemester) return false;
-        if (selectedSession && student.session !== selectedSession) return false;
       }
       
       // Search term filter
@@ -352,7 +306,7 @@ const PaymentsPage = () => {
       
       return true;
     });
-  }, [payments, students, selectedFeeType, selectedMethod, selectedStudent, selectedExam, selectedCourse, selectedIntake, selectedSemester, selectedSession, dateFrom, dateTo, searchTerm]);
+  }, [payments, students, selectedFeeType, selectedMethod, selectedStudent, selectedExam, selectedCourse, selectedIntake, selectedSemester, dateFrom, dateTo, searchTerm]);
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this payment record?')) {
@@ -360,7 +314,6 @@ const PaymentsPage = () => {
         await api.delete(`/payments/payments/${id}/`);
         toast.success('Payment deleted successfully');
         fetchPayments();
-        fetchStatistics();
       } catch (error) {
         console.error('Error deleting payment:', error);
         toast.error('Failed to delete payment');
@@ -371,17 +324,16 @@ const PaymentsPage = () => {
   const handleAddSuccess = () => {
     setShowAddModal(false);
     fetchPayments();
-    fetchStatistics();
   };
 
   const exportToCSV = () => {
-    if (payments.length === 0) {
+    if (filteredPayments.length === 0) {
       toast.error('No payments to export');
       return;
     }
 
-    const headers = ['Student Name', 'Student ID', 'Amount', 'Payment Date', 'Method', 'Transaction ID', 'Fee Type'];
-    const csvData = payments.map(p => [
+    const headers = ['Student Name', 'Student ID', 'Amount', 'Payment Date', 'Method', 'Transaction ID', 'Fee Type', 'Regularity'];
+    const csvData = filteredPayments.map(p => [
       p.student_name || 'N/A',
       p.student_id || 'N/A',
       p.amount_paid,
@@ -389,6 +341,7 @@ const PaymentsPage = () => {
       p.payment_method,
       p.transaction_id || 'N/A',
       p.fee_type || 'N/A',
+      p.payment_regularity || 'N/A',
     ]);
 
     const csvContent = [
@@ -405,7 +358,43 @@ const PaymentsPage = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success('Payments exported successfully');
+    toast.success('Payments exported to CSV successfully');
+  };
+
+  const exportToPDF = () => {
+    if (filteredPayments.length === 0) {
+      toast.error('No payments to export');
+      return;
+    }
+
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(18);
+    doc.text('Payment Records', 14, 22);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.text(`Total Records: ${filteredPayments.length}`, 14, 36);
+
+    // Table
+    doc.autoTable({
+      startY: 42,
+      head: [['Student Name', 'Student ID', 'Amount', 'Date', 'Method', 'Fee Type', 'Regularity']],
+      body: filteredPayments.map(p => [
+        p.student_name || 'N/A',
+        p.student_id || 'N/A',
+        `${p.amount_paid}`,
+        p.payment_date,
+        p.payment_method?.replace('_', ' ') || 'N/A',
+        p.fee_type?.replace('_', ' ') || 'N/A',
+        p.payment_regularity || 'N/A',
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
+    });
+
+    doc.save(`payments_export_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('Payments exported to PDF successfully');
   };
 
   if (loading && payments.length === 0) {
@@ -433,65 +422,19 @@ const PaymentsPage = () => {
             Export CSV
           </button>
           <button
+            onClick={exportToPDF}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <FileText className="w-5 h-5" />
+            Export PDF
+          </button>
+          <button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md"
           >
             <Plus className="w-5 h-5" />
             Add Payment
           </button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Total Revenue</p>
-              <p className="text-2xl font-bold text-green-600">৳{Number(statistics.total_revenue || 0).toLocaleString()}</p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-full">
-              <DollarSign className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Total Expenses</p>
-              <p className="text-2xl font-bold text-red-600">৳{Number(statistics.total_expenses || 0).toLocaleString()}</p>
-            </div>
-            <div className="p-3 bg-red-100 rounded-full">
-              <TrendingUp className="w-6 h-6 text-red-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Net Profit</p>
-              <p className={`text-2xl font-bold ${Number(statistics.net_profit) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                ৳{Number(statistics.net_profit || 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <TrendingUp className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Pending Payments</p>
-              <p className="text-2xl font-bold text-orange-600">৳{Number(statistics.pending_payments || 0).toLocaleString()}</p>
-            </div>
-            <div className="p-3 bg-orange-100 rounded-full">
-              <Calendar className="w-6 h-6 text-orange-600" />
-            </div>
-          </div>
         </div>
       </div>
 
@@ -545,23 +488,6 @@ const PaymentsPage = () => {
               {filteredOptions.semesters.map((sem) => (
                 <option key={sem} value={sem}>
                   {sem}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Session Filter */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Session</label>
-            <select
-              value={selectedSession}
-              onChange={(e) => handleSessionChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Sessions ({filteredOptions.sessions.length})</option>
-              {filteredOptions.sessions.map((session) => (
-                <option key={session} value={session}>
-                  {session}
                 </option>
               ))}
             </select>
@@ -733,6 +659,9 @@ const PaymentsPage = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Transaction ID
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Regularity
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
@@ -778,6 +707,15 @@ const PaymentsPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
                       {payment.transaction_id || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${
+                        payment.payment_regularity === 'regular' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-orange-100 text-orange-800'
+                      }`}>
+                        {payment.payment_regularity || 'Regular'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">

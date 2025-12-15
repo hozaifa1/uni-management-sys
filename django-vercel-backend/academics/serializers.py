@@ -27,7 +27,7 @@ class ExamSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exam
         fields = [
-            'id', 'name', 'exam_type', 'course', 'intake', 'semester', 'session',
+            'id', 'name', 'exam_type', 'course', 'intake', 'semester',
             'exam_date', 'total_marks', 'description', 'results_count',
             'created_at', 'updated_at'
         ]
@@ -48,7 +48,7 @@ class ExamDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exam
         fields = [
-            'id', 'name', 'exam_type', 'course', 'intake', 'semester', 'session',
+            'id', 'name', 'exam_type', 'course', 'intake', 'semester',
             'exam_date', 'total_marks', 'description', 'results_count',
             'average_marks', 'pass_rate', 'created_at', 'updated_at'
         ]
@@ -107,7 +107,7 @@ class ResultSerializer(serializers.ModelSerializer):
             'subject', 'subject_name', 'subject_code',
             'subject_total_marks',
             'marks_obtained', 'grade', 'percentage', 'remarks',
-            'created_at', 'updated_at'
+            'teacher_comment', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     
@@ -163,7 +163,8 @@ class ResultDetailSerializer(serializers.ModelSerializer):
         model = Result
         fields = [
             'id', 'student', 'exam', 'subject', 'marks_obtained',
-            'grade', 'percentage', 'remarks', 'created_at', 'updated_at'
+            'grade', 'percentage', 'remarks', 'teacher_comment',
+            'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     

@@ -9,19 +9,35 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: 'online', label: 'Online Payment' },
 ];
 
+const FEE_TYPE_OPTIONS = [
+  { value: 'lab_fee', label: 'Lab Fee' },
+  { value: 'library_fee', label: 'Library Fee' },
+  { value: 'fine', label: 'Fine' },
+  { value: 'semester_fee', label: 'Semester Fee' },
+  { value: 'tuition_fee', label: 'Tuition Fee' },
+  { value: 'admission_fee', label: 'Admission Fee' },
+  { value: 'exam_fee', label: 'Exam Fee' },
+];
+
+const REGULARITY_OPTIONS = [
+  { value: 'regular', label: 'Regular' },
+  { value: 'irregular', label: 'Irregular' },
+];
+
 const AddPaymentModal = ({ onClose, onSuccess, students = [] }) => {
   const [formData, setFormData] = useState({
     student: '',
     fee_structure: '',
+    fee_type: '',
     amount_paid: '',
     discount_amount: '0',
     payment_date: new Date().toISOString().split('T')[0],
     payment_method: 'cash',
+    payment_regularity: 'regular',
     transaction_id: '',
     remarks: '',
   });
   const [feeStructures, setFeeStructures] = useState([]);
-  const [selectedFee, setSelectedFee] = useState(null);
   const [loading, setLoading] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
@@ -57,12 +73,9 @@ const AddPaymentModal = ({ onClose, onSuccess, students = [] }) => {
     
     if (feeId) {
       const fee = feeStructures.find(f => f.id === parseInt(feeId));
-      setSelectedFee(fee);
       if (fee) {
         setFormData((prev) => ({ ...prev, amount_paid: fee.amount }));
       }
-    } else {
-      setSelectedFee(null);
     }
   };
 
@@ -134,6 +147,8 @@ const AddPaymentModal = ({ onClose, onSuccess, students = [] }) => {
         discount_amount: formData.discount_amount || 0,
         payment_date: formData.payment_date,
         payment_method: formData.payment_method,
+        payment_regularity: formData.payment_regularity || 'regular',
+        fee_type: formData.fee_type || null,
         transaction_id: formData.transaction_id || null,
         remarks: formData.remarks || null,
       };
@@ -265,6 +280,46 @@ const AddPaymentModal = ({ onClose, onSuccess, students = [] }) => {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Fee Type and Regularity */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Fee Type
+              </label>
+              <select
+                name="fee_type"
+                value={formData.fee_type}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select Fee Type</option>
+                {FEE_TYPE_OPTIONS.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Regularity
+              </label>
+              <select
+                name="payment_regularity"
+                value={formData.payment_regularity}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {REGULARITY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Amount and Discount */}

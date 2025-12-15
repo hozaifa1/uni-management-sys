@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, Filter, Plus, Edit, Trash2, Eye, RotateCcw, Users, TrendingUp, Award, XCircle, BarChart3 } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Eye, RotateCcw, Users, TrendingUp, Award, XCircle, BarChart3, Download, FileText } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import toast from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import api from '../services/api';
 import ReportCardViewer from '../components/academics/ReportCardViewer';
 import AddResultModal from '../components/academics/AddResultModal';
@@ -20,7 +22,6 @@ const ResultsPage = () => {
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedIntake, setSelectedIntake] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
-  const [selectedSession, setSelectedSession] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingResult, setEditingResult] = useState(null);
   const [editMarks, setEditMarks] = useState('');
@@ -69,7 +70,6 @@ const ResultsPage = () => {
         if (selectedCourse) params.course = selectedCourse;
         if (selectedIntake) params.intake = selectedIntake;
         if (selectedSemester) params.semester = selectedSemester;
-        if (selectedSession) params.session = selectedSession;
         const examsRes = await api.get('/academics/exams/', { params });
         setExams(examsRes.data.results || examsRes.data || []);
       } catch (err) {
@@ -79,7 +79,7 @@ const ResultsPage = () => {
     if (dataLoaded) {
       fetchFilteredExams();
     }
-  }, [selectedCourse, selectedIntake, selectedSemester, selectedSession, dataLoaded]);
+  }, [selectedCourse, selectedIntake, selectedSemester, dataLoaded]);
 
   // Fetch exam statistics when an exam is selected
   useEffect(() => {
@@ -112,8 +112,6 @@ const ResultsPage = () => {
       if (selectedCourse) params.course = selectedCourse;
       if (selectedIntake) params.intake = selectedIntake;
       if (selectedSemester) params.semester = selectedSemester;
-      if (selectedSession) params.session = selectedSession;
-
       const response = await api.get('/academics/results/', { params });
       setResults(response.data.results || response.data || []);
       setError('');
@@ -123,7 +121,7 @@ const ResultsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedCourse, selectedExam, selectedIntake, selectedSemester, selectedSession, selectedStudent, selectedSubject]);
+  }, [selectedCourse, selectedExam, selectedIntake, selectedSemester, selectedStudent, selectedSubject]);
 
   // Fetch results when any filter changes
   useEffect(() => {
@@ -136,7 +134,6 @@ const ResultsPage = () => {
     setSelectedCourse(value);
     setSelectedIntake('');
     setSelectedSemester('');
-    setSelectedSession('');
     setSelectedStudent('');
     setSelectedExam('');
   };
@@ -153,17 +150,11 @@ const ResultsPage = () => {
     setSelectedExam('');
   };
 
-  const handleSessionChange = (value) => {
-    setSelectedSession(value);
-    setSelectedStudent('');
-    setSelectedExam('');
-  };
 
   const handleResetFilters = () => {
     setSelectedCourse('');
     setSelectedIntake('');
     setSelectedSemester('');
-    setSelectedSession('');
     setSelectedExam('');
     setSelectedSubject('');
     setSelectedStudent('');
@@ -189,14 +180,12 @@ const ResultsPage = () => {
     const courses = [...new Set(studentsWithResults.map((s) => s.course).filter(Boolean))];
     const intakes = [...new Set(studentsWithResults.map((s) => s.intake).filter(Boolean))];
     const semesters = [...new Set(studentsWithResults.map((s) => s.semester).filter(Boolean))];
-    const sessions = [...new Set(studentsWithResults.map((s) => s.session).filter(Boolean))];
     const examsWithResults = exams.filter((e) => examIdsWithResults.has(e.id));
 
     return {
       courses,
       intakes,
       semesters,
-      sessions,
       studentsWithResults,
       examsWithResults,
       studentIdsWithResults,
@@ -217,10 +206,6 @@ const ResultsPage = () => {
     if (selectedSemester) {
       filteredStudents = filteredStudents.filter((s) => s.semester === selectedSemester);
     }
-    if (selectedSession) {
-      filteredStudents = filteredStudents.filter((s) => s.session === selectedSession);
-    }
-
     let availableIntakes = availableOptions.intakes;
     if (selectedCourse) {
       availableIntakes = [
@@ -244,23 +229,6 @@ const ResultsPage = () => {
                 (!selectedIntake || s.intake === selectedIntake)
             )
             .map((s) => s.semester)
-            .filter(Boolean)
-        ),
-      ];
-    }
-
-    let availableSessions = availableOptions.sessions;
-    if (selectedCourse || selectedIntake || selectedSemester) {
-      availableSessions = [
-        ...new Set(
-          availableOptions.studentsWithResults
-            .filter(
-              (s) =>
-                (!selectedCourse || s.course === selectedCourse) &&
-                (!selectedIntake || s.intake === selectedIntake) &&
-                (!selectedSemester || s.semester === selectedSemester)
-            )
-            .map((s) => s.session)
             .filter(Boolean)
         ),
       ];
@@ -294,14 +262,12 @@ const ResultsPage = () => {
       exams: filteredExams,
       intakes: availableIntakes,
       semesters: availableSemesters,
-      sessions: availableSessions,
     };
   }, [
     availableOptions,
     selectedCourse,
     selectedIntake,
     selectedSemester,
-    selectedSession,
     selectedStudent,
     results,
   ]);
@@ -311,11 +277,10 @@ const ResultsPage = () => {
     if (studentId) {
       const student = students.find(s => s.id === parseInt(studentId) || s.id === studentId);
       if (student) {
-        // Back-propagate student's course/intake/semester/session
+        // Back-propagate student's course/intake/semester
         if (student.course) setSelectedCourse(student.course);
         if (student.intake) setSelectedIntake(student.intake);
         if (student.semester) setSelectedSemester(student.semester);
-        if (student.session) setSelectedSession(student.session);
       }
     }
   };
@@ -423,11 +388,95 @@ const ResultsPage = () => {
     );
   });
 
+  const exportToCSV = () => {
+    if (filteredResults.length === 0) {
+      toast.error('No results to export');
+      return;
+    }
+
+    const headers = ['Student Name', 'Student ID', 'Exam', 'Subject', 'Marks', 'Total', 'Grade', 'Percentage'];
+    const csvData = filteredResults.map(r => [
+      r.student_name || 'N/A',
+      r.student_id || 'N/A',
+      r.exam_name || 'N/A',
+      r.subject_name || 'N/A',
+      r.marks_obtained,
+      r.subject_total_marks || 100,
+      r.grade || 'N/A',
+      `${r.percentage?.toFixed(2) || 0}%`,
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.setAttribute('href', URL.createObjectURL(blob));
+    link.setAttribute('download', `results_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Results exported to CSV successfully');
+  };
+
+  const exportToPDF = () => {
+    if (filteredResults.length === 0) {
+      toast.error('No results to export');
+      return;
+    }
+
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text('Examination Results', 14, 22);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.text(`Total Records: ${filteredResults.length}`, 14, 36);
+
+    doc.autoTable({
+      startY: 42,
+      head: [['Student', 'Student ID', 'Exam', 'Subject', 'Marks', 'Grade']],
+      body: filteredResults.map(r => [
+        r.student_name || 'N/A',
+        r.student_id || 'N/A',
+        r.exam_name || 'N/A',
+        r.subject_name || 'N/A',
+        `${r.marks_obtained}/${r.subject_total_marks || 100}`,
+        r.grade || 'N/A',
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
+    });
+
+    doc.save(`results_export_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('Results exported to PDF successfully');
+  };
+
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Examination Results</h1>
-        <p className="text-gray-600 mt-2">Manage student exam results and generate report cards</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Examination Results</h1>
+          <p className="text-gray-600 mt-2">Manage student exam results and generate report cards</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={exportToCSV}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Download className="w-5 h-5" />
+            Export CSV
+          </button>
+          <button
+            onClick={exportToPDF}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <FileText className="w-5 h-5" />
+            Export PDF
+          </button>
+        </div>
       </div>
 
       {/* Report Card Viewer Section */}
@@ -444,7 +493,7 @@ const ResultsPage = () => {
 
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        {/* Row 1: Course/Intake/Semester/Session/Exam/Subject Filters */}
+        {/* Row 1: Course/Intake/Semester/Exam/Subject Filters */}
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
           {/* Course Filter */}
           <div>
@@ -492,23 +541,6 @@ const ResultsPage = () => {
               {filteredOptions.semesters.map((sem) => (
                 <option key={sem} value={sem}>
                   {sem}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Session Filter */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Session</label>
-            <select
-              value={selectedSession}
-              onChange={(e) => handleSessionChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">All Sessions ({filteredOptions.sessions.length})</option>
-              {filteredOptions.sessions.map((session) => (
-                <option key={session} value={session}>
-                  {session}
                 </option>
               ))}
             </select>

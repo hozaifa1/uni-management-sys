@@ -34,8 +34,8 @@ class ExamAdmin(admin.ModelAdmin):
     """
     Exam Admin
     """
-    list_display = ['name', 'exam_type', 'course', 'intake', 'semester', 'session', 'exam_date', 'total_marks']
-    list_filter = ['exam_type', 'course', 'intake', 'semester', 'session', 'exam_date']
+    list_display = ['name', 'exam_type', 'course', 'intake', 'semester', 'exam_date', 'total_marks']
+    list_filter = ['exam_type', 'course', 'intake', 'semester', 'exam_date']
     search_fields = ['name', 'description']
     ordering = ['-exam_date']
     
@@ -43,8 +43,8 @@ class ExamAdmin(admin.ModelAdmin):
         ('Exam Information', {
             'fields': ('name', 'exam_type', 'exam_date', 'total_marks')
         }),
-        ('Course/Intake/Semester/Session', {
-            'fields': ('course', 'intake', 'semester', 'session')
+        ('Course/Intake/Semester', {
+            'fields': ('course', 'intake', 'semester')
         }),
         ('Description', {
             'fields': ('description',)
@@ -88,7 +88,7 @@ class ResultAdmin(admin.ModelAdmin):
             'fields': ('student', 'exam', 'subject')
         }),
         ('Marks', {
-            'fields': ('marks_obtained', 'remarks')
+            'fields': ('marks_obtained', 'remarks', 'teacher_comment')
         }),
         ('System Information', {
             'fields': ('created_at', 'updated_at'),

@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, Download, FileText, Phone, MapPin } from 'lucide-react';
+import toast from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import api from '../services/api';
 import AddStudentModal from '../components/students/AddStudentModal';
 import StudentDetailModal from '../components/students/StudentDetailModal';
@@ -89,6 +92,108 @@ const StudentsPage = () => {
     fetchStudents();
   };
 
+  // filteredStudents uses the students array (already filtered by API)
+  const filteredStudents = students;
+
+  // Export all student info to PDF
+  const exportStudentsPDF = () => {
+    if (filteredStudents.length === 0) {
+      toast.error('No students to export');
+      return;
+    }
+
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('Student Information', 14, 22);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.text(`Total Students: ${filteredStudents.length}`, 14, 36);
+
+    doc.autoTable({
+      startY: 42,
+      head: [['Student ID', 'Name', 'Course', 'Intake', 'Semester', 'Phone', 'Email']],
+      body: filteredStudents.map(s => [
+        s.student_id || 'N/A',
+        s.user ? `${s.user.first_name || ''} ${s.user.last_name || ''}`.trim() : 'N/A',
+        s.course || 'N/A',
+        s.intake || 'N/A',
+        s.semester || 'N/A',
+        s.user?.phone_number || 'N/A',
+        s.user?.email || 'N/A',
+      ]),
+      styles: { fontSize: 7 },
+      headStyles: { fillColor: [59, 130, 246] },
+    });
+
+    doc.save(`students_info_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('Student info exported to PDF');
+  };
+
+  // Export phone numbers only
+  const exportPhonesPDF = () => {
+    const studentsWithPhone = filteredStudents.filter(s => s.user?.phone_number);
+    if (studentsWithPhone.length === 0) {
+      toast.error('No students with phone numbers');
+      return;
+    }
+
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('Student Phone Directory', 14, 22);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.text(`Total: ${studentsWithPhone.length} students`, 14, 36);
+
+    doc.autoTable({
+      startY: 42,
+      head: [['Student ID', 'Name', 'Course', 'Phone Number']],
+      body: studentsWithPhone.map(s => [
+        s.student_id || 'N/A',
+        s.user ? `${s.user.first_name || ''} ${s.user.last_name || ''}`.trim() : 'N/A',
+        s.course || 'N/A',
+        s.user?.phone_number || 'N/A',
+      ]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [16, 185, 129] },
+    });
+
+    doc.save(`students_phones_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('Phone directory exported to PDF');
+  };
+
+  // Export addresses only
+  const exportAddressesPDF = () => {
+    const studentsWithAddress = filteredStudents.filter(s => s.present_address || s.user?.address);
+    if (studentsWithAddress.length === 0) {
+      toast.error('No students with addresses');
+      return;
+    }
+
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('Student Address Directory', 14, 22);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.text(`Total: ${studentsWithAddress.length} students`, 14, 36);
+
+    doc.autoTable({
+      startY: 42,
+      head: [['Student ID', 'Name', 'Course', 'Present Address']],
+      body: studentsWithAddress.map(s => [
+        s.student_id || 'N/A',
+        s.user ? `${s.user.first_name || ''} ${s.user.last_name || ''}`.trim() : 'N/A',
+        s.course || 'N/A',
+        s.present_address || s.user?.address || 'N/A',
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [245, 158, 11] },
+      columnStyles: { 3: { cellWidth: 80 } },
+    });
+
+    doc.save(`students_addresses_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('Address directory exported to PDF');
+  };
+
   if (loading && students.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -105,13 +210,39 @@ const StudentsPage = () => {
           <h1 className="text-3xl font-bold text-gray-900">Students</h1>
           <p className="text-gray-600 mt-1">Manage student records and information</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md"
-        >
-          <Plus className="w-5 h-5" />
-          Add Student
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={exportStudentsPDF}
+            className="flex items-center gap-2 px-3 py-2 border border-blue-300 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+            title="Export all student info"
+          >
+            <FileText className="w-4 h-4" />
+            All Info
+          </button>
+          <button
+            onClick={exportPhonesPDF}
+            className="flex items-center gap-2 px-3 py-2 border border-green-300 text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+            title="Export phone numbers"
+          >
+            <Phone className="w-4 h-4" />
+            Phones
+          </button>
+          <button
+            onClick={exportAddressesPDF}
+            className="flex items-center gap-2 px-3 py-2 border border-orange-300 text-orange-700 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
+            title="Export addresses"
+          >
+            <MapPin className="w-4 h-4" />
+            Addresses
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md"
+          >
+            <Plus className="w-5 h-5" />
+            Add Student
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

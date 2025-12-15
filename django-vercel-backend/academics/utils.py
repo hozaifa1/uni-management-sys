@@ -43,9 +43,9 @@ def generate_report_card(student_id, exam_id):
     if not results.exists():
         raise ValueError("No results found for this student and exam")
     
-    # Create PDF buffer
+    # Create PDF buffer - compact margins to fit on 1 page
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=25, leftMargin=25, topMargin=20, bottomMargin=20)
     
     # Container for PDF elements
     elements = []
@@ -55,9 +55,9 @@ def generate_report_card(student_id, exam_id):
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
-        fontSize=24,
+        fontSize=18,
         textColor=colors.HexColor('#1a365d'),
-        spaceAfter=12,
+        spaceAfter=6,
         alignment=TA_CENTER,
         fontName='Helvetica-Bold'
     )
@@ -65,9 +65,9 @@ def generate_report_card(student_id, exam_id):
     subtitle_style = ParagraphStyle(
         'CustomSubtitle',
         parent=styles['Normal'],
-        fontSize=14,
+        fontSize=12,
         textColor=colors.HexColor('#2d3748'),
-        spaceAfter=20,
+        spaceAfter=10,
         alignment=TA_CENTER,
         fontName='Helvetica'
     )
@@ -75,26 +75,25 @@ def generate_report_card(student_id, exam_id):
     heading_style = ParagraphStyle(
         'CustomHeading',
         parent=styles['Heading2'],
-        fontSize=14,
+        fontSize=11,
         textColor=colors.HexColor('#1a365d'),
-        spaceAfter=10,
-        spaceBefore=15,
+        spaceAfter=6,
+        spaceBefore=8,
         fontName='Helvetica-Bold'
     )
     
     # Title
     elements.append(Paragraph("IGMIS University", title_style))
     elements.append(Paragraph("Academic Transcript", subtitle_style))
-    elements.append(Spacer(1, 0.2*inch))
+    elements.append(Spacer(1, 0.1*inch))
     
-    # Student Information
+    # Student Information (removed email and phone per requirements)
     elements.append(Paragraph("Student Information", heading_style))
     
     student_data = [
         ['Student ID:', student.student_id, 'Name:', student.user.get_full_name()],
         ['Course:', student.course, 'Intake:', student.intake],
         ['Semester:', student.semester, 'Session:', student.session],
-        ['Email:', student.user.email, 'Phone:', student.user.phone_number or 'N/A'],
     ]
     
     student_table = Table(student_data, colWidths=[1.5*inch, 2*inch, 1.2*inch, 2*inch])
@@ -105,23 +104,22 @@ def generate_report_card(student_id, exam_id):
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
         ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e0'))
     ]))
     
     elements.append(student_table)
-    elements.append(Spacer(1, 0.3*inch))
+    elements.append(Spacer(1, 0.15*inch))
     
-    # Exam Information
+    # Exam Information (removed total marks per requirements)
     elements.append(Paragraph("Examination Details", heading_style))
     
     exam_data = [
         ['Exam Name:', exam.name],
         ['Exam Type:', exam.get_exam_type_display()],
         ['Exam Date:', exam.exam_date.strftime('%B %d, %Y')],
-        ['Total Marks:', str(exam.total_marks)],
     ]
     
     exam_table = Table(exam_data, colWidths=[2*inch, 4.5*inch])
@@ -137,13 +135,13 @@ def generate_report_card(student_id, exam_id):
     ]))
     
     elements.append(exam_table)
-    elements.append(Spacer(1, 0.3*inch))
+    elements.append(Spacer(1, 0.15*inch))
     
     # Results Table
     elements.append(Paragraph("Subject-wise Performance", heading_style))
     
-    # Prepare results data
-    results_data = [['Subject', 'Subject Code', 'Total Marks', 'Marks Obtained', 'Percentage', 'Grade']]
+    # Prepare results data - include teacher comments
+    results_data = [['Subject', 'Code', 'Marks', 'Obtained', '%', 'Grade', 'Comment']]
     
     total_marks_possible = 0
     total_marks_obtained = 0
@@ -152,13 +150,19 @@ def generate_report_card(student_id, exam_id):
         percentage = result.get_percentage()
         grade = result.calculate_grade()
         
+        # Truncate comment to fit in table
+        comment = (result.teacher_comment or '')[:30]
+        if result.teacher_comment and len(result.teacher_comment) > 30:
+            comment += '...'
+        
         results_data.append([
-            result.subject.name,
+            result.subject.name[:20],
             result.subject.code,
             str(result.subject.total_marks),
-            f"{result.marks_obtained:.2f}",
-            f"{percentage:.2f}%",
-            grade
+            f"{result.marks_obtained:.1f}",
+            f"{percentage:.1f}%",
+            grade,
+            comment
         ])
         
         total_marks_possible += result.subject.total_marks
@@ -172,76 +176,81 @@ def generate_report_card(student_id, exam_id):
         'TOTAL',
         '',
         str(total_marks_possible),
-        f"{total_marks_obtained:.2f}",
-        f"{overall_percentage:.2f}%",
-        calculate_overall_grade(overall_percentage)
+        f"{total_marks_obtained:.1f}",
+        f"{overall_percentage:.1f}%",
+        calculate_overall_grade(overall_percentage),
+        ''
     ])
     
-    results_table = Table(results_data, colWidths=[2*inch, 1.3*inch, 1*inch, 1.2*inch, 1*inch, 0.8*inch])
+    results_table = Table(results_data, colWidths=[1.4*inch, 0.7*inch, 0.6*inch, 0.7*inch, 0.6*inch, 0.5*inch, 1.6*inch])
     results_table.setStyle(TableStyle([
         # Header row
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c5282')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 11),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
-        ('TOPPADDING', (0, 0), (-1, 0), 10),
+        ('FONTSIZE', (0, 0), (-1, 0), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 5),
+        ('TOPPADDING', (0, 0), (-1, 0), 5),
         
         # Data rows
         ('BACKGROUND', (0, 1), (-1, -2), colors.beige),
         ('TEXTCOLOR', (0, 1), (-1, -2), colors.HexColor('#2d3748')),
         ('ALIGN', (0, 1), (0, -2), 'LEFT'),
-        ('ALIGN', (1, 1), (-1, -2), 'CENTER'),
+        ('ALIGN', (1, 1), (-2, -2), 'CENTER'),
+        ('ALIGN', (-1, 1), (-1, -2), 'LEFT'),  # Comments left aligned
         ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -2), 10),
-        ('BOTTOMPADDING', (0, 1), (-1, -2), 6),
-        ('TOPPADDING', (0, 1), (-1, -2), 6),
+        ('FONTSIZE', (0, 1), (-1, -2), 8),
+        ('BOTTOMPADDING', (0, 1), (-1, -2), 4),
+        ('TOPPADDING', (0, 1), (-1, -2), 4),
         
         # Total row
         ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#4299e1')),
         ('TEXTCOLOR', (0, -1), (-1, -1), colors.whitesmoke),
         ('ALIGN', (0, -1), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, -1), (-1, -1), 11),
-        ('BOTTOMPADDING', (0, -1), (-1, -1), 10),
-        ('TOPPADDING', (0, -1), (-1, -1), 10),
+        ('FONTSIZE', (0, -1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, -1), (-1, -1), 5),
+        ('TOPPADDING', (0, -1), (-1, -1), 5),
         
         # Grid
         ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#718096'))
     ]))
     
     elements.append(results_table)
-    elements.append(Spacer(1, 0.3*inch))
+    elements.append(Spacer(1, 0.15*inch))
     
-    # Performance Summary
+    # Performance Summary - compact version
     elements.append(Paragraph("Performance Summary", heading_style))
     
     # Calculate GPA (simplified)
     gpa = calculate_gpa(overall_percentage)
     
+    # Horizontal summary to save space
     summary_data = [
-        ['Overall Percentage:', f"{overall_percentage:.2f}%"],
-        ['Overall Grade:', calculate_overall_grade(overall_percentage)],
-        ['GPA:', f"{gpa:.2f}"],
-        ['Result:', 'PASS' if overall_percentage >= 40 else 'FAIL'],
+        ['Percentage:', f"{overall_percentage:.1f}%", 'Grade:', calculate_overall_grade(overall_percentage), 'GPA:', f"{gpa:.2f}", 'Result:', 'PASS' if overall_percentage >= 40 else 'FAIL'],
     ]
     
-    summary_table = Table(summary_data, colWidths=[2.5*inch, 4*inch])
+    summary_table = Table(summary_data, colWidths=[0.8*inch, 0.7*inch, 0.6*inch, 0.5*inch, 0.5*inch, 0.5*inch, 0.6*inch, 0.6*inch])
     summary_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#e2e8f0')),
+        ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#e2e8f0')),
+        ('BACKGROUND', (2, 0), (2, 0), colors.HexColor('#e2e8f0')),
+        ('BACKGROUND', (4, 0), (4, 0), colors.HexColor('#e2e8f0')),
+        ('BACKGROUND', (6, 0), (6, 0), colors.HexColor('#e2e8f0')),
         ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#2d3748')),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (1, -1), (1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 11),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (2, 0), (2, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (4, 0), (4, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (6, 0), (6, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e0'))
     ]))
     
     elements.append(summary_table)
-    elements.append(Spacer(1, 0.5*inch))
+    elements.append(Spacer(1, 0.2*inch))
     
     # Footer
     footer_style = ParagraphStyle(
@@ -252,9 +261,7 @@ def generate_report_card(student_id, exam_id):
         alignment=TA_CENTER
     )
     
-    elements.append(Spacer(1, 0.3*inch))
-    elements.append(Paragraph(f"Generated on: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}", footer_style))
-    elements.append(Paragraph("This is a computer-generated document and does not require a signature.", footer_style))
+    elements.append(Paragraph(f"Generated: {datetime.now().strftime('%B %d, %Y %I:%M %p')} | Computer-generated document", footer_style))
     
     # Build PDF
     doc.build(elements)

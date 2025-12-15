@@ -43,7 +43,7 @@ class ExamViewSet(viewsets.ModelViewSet):
     queryset = Exam.objects.all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['exam_type', 'course', 'intake', 'semester', 'session', 'exam_date']
+    filterset_fields = ['exam_type', 'course', 'intake', 'semester', 'exam_date']
     search_fields = ['name', 'description']
     ordering_fields = ['exam_date', 'name']
     ordering = ['-exam_date']
@@ -141,14 +141,13 @@ class ResultViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """
-        Filter results by course, intake, semester, and session through the student.
+        Filter results by course, intake, and semester through the student.
         """
         queryset = super().get_queryset()
         
         course = self.request.query_params.get('course')
         intake = self.request.query_params.get('intake')
         semester = self.request.query_params.get('semester')
-        session = self.request.query_params.get('session')
         
         if course:
             queryset = queryset.filter(student__course=course)
@@ -156,8 +155,6 @@ class ResultViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(student__intake=intake)
         if semester:
             queryset = queryset.filter(student__semester=semester)
-        if session:
-            queryset = queryset.filter(student__session=session)
         
         return queryset
     

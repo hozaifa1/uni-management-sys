@@ -54,11 +54,9 @@ class Exam(models.Model):
     """
     
     EXAM_TYPE_CHOICES = [
-        ('midterm', 'Mid Term'),
+        ('incourse_1st', '1st Incourse'),
+        ('incourse_2nd', '2nd Incourse'),
         ('final', 'Final Exam'),
-        ('ssc', 'SSC Exam'),
-        ('hsc', 'HSC Exam'),
-        ('monthly', 'Monthly Test'),
     ]
 
     COURSE_CHOICES = [
@@ -124,12 +122,6 @@ class Exam(models.Model):
         help_text='Semester'
     )
 
-    session = models.CharField(
-        max_length=20,
-        default='2024-2025',
-        help_text='Academic session (e.g., 2024-2025)'
-    )
-    
     exam_date = models.DateField(
         help_text='Exam date'
     )
@@ -156,9 +148,8 @@ class Exam(models.Model):
             models.Index(fields=['course']),
             models.Index(fields=['intake']),
             models.Index(fields=['semester']),
-            models.Index(fields=['session']),
             models.Index(fields=['exam_date']),
-            models.Index(fields=['course', 'intake', 'semester', 'session']),
+            models.Index(fields=['course', 'intake', 'semester']),
         ]
     
     def __str__(self):
@@ -201,6 +192,12 @@ class Result(models.Model):
         blank=True,
         null=True,
         help_text='Additional remarks'
+    )
+
+    teacher_comment = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Teacher comment for this result'
     )
     
     created_at = models.DateTimeField(auto_now_add=True)

@@ -8,14 +8,14 @@ class FeeStructureAdmin(admin.ModelAdmin):
     """
     Fee Structure Admin
     """
-    list_display = ['course', 'intake', 'semester', 'session', 'fee_type', 'amount', 'due_date']
-    list_filter = ['fee_type', 'course', 'intake', 'semester', 'session', 'due_date']
+    list_display = ['course', 'intake', 'semester', 'fee_type', 'amount', 'due_date']
+    list_filter = ['fee_type', 'course', 'intake', 'semester', 'due_date']
     search_fields = ['description']
     ordering = ['-due_date']
     
     fieldsets = (
-        ('Course/Intake/Semester/Session', {
-            'fields': ('course', 'intake', 'semester', 'session')
+        ('Course/Intake/Semester', {
+            'fields': ('course', 'intake', 'semester')
         }),
         ('Fee Information', {
             'fields': ('fee_type', 'amount', 'due_date')
@@ -45,6 +45,8 @@ class PaymentAdmin(admin.ModelAdmin):
         'net_amount',
         'payment_date',
         'payment_method',
+        'fee_type',
+        'payment_regularity',
         'transaction_id'
     ]
     list_filter = ['payment_method', 'payment_date', 'fee_structure__fee_type']
@@ -62,7 +64,7 @@ class PaymentAdmin(admin.ModelAdmin):
             'fields': ('student', 'fee_structure', 'payment_date')
         }),
         ('Amount Details', {
-            'fields': ('amount_paid', 'discount_amount', 'payment_method', 'transaction_id')
+            'fields': ('amount_paid', 'discount_amount', 'payment_method', 'transaction_id', 'fee_type', 'payment_regularity')
         }),
         ('Additional Information', {
             'fields': ('remarks',)
