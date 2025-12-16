@@ -233,6 +233,7 @@ class StudentUpdateSerializer(serializers.ModelSerializer):
             # New fields
             'registration_number', 'national_university_id', 'full_name',
             'national_id_number', 'course', 'intake',
+            'major',
             # Family info
             'guardian_name', 'guardian_phone', 'guardian_yearly_income',
             'guardian_occupation',

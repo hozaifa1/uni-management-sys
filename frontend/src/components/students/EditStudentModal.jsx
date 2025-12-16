@@ -99,6 +99,7 @@ const EditStudentModal = ({ student, onClose, onSuccess }) => {
     // New fields
     registration_number: '',
     national_university_id: '',
+    major: '',
     national_id_number: '',
     course: '',
     intake: '',
@@ -150,6 +151,9 @@ const EditStudentModal = ({ student, onClose, onSuccess }) => {
     other_info: '',
   });
 
+  const [majorOptions, setMajorOptions] = useState([]);
+  const [loadingMajors, setLoadingMajors] = useState(false);
+
   const [expandedSections, setExpandedSections] = useState({
     account: true,
     personal: true,
@@ -177,6 +181,7 @@ const EditStudentModal = ({ student, onClose, onSuccess }) => {
         phone_number: student.user?.phone_number || '',
         registration_number: student.registration_number || '',
         national_university_id: student.national_university_id || '',
+        major: student.major ? String(student.major) : '',
         national_id_number: student.national_id_number || '',
         course: student.course || '',
         intake: student.intake || '',
@@ -221,6 +226,48 @@ const EditStudentModal = ({ student, onClose, onSuccess }) => {
       });
     }
   }, [student]);
+
+  // Check if major selection should be shown
+  const shouldShowMajor = () => {
+    const { course, semester } = formData;
+    if (course === 'BBA' && ['7th', '8th'].includes(semester)) return true;
+    if (course === 'MBA' && semester === '2nd') return true;
+    return false;
+  };
+
+  // Fetch major options when course changes or becomes eligible
+  useEffect(() => {
+    const { course, semester } = formData;
+    const needsMajor = (course === 'BBA' && ['7th', '8th'].includes(semester)) ||
+                       (course === 'MBA' && semester === '2nd');
+
+    const fetchMajors = async () => {
+      if (!needsMajor) {
+        setMajorOptions([]);
+        return;
+      }
+
+      setLoadingMajors(true);
+      try {
+        const response = await api.get('/academics/majors/by_course/', {
+          params: { course }
+        });
+        setMajorOptions(response.data || []);
+      } catch (error) {
+        console.error('Error fetching majors:', error);
+        setMajorOptions([]);
+      } finally {
+        setLoadingMajors(false);
+      }
+    };
+
+    fetchMajors();
+
+    // Clear major if no longer eligible
+    if (!needsMajor && formData.major) {
+      setFormData(prev => ({ ...prev, major: '' }));
+    }
+  }, [formData.course, formData.semester]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!student) return null;
 
@@ -270,12 +317,13 @@ const EditStudentModal = ({ student, onClose, onSuccess }) => {
     if (!formData.session.trim()) errors.push('Session is required');
     if (!formData.semester) errors.push('Semester is required');
     if (!formData.admission_date) errors.push('Admission Date is required');
+    if (shouldShowMajor() && !formData.major) errors.push('Major is required for this course and semester');
     return errors;
   };
 
   const handleCourseChange = (e) => {
     const { value } = e.target;
-    setFormData(prev => ({ ...prev, course: value, intake: '' }));
+    setFormData(prev => ({ ...prev, course: value, intake: '', major: '' }));
   };
 
   const handleSubmit = async (e) => {
@@ -319,6 +367,7 @@ const EditStudentModal = ({ student, onClose, onSuccess }) => {
         // New fields
         registration_number: processValue(formData.registration_number),
         national_university_id: processValue(formData.national_university_id),
+        major: processValue(formData.major, true),
         full_name: processValue(formData.full_name),
         national_id_number: processValue(formData.national_id_number),
         // Family info
@@ -527,6 +576,38 @@ const EditStudentModal = ({ student, onClose, onSuccess }) => {
                 <InputField label="Admission Date" name="admission_date" type="date" required value={formData.admission_date} onChange={handleChange} />
                 <InputField label="Registration Number" name="registration_number" value={formData.registration_number} onChange={handleChange} />
                 <InputField label="National University ID" name="national_university_id" value={formData.national_university_id} onChange={handleChange} />
+
+                {/* Major Selection - Only for BBA (7th/8th sem) and MBA (2nd sem) */}
+                {shouldShowMajor() && (
+                  <div className="md:col-span-3">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <label className="block text-sm font-medium text-blue-800 mb-2">
+                        Major Specialization <span className="text-red-500">*</span>
+                        <span className="text-xs font-normal text-blue-600 ml-2">
+                          (Required for {formData.course} students in {formData.semester} semester)
+                        </span>
+                      </label>
+                      {loadingMajors ? (
+                        <div className="text-sm text-gray-500">Loading majors...</div>
+                      ) : (
+                        <select
+                          name="major"
+                          value={formData.major}
+                          onChange={handleChange}
+                          required
+                          className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                        >
+                          <option value="">Select Major Specialization</option>
+                          {majorOptions.map(major => (
+                            <option key={major.id} value={major.id}>
+                              {major.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
