@@ -90,12 +90,12 @@ class ExamViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Exam model CRUD operations
     """
-    queryset = Exam.objects.all()
+    queryset = Exam.objects.select_related('subject').all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['exam_type', 'course', 'intake', 'semester', 'exam_date']
-    search_fields = ['name', 'description']
-    ordering_fields = ['exam_date', 'name']
+    filterset_fields = ['exam_type', 'course', 'semester', 'subject', 'exam_date']
+    search_fields = ['name', 'description', 'subject__name']
+    ordering_fields = ['exam_date', 'name', 'subject__name']
     ordering = ['-exam_date']
     
     def get_serializer_class(self):

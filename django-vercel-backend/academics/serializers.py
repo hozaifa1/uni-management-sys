@@ -40,11 +40,15 @@ class ExamSerializer(serializers.ModelSerializer):
     Serializer for Exam model
     """
     results_count = serializers.SerializerMethodField()
+    subject_name = serializers.CharField(source='subject.name', read_only=True, allow_null=True)
+    subject_code = serializers.CharField(source='subject.code', read_only=True, allow_null=True)
+    exam_type_display = serializers.CharField(source='get_exam_type_display', read_only=True)
     
     class Meta:
         model = Exam
         fields = [
-            'id', 'name', 'exam_type', 'course', 'intake', 'semester',
+            'id', 'name', 'exam_type', 'exam_type_display', 'course', 'semester',
+            'subject', 'subject_name', 'subject_code',
             'exam_date', 'total_marks', 'description', 'results_count',
             'created_at', 'updated_at'
         ]
@@ -61,11 +65,15 @@ class ExamDetailSerializer(serializers.ModelSerializer):
     results_count = serializers.SerializerMethodField()
     average_marks = serializers.SerializerMethodField()
     pass_rate = serializers.SerializerMethodField()
+    subject_name = serializers.CharField(source='subject.name', read_only=True, allow_null=True)
+    subject_code = serializers.CharField(source='subject.code', read_only=True, allow_null=True)
+    exam_type_display = serializers.CharField(source='get_exam_type_display', read_only=True)
     
     class Meta:
         model = Exam
         fields = [
-            'id', 'name', 'exam_type', 'course', 'intake', 'semester',
+            'id', 'name', 'exam_type', 'exam_type_display', 'course', 'semester',
+            'subject', 'subject_name', 'subject_code',
             'exam_date', 'total_marks', 'description', 'results_count',
             'average_marks', 'pass_rate', 'created_at', 'updated_at'
         ]

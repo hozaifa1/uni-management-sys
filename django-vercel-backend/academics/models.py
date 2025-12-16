@@ -204,7 +204,8 @@ class Subject(models.Model):
 class Exam(models.Model):
     """
     Exam model for different examinations.
-    Connected to course/intake/semester/session instead of batch.
+    Each exam is linked to a specific subject.
+    Students across different intakes in the same course/semester/subject share the same exams.
     """
     
     EXAM_TYPE_CHOICES = [
@@ -220,19 +221,6 @@ class Exam(models.Model):
         ('THM', 'THM'),
     ]
 
-    INTAKE_CHOICES = [
-        ('1st', '1st'),
-        ('2nd', '2nd'),
-        ('9th', '9th'),
-        ('10th', '10th'),
-        ('15th', '15th'),
-        ('16th', '16th'),
-        ('17th', '17th'),
-        ('18th', '18th'),
-        ('19th', '19th'),
-        ('20th', '20th'),
-    ]
-
     SEMESTER_CHOICES = [
         ('1st', '1st'),
         ('2nd', '2nd'),
@@ -246,7 +234,7 @@ class Exam(models.Model):
     
     name = models.CharField(
         max_length=200,
-        help_text='Exam name'
+        help_text='Exam name (format: Course - Semester - Subject - Type)'
     )
     
     exam_type = models.CharField(
@@ -255,18 +243,20 @@ class Exam(models.Model):
         help_text='Type of examination'
     )
     
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.CASCADE,
+        related_name='exams',
+        help_text='Subject this exam belongs to',
+        null=True,
+        blank=True
+    )
+    
     course = models.CharField(
         max_length=10,
         choices=COURSE_CHOICES,
         default='BBA',
         help_text='Course (BBA, MBA, CSE, THM)'
-    )
-
-    intake = models.CharField(
-        max_length=10,
-        choices=INTAKE_CHOICES,
-        default='15th',
-        help_text='Intake number'
     )
 
     semester = models.CharField(
@@ -295,19 +285,22 @@ class Exam(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        ordering = ['-exam_date']
+        ordering = ['-exam_date', 'subject__name']
         verbose_name = 'Exam'
         verbose_name_plural = 'Exams'
         indexes = [
             models.Index(fields=['course']),
-            models.Index(fields=['intake']),
             models.Index(fields=['semester']),
+            models.Index(fields=['subject']),
             models.Index(fields=['exam_date']),
-            models.Index(fields=['course', 'intake', 'semester']),
+            models.Index(fields=['course', 'semester']),
+            models.Index(fields=['course', 'semester', 'subject']),
         ]
+        unique_together = ['course', 'semester', 'subject', 'exam_type']
     
     def __str__(self):
-        return f"{self.name} - {self.course} {self.intake} Intake - {self.semester} Sem"
+        subject_name = self.subject.name if self.subject else 'No Subject'
+        return f"{self.course} - {self.semester} Sem - {subject_name} - {self.get_exam_type_display()}"
 
 
 class Result(models.Model):

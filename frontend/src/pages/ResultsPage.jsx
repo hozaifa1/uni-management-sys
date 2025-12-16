@@ -69,7 +69,6 @@ const ResultsPage = () => {
       try {
         const params = {};
         if (selectedCourse) params.course = selectedCourse;
-        if (selectedIntake) params.intake = selectedIntake;
         if (selectedSemester) params.semester = selectedSemester;
         const examsRes = await api.get('/academics/exams/', { params });
         setExams(examsRes.data.results || examsRes.data || []);
@@ -249,11 +248,10 @@ const ResultsPage = () => {
           .map((r) => r.exam ?? r.exam_id)
       );
       filteredExams = filteredExams.filter((e) => studentExamIds.has(e.id));
-    } else if (selectedCourse || selectedIntake || selectedSemester) {
+    } else if (selectedCourse || selectedSemester) {
       filteredExams = filteredExams.filter(
         (e) =>
           (!selectedCourse || e.course === selectedCourse) &&
-          (!selectedIntake || e.intake === selectedIntake) &&
           (!selectedSemester || e.semester === selectedSemester)
       );
     }

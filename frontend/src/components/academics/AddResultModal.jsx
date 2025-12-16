@@ -69,24 +69,22 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
 
     let list = exams;
 
+    // Filter by student's course and semester
     if (selectedStudent) {
       list = list.filter((exam) =>
         (!selectedStudent.course || exam.course === selectedStudent.course) &&
-        (!selectedStudent.intake || exam.intake === selectedStudent.intake) &&
-        (!selectedStudent.semester || exam.semester === selectedStudent.semester) &&
-        (!selectedStudent.session || exam.session === selectedStudent.session)
+        (!selectedStudent.semester || exam.semester === selectedStudent.semester)
       );
     }
 
+    // Filter by selected subject (exams are now linked to subjects)
     if (formData.subject) {
-      const subjectObj = subjects.find((s) => s.id === parseInt(formData.subject, 10));
-      if (subjectObj?.course) {
-        list = list.filter((exam) => exam.course === subjectObj.course);
-      }
+      const subjectId = parseInt(formData.subject, 10);
+      list = list.filter((exam) => exam.subject === subjectId);
     }
 
     return list;
-  }, [exams, formData.subject, isEditMode, selectedStudent, subjects]);
+  }, [exams, formData.subject, isEditMode, selectedStudent]);
 
   const filteredSubjects = useMemo(() => {
     if (isEditMode) {
@@ -150,9 +148,7 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
         list = list.filter(
           (student) =>
             (!exam.course || student.course === exam.course) &&
-            (!exam.intake || student.intake === exam.intake) &&
-            (!exam.semester || student.semester === exam.semester) &&
-            (!exam.session || student.session === exam.session)
+            (!exam.semester || student.semester === exam.semester)
         );
       }
     }
@@ -385,7 +381,7 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
               </option>
               {filteredExams.map((exam) => (
                 <option key={exam.id} value={exam.id}>
-                  {exam.course} - {exam.semester} Sem - {exam.exam_type?.replace('_', ' ')}
+                  {exam.name || `${exam.course} - ${exam.semester} Sem - ${exam.subject_name} - ${exam.exam_type_display || exam.exam_type?.replace('_', ' ')}`}
                 </option>
               ))}
             </select>
