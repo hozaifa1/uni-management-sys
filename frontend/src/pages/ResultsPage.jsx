@@ -7,6 +7,8 @@ import autoTable from 'jspdf-autotable';
 import api from '../services/api';
 import ReportCardViewer from '../components/academics/ReportCardViewer';
 import AddResultModal from '../components/academics/AddResultModal';
+import ConfirmDialog from '../components/common/ConfirmDialog';
+import LoadingSkeleton from '../components/common/LoadingSkeleton';
 
 const ResultsPage = () => {
   const [results, setResults] = useState([]);
@@ -31,6 +33,7 @@ const ResultsPage = () => {
   const [modalEditResult, setModalEditResult] = useState(null);
   const [examStats, setExamStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
 
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -358,21 +361,23 @@ const ResultsPage = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this result?')) {
-      try {
-        setActionLoading(true);
-        setLoading(true);
-        await api.delete(`/academics/results/${id}/`);
-        toast.success('Result deleted successfully');
-        await fetchResults();
-      } catch (error) {
-        console.error('Error deleting result:', error);
-        toast.error('Failed to delete result');
-        setLoading(false);
-      } finally {
-        setActionLoading(false);
-      }
+  const handleDeleteClick = (id) => {
+    setDeleteConfirm({ open: true, id });
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      setActionLoading(true);
+      setLoading(true);
+      await api.delete(`/academics/results/${deleteConfirm.id}/`);
+      toast.success('Result deleted successfully');
+      await fetchResults();
+    } catch (error) {
+      console.error('Error deleting result:', error);
+      toast.error('Failed to delete result');
+      setLoading(false);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -804,9 +809,8 @@ const ResultsPage = () => {
       {/* Results Table */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Loading results...</p>
+          <div className="p-4">
+            <LoadingSkeleton type="table" rows={8} />
           </div>
         ) : filteredResults.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
@@ -900,7 +904,7 @@ const ResultsPage = () => {
                             <Edit className="w-5 h-5" />
                           </button>
                           <button
-                            onClick={() => handleDelete(result.id)}
+                            onClick={() => handleDeleteClick(result.id)}
                             className="text-red-600 hover:text-red-900"
                           >
                             <Trash2 className="w-5 h-5" />
@@ -1002,6 +1006,17 @@ const ResultsPage = () => {
           editingResult={modalEditResult}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.open}
+        onClose={() => setDeleteConfirm({ open: false, id: null })}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Result"
+        message="Are you sure you want to delete this result? This action cannot be undone."
+        confirmText="Delete"
+        type="danger"
+      />
     </div>
   );
 };

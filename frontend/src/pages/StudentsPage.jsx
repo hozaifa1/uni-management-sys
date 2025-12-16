@@ -7,6 +7,8 @@ import api from '../services/api';
 import AddStudentModal from '../components/students/AddStudentModal';
 import StudentDetailModal from '../components/students/StudentDetailModal';
 import EditStudentModal from '../components/students/EditStudentModal';
+import ConfirmDialog from '../components/common/ConfirmDialog';
+import LoadingSkeleton from '../components/common/LoadingSkeleton';
 
 const COURSE_OPTIONS = [
   { value: 'BBA', label: 'BBA' },
@@ -35,6 +37,7 @@ const StudentsPage = () => {
   const ITEMS_PER_PAGE = 10;
   const [selectedStudentForView, setSelectedStudentForView] = useState(null);
   const [selectedStudentForEdit, setSelectedStudentForEdit] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
 
   useEffect(() => {
     fetchStudents();
@@ -86,15 +89,18 @@ const StudentsPage = () => {
     setSelectedIntake(''); // Reset intake when course changes
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this student?')) {
-      try {
-        await api.delete(`/accounts/students/${id}/`);
-        fetchStudents();
-      } catch (error) {
-        console.error('Error deleting student:', error);
-        alert('Failed to delete student');
-      }
+  const handleDeleteClick = (id) => {
+    setDeleteConfirm({ open: true, id });
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await api.delete(`/accounts/students/${deleteConfirm.id}/`);
+      toast.success('Student deleted successfully');
+      fetchStudents();
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      toast.error('Failed to delete student');
     }
   };
 
@@ -210,8 +216,12 @@ const StudentsPage = () => {
 
   if (loading && students.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="p-6">
+        <div className="mb-6">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-2 animate-pulse"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse"></div>
+        </div>
+        <LoadingSkeleton type="table" rows={8} />
       </div>
     );
   }
@@ -436,7 +446,7 @@ const StudentsPage = () => {
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(student.id)}
+                          onClick={() => handleDeleteClick(student.id)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -506,6 +516,17 @@ const StudentsPage = () => {
           onSuccess={handleEditSuccess}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.open}
+        onClose={() => setDeleteConfirm({ open: false, id: null })}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Student"
+        message="Are you sure you want to delete this student? This action cannot be undone."
+        confirmText="Delete"
+        type="danger"
+      />
     </div>
   );
 };

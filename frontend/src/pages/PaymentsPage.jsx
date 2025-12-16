@@ -6,6 +6,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import AddPaymentModal from '../components/payments/AddPaymentModal';
 import PaymentHistory from '../components/payments/PaymentHistory';
+import ConfirmDialog from '../components/common/ConfirmDialog';
+import LoadingSkeleton from '../components/common/LoadingSkeleton';
 
 const PAYMENT_METHOD_OPTIONS = [
   { value: '', label: 'All Methods' },
@@ -44,6 +46,7 @@ const PaymentsPage = () => {
   const [selectedPaymentForHistory, setSelectedPaymentForHistory] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -302,16 +305,18 @@ const PaymentsPage = () => {
     setCurrentPage(1);
   }, [selectedFeeType, selectedMethod, selectedStudent, selectedExam, selectedCourse, selectedIntake, selectedSemester, dateFrom, dateTo, searchTerm]);
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this payment record?')) {
-      try {
-        await api.delete(`/payments/payments/${id}/`);
-        toast.success('Payment deleted successfully');
-        fetchPayments();
-      } catch (error) {
-        console.error('Error deleting payment:', error);
-        toast.error('Failed to delete payment');
-      }
+  const handleDeleteClick = (id) => {
+    setDeleteConfirm({ open: true, id });
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await api.delete(`/payments/payments/${deleteConfirm.id}/`);
+      toast.success('Payment deleted successfully');
+      fetchPayments();
+    } catch (error) {
+      console.error('Error deleting payment:', error);
+      toast.error('Failed to delete payment');
     }
   };
 
@@ -398,8 +403,12 @@ const PaymentsPage = () => {
 
   if (loading && payments.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="p-6">
+        <div className="mb-6">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-2 animate-pulse"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse"></div>
+        </div>
+        <LoadingSkeleton type="table" rows={8} />
       </div>
     );
   }
@@ -734,7 +743,7 @@ const PaymentsPage = () => {
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(payment.id)}
+                          onClick={() => handleDeleteClick(payment.id)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           title="Delete"
                         >
@@ -797,6 +806,17 @@ const PaymentsPage = () => {
           onClose={() => setSelectedPaymentForHistory(null)}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.open}
+        onClose={() => setDeleteConfirm({ open: false, id: null })}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Payment"
+        message="Are you sure you want to delete this payment record? This action cannot be undone."
+        confirmText="Delete"
+        type="danger"
+      />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Download, FileText, Mail, RotateCcw, MessageCircle } from 'lucide-react';
+import { Download, FileText, Mail, RotateCcw, MessageCircle, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
@@ -15,6 +15,8 @@ const ReportCardViewer = () => {
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkResult, setBulkResult] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -127,11 +129,10 @@ const ReportCardViewer = () => {
           .map(r => r.exam)
       );
       filteredExams = filteredExams.filter(e => studentExamIds.has(e.id));
-    } else if (selectedCourse || selectedIntake || selectedSemester) {
-      // Filter exams by course/intake/semester
+    } else if (selectedCourse || selectedSemester) {
+      // Filter exams by course/semester (intake removed from Exam model)
       filteredExams = filteredExams.filter(e => 
         (!selectedCourse || e.course === selectedCourse) &&
-        (!selectedIntake || e.intake === selectedIntake) &&
         (!selectedSemester || e.semester === selectedSemester)
       );
     }
@@ -461,6 +462,60 @@ const ReportCardViewer = () => {
           Send via WhatsApp
         </button>
       </div>
+      )}
+
+      {/* Bulk Report Card Generation */}
+      {!dataLoading && (
+        <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+          <div className="flex items-center gap-2 mb-3">
+            <Users className="w-5 h-5 text-purple-600" />
+            <h3 className="font-semibold text-purple-800">Bulk Report Card Generation</h3>
+          </div>
+          <p className="text-sm text-purple-700 mb-4">
+            Generate report cards for all students matching the selected filters (course, semester). Select an exam to generate bulk reports.
+          </p>
+          <button
+            onClick={async () => {
+              if (!selectedCourse && !selectedSemester) {
+                toast.error('Please select at least a course or semester to filter students');
+                return;
+              }
+              setBulkLoading(true);
+              setBulkResult(null);
+              try {
+                const params = {};
+                if (selectedCourse) params.course = selectedCourse;
+                if (selectedIntake) params.intake = selectedIntake;
+                if (selectedSemester) params.semester = selectedSemester;
+                // Use the first exam with results as default if none selected
+                const examId = selectedExam || filteredOptions.exams[0]?.id;
+                if (examId) params.exam_id = examId;
+                
+                const response = await api.get('/academics/results/generate_bulk_report_cards/', { params });
+                setBulkResult(response.data);
+                toast.success(response.data.message || `Generated ${response.data.count} report cards`);
+              } catch (error) {
+                console.error('Error generating bulk report cards:', error);
+                const errorMsg = error.response?.data?.error || 'Failed to generate bulk report cards';
+                toast.error(errorMsg);
+              } finally {
+                setBulkLoading(false);
+              }
+            }}
+            disabled={bulkLoading || (!selectedCourse && !selectedSemester)}
+            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          >
+            <Users className="w-4 h-4 mr-2" />
+            {bulkLoading ? 'Generating...' : 'Generate Bulk Report Cards'}
+          </button>
+          {bulkResult && (
+            <div className="mt-3 p-3 bg-green-100 border border-green-300 rounded-md">
+              <p className="text-sm text-green-800">
+                ✓ {bulkResult.message || `Successfully generated ${bulkResult.count} report cards`}
+              </p>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Info Box */}

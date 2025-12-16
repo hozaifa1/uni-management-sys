@@ -1,9 +1,8 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Sum, Count, Q, F
-from django.db.models.functions import Coalesce
+from django.db.models import Sum, Count, Q
 from decimal import Decimal
 
 from accounts.models import Student
@@ -235,15 +234,12 @@ class ResultReportViewSet(viewsets.ViewSet):
         Get summary of all exams with pass/fail rates
         """
         course = request.query_params.get('course')
-        intake = request.query_params.get('intake')
         semester = request.query_params.get('semester')
         
         # Build exam filter
         exam_filter = Q()
         if course:
             exam_filter &= Q(course=course)
-        if intake:
-            exam_filter &= Q(intake=intake)
         if semester:
             exam_filter &= Q(semester=semester)
         
@@ -271,8 +267,8 @@ class ResultReportViewSet(viewsets.ViewSet):
                 'exam_name': exam.name,
                 'exam_type': exam.exam_type,
                 'course': exam.course,
-                'intake': exam.intake,
                 'semester': exam.semester,
+                'subject_name': exam.subject.name if exam.subject else None,
                 'exam_date': exam.exam_date,
                 'total_marks': exam.total_marks,
                 'total_students': total_students,
@@ -284,7 +280,7 @@ class ResultReportViewSet(viewsets.ViewSet):
         
         return Response({
             'report_type': 'exam_summary',
-            'filters': {'course': course, 'intake': intake, 'semester': semester},
+            'filters': {'course': course, 'semester': semester},
             'data': exam_stats
         })
 
