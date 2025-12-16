@@ -26,6 +26,8 @@ const AttendancePage = () => {
   // Preloaded data (fetched once on mount)
   const [allStudents, setAllStudents] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
+  const [subjectsForSelection, setSubjectsForSelection] = useState([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   
   // Log Attendance State
@@ -100,14 +102,60 @@ const AttendancePage = () => {
     return uniqueIntakes.sort();
   }, [allStudents, selectedCourse]);
 
-  const subjects = useMemo(() => {
-    if (!selectedCourse || !selectedSemester) return [];
-    return allSubjects.filter(s => 
-      s.course_code === selectedCourse && 
-      s.semester === selectedSemester && 
-      s.is_active !== false
-    );
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncOrFetchSubjects = async () => {
+      if (!selectedCourse || !selectedSemester) {
+        setSubjectsForSelection([]);
+        return;
+      }
+
+      const locallyFiltered = allSubjects.filter((s) =>
+        s.course_code === selectedCourse &&
+        s.semester === selectedSemester &&
+        s.is_active !== false
+      );
+
+      if (locallyFiltered.length > 0) {
+        setSubjectsForSelection(locallyFiltered);
+        return;
+      }
+
+      setLoadingSubjects(true);
+      try {
+        const res = await api.get('/academics/subjects/', {
+          params: {
+            course_code: selectedCourse,
+            semester: selectedSemester,
+            page_size: 10000
+          }
+        });
+        const fetched = res.data?.results || res.data || [];
+        if (!cancelled) {
+          setSubjectsForSelection(
+            fetched.filter((s) => s.is_active !== false)
+          );
+        }
+      } catch (error) {
+        console.error('Error loading subjects:', error);
+        showToast('Failed to load subjects', 'error');
+        if (!cancelled) setSubjectsForSelection([]);
+      } finally {
+        if (!cancelled) setLoadingSubjects(false);
+      }
+    };
+
+    syncOrFetchSubjects();
+
+    return () => {
+      cancelled = true;
+    };
   }, [allSubjects, selectedCourse, selectedSemester]);
+
+  const subjects = useMemo(() => {
+    return subjectsForSelection;
+  }, [subjectsForSelection]);
 
   // Handlers - now just set state, no API calls
   const handleCourseChange = (course) => {
@@ -565,7 +613,7 @@ const AttendancePage = () => {
                   disabled={!selectedSemester}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
-                  <option value="">{subjects.length === 0 && selectedSemester ? 'No subjects for this semester' : 'Select Subject'}</option>
+                  <option value="">{loadingSubjects && selectedSemester ? 'Loading subjects...' : subjects.length === 0 && selectedSemester ? 'No subjects for this semester' : 'Select Subject'}</option>
                   {subjects.map(subject => (
                     <option key={subject.id} value={subject.id}>{subject.name}</option>
                   ))}
