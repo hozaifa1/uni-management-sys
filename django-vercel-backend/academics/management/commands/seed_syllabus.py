@@ -1,6 +1,7 @@
 """
 Management command to seed syllabus data based on National University official syllabi.
 Seeds: MajorMinorOptions and Subjects for BBA, MBA, CSE, THM courses.
+Data extracted from official NU syllabus documents (2017-2018).
 """
 from django.core.management.base import BaseCommand
 from decimal import Decimal
@@ -18,6 +19,11 @@ class Command(BaseCommand):
             action='store_true',
             help='Clear existing subject and major data before seeding',
         )
+        parser.add_argument(
+            '--course',
+            type=str,
+            help='Seed only specific course (BBA, MBA, CSE, THM)',
+        )
 
     def handle(self, *args, **options):
         if options['clear']:
@@ -26,13 +32,22 @@ class Command(BaseCommand):
             MajorMinorOption.objects.all().delete()
             self.stdout.write(self.style.WARNING('Existing syllabus data cleared.'))
 
-        self.seed_major_options()
-        self.seed_cse_subjects()
-        self.seed_bba_subjects()
-        self.seed_thm_subjects()
-        self.seed_mba_subjects()
+        course_filter = options.get('course')
         
-        self.stdout.write(self.style.SUCCESS('Syllabus data seeding completed successfully!'))
+        self.seed_major_options()
+        
+        if not course_filter or course_filter == 'CSE':
+            self.seed_cse_subjects()
+        if not course_filter or course_filter == 'BBA':
+            self.seed_bba_subjects()
+        if not course_filter or course_filter == 'THM':
+            self.seed_thm_subjects()
+        if not course_filter or course_filter == 'MBA':
+            self.seed_mba_subjects()
+        
+        # Print summary
+        total = Subject.objects.count()
+        self.stdout.write(self.style.SUCCESS(f'\nSyllabus data seeding completed! Total subjects: {total}'))
 
     def seed_major_options(self):
         """Seed major options for BBA and MBA"""
@@ -76,75 +91,72 @@ class Command(BaseCommand):
             return
 
         subjects = [
-            # Semester 1
-            {'code': '510201', 'name': 'Fundamentals of Computer and Computing', 'semester': '1st', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '510202', 'name': 'Introduction to Computing Lab', 'semester': '1st', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '510203', 'name': 'Discrete Mathematics', 'semester': '1st', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '510204', 'name': 'Discrete Mathematics Lab', 'semester': '1st', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '510205', 'name': 'Mathematics I (Differential and Integral Calculus)', 'semester': '1st', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '510206', 'name': 'Physics I', 'semester': '1st', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '510207', 'name': 'English', 'semester': '1st', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            # ===== FIRST YEAR =====
+            # Semester 1 (from official syllabus)
+            {'code': '510201', 'name': 'Structured Programming Language', 'semester': '1st', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '510202', 'name': 'Structured Programming Language Lab', 'semester': '1st', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '510203', 'name': 'Electrical and Electronic Circuit', 'semester': '1st', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '510204', 'name': 'Electrical and Electronic Circuit Lab', 'semester': '1st', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '510205', 'name': 'Calculus', 'semester': '1st', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '510207', 'name': 'Physics', 'semester': '1st', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '510209', 'name': 'English', 'semester': '1st', 'credits': 3.0, 'marks': 80, 'type': 'core'},
             # Semester 2
-            {'code': '510219', 'name': 'Structured Programming Language', 'semester': '2nd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '510220', 'name': 'Structured Programming Language Lab', 'semester': '2nd', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '510221', 'name': 'Data Structures', 'semester': '2nd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '510222', 'name': 'Data Structures Lab', 'semester': '2nd', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '510223', 'name': 'Mathematics II (Linear Algebra and Statistics)', 'semester': '2nd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '510224', 'name': 'Physics II', 'semester': '2nd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '510225', 'name': 'Electrical Circuits', 'semester': '2nd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '510221', 'name': 'Digital Systems Design', 'semester': '2nd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '510222', 'name': 'Digital Systems Lab', 'semester': '2nd', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '510223', 'name': 'Discrete Mathematics', 'semester': '2nd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '510225', 'name': 'Linear Algebra', 'semester': '2nd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '510227', 'name': 'Statistics and Probability', 'semester': '2nd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '510229', 'name': 'History of the Emergence of Independent Bangladesh', 'semester': '2nd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            # ===== SECOND YEAR =====
             # Semester 3
-            {'code': '520201', 'name': 'Object Oriented Programming', 'semester': '3rd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '520202', 'name': 'Object Oriented Programming Lab', 'semester': '3rd', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '520203', 'name': 'Digital Logic Design', 'semester': '3rd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '520204', 'name': 'Digital Logic Design Lab', 'semester': '3rd', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '520205', 'name': 'Electronics', 'semester': '3rd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '520206', 'name': 'Electronics Lab', 'semester': '3rd', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '520207', 'name': 'Mathematics III (Coordinate Geometry and Complex Analysis)', 'semester': '3rd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '520201', 'name': 'Data Structure', 'semester': '3rd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '520202', 'name': 'Data Structure Lab', 'semester': '3rd', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '520203', 'name': 'Object Oriented Programming', 'semester': '3rd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '520204', 'name': 'Object Oriented Programming Lab', 'semester': '3rd', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '520205', 'name': 'Computer Architecture', 'semester': '3rd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '520207', 'name': 'Ordinary Differential Equation', 'semester': '3rd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '520209', 'name': 'Fundamental of Business Studies', 'semester': '3rd', 'credits': 3.0, 'marks': 80, 'type': 'core'},
             # Semester 4
-            {'code': '520219', 'name': 'Computer Architecture and Organization', 'semester': '4th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '520220', 'name': 'Computer Architecture Lab', 'semester': '4th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
             {'code': '520221', 'name': 'Database Management System', 'semester': '4th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
             {'code': '520222', 'name': 'Database Management System Lab', 'semester': '4th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '520223', 'name': 'Microprocessor and Assembly Languages', 'semester': '4th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '520224', 'name': 'Microprocessor and Assembly Languages Lab', 'semester': '4th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '520223', 'name': 'Microprocessor and Assembly Language', 'semester': '4th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '520224', 'name': 'Microprocessor and Assembly Language Lab', 'semester': '4th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
             {'code': '520225', 'name': 'Design and Analysis of Algorithms', 'semester': '4th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
             {'code': '520226', 'name': 'Design and Analysis of Algorithms Lab', 'semester': '4th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
             {'code': '520227', 'name': 'Numerical Analysis', 'semester': '4th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            # ===== THIRD YEAR =====
             # Semester 5
-            {'code': '530201', 'name': 'Peripheral and Interfacing', 'semester': '5th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '530202', 'name': 'Peripheral and Interfacing Lab', 'semester': '5th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '530203', 'name': 'Data and Telecommunications', 'semester': '5th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '530204', 'name': 'Data and Telecommunications Lab', 'semester': '5th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '530205', 'name': 'Operating System', 'semester': '5th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '530206', 'name': 'Operating System Lab', 'semester': '5th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '530207', 'name': 'Economics', 'semester': '5th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '530201', 'name': 'Operating System', 'semester': '5th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '530202', 'name': 'Operating System Lab', 'semester': '5th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '530203', 'name': 'Computer Networks', 'semester': '5th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '530204', 'name': 'Computer Networks Lab', 'semester': '5th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '530205', 'name': 'Software Engineering', 'semester': '5th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '530206', 'name': 'Software Engineering Lab', 'semester': '5th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '530207', 'name': 'Theory of Computation', 'semester': '5th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
             # Semester 6
-            {'code': '530219', 'name': 'Software Engineering', 'semester': '6th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '530220', 'name': 'Software Engineering Lab', 'semester': '6th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '530221', 'name': 'Computer Networking', 'semester': '6th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '530222', 'name': 'Computer Networking Lab', 'semester': '6th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '530223', 'name': 'Embedded System Programming', 'semester': '6th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '530224', 'name': 'Embedded System Programming Lab', 'semester': '6th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '530225', 'name': 'Theory of Computation', 'semester': '6th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '530221', 'name': 'Artificial Intelligence', 'semester': '6th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '530222', 'name': 'Artificial Intelligence Lab', 'semester': '6th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '530223', 'name': 'Web Technology', 'semester': '6th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '530224', 'name': 'Web Technology Lab', 'semester': '6th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '530225', 'name': 'Compiler Design', 'semester': '6th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '530226', 'name': 'Compiler Design Lab', 'semester': '6th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '530227', 'name': 'Accounting', 'semester': '6th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            # ===== FOURTH YEAR =====
             # Semester 7
-            {'code': '540201', 'name': 'Artificial Intelligence', 'semester': '7th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '540202', 'name': 'Artificial Intelligence Lab', 'semester': '7th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '540203', 'name': 'Compiler Design and Construction', 'semester': '7th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '540204', 'name': 'Compiler Design Lab', 'semester': '7th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '540205', 'name': 'Computer Graphics', 'semester': '7th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '540206', 'name': 'Computer Graphics Lab', 'semester': '7th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '540207', 'name': 'E-Commerce and Web Engineering', 'semester': '7th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '540208', 'name': 'E-Commerce and Web Engineering Lab', 'semester': '7th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '540201', 'name': 'Computer Graphics', 'semester': '7th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '540202', 'name': 'Computer Graphics Lab', 'semester': '7th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '540203', 'name': 'Distributed Systems', 'semester': '7th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '540204', 'name': 'Distributed Systems Lab', 'semester': '7th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '540205', 'name': 'Digital Image Processing', 'semester': '7th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '540206', 'name': 'Digital Image Processing Lab', 'semester': '7th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '540207', 'name': 'Information System Security', 'semester': '7th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
             # Semester 8
-            {'code': '540219', 'name': 'Network and Information Security', 'semester': '8th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '540220', 'name': 'Network and Information Security Lab', 'semester': '8th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
-            {'code': '540221', 'name': 'Information System Management', 'semester': '8th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
-            {'code': '540222', 'name': 'Project/Industry Attachment', 'semester': '8th', 'credits': 6.0, 'marks': 200, 'type': 'project'},
-            # Optional courses (8th semester)
-            {'code': '540223', 'name': 'Simulation and Modeling', 'semester': '8th', 'credits': 3.0, 'marks': 80, 'type': 'elective'},
-            {'code': '540225', 'name': 'Parallel and Distributed Systems', 'semester': '8th', 'credits': 3.0, 'marks': 80, 'type': 'elective'},
-            {'code': '540227', 'name': 'Digital Signal Processing', 'semester': '8th', 'credits': 3.0, 'marks': 80, 'type': 'elective'},
-            {'code': '540229', 'name': 'Digital Image Processing', 'semester': '8th', 'credits': 3.0, 'marks': 80, 'type': 'elective'},
+            {'code': '540221', 'name': 'Machine Learning', 'semester': '8th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '540222', 'name': 'Machine Learning Lab', 'semester': '8th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '540223', 'name': 'Mobile Application Development', 'semester': '8th', 'credits': 3.0, 'marks': 80, 'type': 'core'},
+            {'code': '540224', 'name': 'Mobile Application Development Lab', 'semester': '8th', 'credits': 1.5, 'marks': 40, 'type': 'lab'},
+            {'code': '540225', 'name': 'Project/Thesis', 'semester': '8th', 'credits': 6.0, 'marks': 200, 'type': 'project'},
+            {'code': '540227', 'name': 'Viva Voce', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'viva'},
         ]
         
         self._create_subjects(subjects, course, 'CSE')
@@ -157,54 +169,116 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('BBA course not found, skipping BBA subjects'))
             return
 
+        # Get major options for BBA
+        try:
+            major_ais = MajorMinorOption.objects.get(code='BBA_AIS')
+            major_mgt = MajorMinorOption.objects.get(code='BBA_MGT')
+            major_mkt = MajorMinorOption.objects.get(code='BBA_MKT')
+            major_fin = MajorMinorOption.objects.get(code='BBA_FIN')
+        except MajorMinorOption.DoesNotExist:
+            major_ais = major_mgt = major_mkt = major_fin = None
+
         subjects = [
-            # Year 1 - Semester 1
-            {'code': '211101', 'name': 'Introduction to Business', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '211103', 'name': 'Principles of Management', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '211105', 'name': 'English - I', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '211107', 'name': 'History of the Emergence of Bangladesh', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '211109', 'name': 'Fundamentals of Computers', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            # Year 1 - Semester 2
-            {'code': '211102', 'name': 'Principles of Accounting', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '211104', 'name': 'Business Mathematics', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '211106', 'name': 'English - II', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '211108', 'name': 'Principles of Marketing', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '211110', 'name': 'Computer Applications in Business', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            # Year 2 - Semester 3
-            {'code': '221101', 'name': 'Microeconomics', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '221103', 'name': 'Financial Accounting', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '221105', 'name': 'Organization Behavior', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '221107', 'name': 'Business Statistics', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '221109', 'name': 'Business Communication', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            # Year 2 - Semester 4
-            {'code': '221102', 'name': 'Macroeconomics', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '221104', 'name': 'Cost and Management Accounting', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '221106', 'name': 'Human Resource Management', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '221108', 'name': 'Business Law', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '221110', 'name': 'E-Business', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            # Year 3 - Semester 5
-            {'code': '231101', 'name': 'Company Law', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '231103', 'name': 'Financial Management', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '231105', 'name': 'Production and Operations Management', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '231107', 'name': 'Research Methodology', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '231109', 'name': 'Management Information System', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            # Year 3 - Semester 6
-            {'code': '231102', 'name': 'Taxation in Bangladesh', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '231104', 'name': 'Auditing and Assurance', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '231106', 'name': 'International Business', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '231108', 'name': 'Entrepreneurship Development', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': '231110', 'name': 'Strategic Management', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            # Year 4 - Semester 7 (Core + Major courses)
-            {'code': '241101', 'name': 'Project Work', 'semester': '7th', 'credits': 6.0, 'marks': 200, 'type': 'project'},
-            {'code': '241103', 'name': 'Viva Voce', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'viva'},
-            # Year 4 - Semester 8
-            {'code': '241102', 'name': 'Internship/Industrial Training', 'semester': '8th', 'credits': 6.0, 'marks': 200, 'type': 'project'},
+            # ===== FIRST YEAR =====
+            # Semester 1 (from official BBA Syllabus 2017-2018)
+            {'code': '510101', 'name': 'Introduction to Business', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510103', 'name': 'Business Communication & Report Writing', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510105', 'name': 'Basic Accounting', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510107', 'name': 'Business Mathematics', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '211501', 'name': 'History of the Emergence of Independent Bangladesh', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            # Semester 2
+            {'code': '510121', 'name': 'Principles of Management', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510123', 'name': 'Taxation in Bangladesh', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510125', 'name': 'Computer & Information Technology', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510127', 'name': 'Theory and Practices of Banking', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510129', 'name': 'Micro Economics', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            # ===== SECOND YEAR =====
+            # Semester 3
+            {'code': '520101', 'name': 'Business Statistics-I', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '520103', 'name': 'Organizational Behavior', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '520105', 'name': 'Legal Environment of Business', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '520107', 'name': 'E-Commerce', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '520109', 'name': 'Macro Economics', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            # Semester 4
+            {'code': '520121', 'name': 'Risk Management & Insurance', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '520123', 'name': 'Business Statistics-II', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '520125', 'name': 'Human Resource Management', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '520127', 'name': 'Export-Import Management', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '520129', 'name': 'Supply Chain Management', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            # ===== THIRD YEAR =====
+            # Semester 5
+            {'code': '530101', 'name': 'Principles of Finance', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '530103', 'name': 'Principles of Marketing', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '530105', 'name': 'Cost Accounting', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '530107', 'name': 'Tourism & Hospitality Management', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '530109', 'name': 'Entrepreneurship & Small Business Management', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            # Semester 6
+            {'code': '530121', 'name': 'Financial Management', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '530123', 'name': 'Marketing Management', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '530125', 'name': 'Management Accounting', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '530127', 'name': 'Enterprise Resource Planning', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '530129', 'name': 'Research Methodology', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '530131', 'name': 'Viva Voce', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'viva'},
+            # ===== FOURTH YEAR - MARKETING MAJOR =====
+            # Semester 7 - Marketing
+            {'code': '540101', 'name': 'Customer Relationship Management', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            {'code': '540103', 'name': 'Consumer Behavior', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            {'code': '540105', 'name': 'Brand Management', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            {'code': '540107', 'name': 'E-Marketing', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            {'code': '540109', 'name': 'Service Marketing', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            # Semester 8 - Marketing
+            {'code': '540121', 'name': 'Selling and Salesmanship', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            {'code': '540123', 'name': 'Integrated Marketing Communication', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            {'code': '540125', 'name': 'SME Marketing', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            {'code': '540127', 'name': 'International Economics', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            {'code': '540129', 'name': 'Agricultural & Food Marketing', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            # ===== FOURTH YEAR - FINANCE & BANKING MAJOR =====
+            # Semester 7 - Finance
+            {'code': '540201', 'name': 'Corporate Finance', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            {'code': '540203', 'name': 'Working Capital Management', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            {'code': '540205', 'name': 'Bank Management', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            {'code': '540207', 'name': 'E-Banking', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            {'code': '540209', 'name': 'Fundamentals of Investments', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            # Semester 8 - Finance
+            {'code': '540221', 'name': 'Financial Markets & Institutions', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            {'code': '540223', 'name': 'Financial Analysis and Business Valuation', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            {'code': '540225', 'name': 'Fiscal and Monetary Policy', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            {'code': '540227', 'name': 'Security Analysis and Portfolio Management', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            {'code': '540229', 'name': 'Real Estate Finance', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            # ===== FOURTH YEAR - AIS MAJOR =====
+            # Semester 7 - AIS
+            {'code': '540301', 'name': 'Intermediate Accounting', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            {'code': '540303', 'name': 'Advanced Accounting', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            {'code': '540305', 'name': 'Working Capital Management (AIS)', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            {'code': '540307', 'name': 'Financial Statement Analysis and Business Valuation', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            {'code': '540309', 'name': 'Corporate Governance', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            # Semester 8 - AIS
+            {'code': '540321', 'name': 'Accounting and Information Systems', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            {'code': '540323', 'name': 'Auditing', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            {'code': '540325', 'name': 'Advanced Cost & Management Accounting', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            {'code': '540327', 'name': 'Accounting Theory', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            {'code': '540329', 'name': 'Accounting for Government and Non-Profit Organization', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            # ===== FOURTH YEAR - MANAGEMENT STUDIES MAJOR =====
+            # Semester 7 - Management
+            {'code': '540401', 'name': 'Organization Development', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mgt},
+            {'code': '540403', 'name': 'Global Management', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mgt},
+            {'code': '540405', 'name': 'Conflict Management', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mgt},
+            {'code': '540407', 'name': 'Management Thought', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mgt},
+            {'code': '540409', 'name': 'Career Planning and Development', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mgt},
+            # Semester 8 - Management
+            {'code': '540421', 'name': 'Industrial Relations', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mgt},
+            {'code': '540423', 'name': 'Management Information Systems', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mgt},
+            {'code': '540425', 'name': 'Operations Management', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mgt},
+            {'code': '540427', 'name': 'Strategic Management', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mgt},
+            {'code': '540429', 'name': 'Total Quality Management', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mgt},
+            # Internship (common for all majors)
+            {'code': '540999', 'name': 'Internship/Project Defense', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'project'},
         ]
         
         self._create_subjects(subjects, course, 'BBA')
 
     def seed_thm_subjects(self):
-        """Seed THM subjects from official NU syllabus (2015-2016)"""
+        """Seed THM (Tourism & Hospitality Management) subjects from official NU syllabus (2015-2016)"""
         try:
             course = Course.objects.get(code='THM')
         except Course.DoesNotExist:
@@ -212,99 +286,156 @@ class Command(BaseCommand):
             return
 
         subjects = [
-            # Year 1 - Semester 1
-            {'code': 'THM101', 'name': 'Introduction to Tourism', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM103', 'name': 'Principles of Management', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM105', 'name': 'English - I', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM107', 'name': 'History of the Emergence of Bangladesh', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM109', 'name': 'Fundamentals of Computers', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            # Year 1 - Semester 2
-            {'code': 'THM102', 'name': 'Introduction to Hospitality', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM104', 'name': 'Business Mathematics', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM106', 'name': 'English - II', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM108', 'name': 'Principles of Marketing', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM110', 'name': 'Computer Applications in Business', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            # Year 2 - Semester 3
-            {'code': 'THM201', 'name': 'Tourism Geography', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM203', 'name': 'Financial Accounting', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM205', 'name': 'Organization Behavior', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM207', 'name': 'Business Statistics', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM209', 'name': 'Business Communication', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            # Year 2 - Semester 4
-            {'code': 'THM202', 'name': 'Food and Beverage Management', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM204', 'name': 'Cost and Management Accounting', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM206', 'name': 'Human Resource Management', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM208', 'name': 'Business Law', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM210', 'name': 'Front Office Management', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            # Year 3 - Semester 5
-            {'code': 'THM301', 'name': 'Travel Agency and Tour Operations', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM303', 'name': 'Financial Management', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM305', 'name': 'Housekeeping Management', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM307', 'name': 'Research Methodology', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM309', 'name': 'Tourism Marketing', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            # Year 3 - Semester 6
-            {'code': 'THM302', 'name': 'Airline and Airport Management', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM304', 'name': 'Event Management', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM306', 'name': 'Tourism Planning and Development', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM308', 'name': 'Entrepreneurship Development', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM310', 'name': 'Strategic Management', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            # Year 4 - Semester 7
-            {'code': 'THM401', 'name': 'Eco-Tourism', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM403', 'name': 'Hotel and Resort Management', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM405', 'name': 'Project Work', 'semester': '7th', 'credits': 6.0, 'marks': 200, 'type': 'project'},
-            {'code': 'THM407', 'name': 'Viva Voce', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'viva'},
-            # Year 4 - Semester 8
-            {'code': 'THM402', 'name': 'Heritage and Cultural Tourism', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM404', 'name': 'Tourism Laws and Ethics', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'THM406', 'name': 'Internship/Industrial Training', 'semester': '8th', 'credits': 6.0, 'marks': 200, 'type': 'project'},
+            # ===== FIRST YEAR =====
+            # Semester 1 (from official THM Syllabus)
+            {'code': '510901', 'name': 'Introduction to Business', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510903', 'name': 'Fundamentals of Tourism and Hospitality', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510905', 'name': 'Introduction to Computer', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510907', 'name': 'Basic English Language', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510909', 'name': 'History of the Emergence of Independent Bangladesh', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            # Semester 2
+            {'code': '510911', 'name': 'Business Mathematics', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510913', 'name': 'General Science and Environment', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510915', 'name': 'Micro Economics', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510917', 'name': 'First Aid, Safety and Security', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '510919', 'name': 'Fundamentals of Management', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            # ===== SECOND YEAR =====
+            # Semester 3
+            {'code': '520901', 'name': 'Hospitality Managerial Communication', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '520903', 'name': 'Business Statistics', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '520905', 'name': 'Fundamentals of Accounting', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '520907', 'name': 'Macro Economics and Economy of Bangladesh', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '520909', 'name': 'Business Law and Legal Issues of Tourism', 'semester': '3rd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            # Semester 4
+            {'code': '520911', 'name': 'Tourism and Hospitality Marketing', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '520913', 'name': 'Fundamentals of Culinary Art', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '520915', 'name': 'Front Office Operations and Reservation', 'semester': '4th', 'credits': 2.0, 'marks': 60, 'type': 'core'},
+            {'code': '520916', 'name': 'Front Office Operations and Reservation (Practical)', 'semester': '4th', 'credits': 1.0, 'marks': 40, 'type': 'lab'},
+            {'code': '520917', 'name': 'Housekeeping Management', 'semester': '4th', 'credits': 2.0, 'marks': 60, 'type': 'core'},
+            {'code': '520918', 'name': 'Housekeeping Management (Practical)', 'semester': '4th', 'credits': 1.0, 'marks': 40, 'type': 'lab'},
+            {'code': '520919', 'name': 'HRM in Tourism and Hospitality', 'semester': '4th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            # ===== THIRD YEAR =====
+            # Semester 5
+            {'code': '530901', 'name': 'Tourism in Bangladesh', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '530903', 'name': 'Food and Beverage Production', 'semester': '5th', 'credits': 2.0, 'marks': 60, 'type': 'core'},
+            {'code': '530904', 'name': 'Food and Beverage Production (Practical)', 'semester': '5th', 'credits': 1.0, 'marks': 40, 'type': 'lab'},
+            {'code': '530905', 'name': 'Food and Beverage Service', 'semester': '5th', 'credits': 2.0, 'marks': 60, 'type': 'core'},
+            {'code': '530906', 'name': 'Food and Beverage Service (Practical)', 'semester': '5th', 'credits': 1.0, 'marks': 40, 'type': 'lab'},
+            {'code': '530907', 'name': 'Food Hygiene and Sanitation', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '530909', 'name': 'Tourism Planning and Development', 'semester': '5th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            # Semester 6
+            {'code': '530911', 'name': 'Research Methodology', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '530913', 'name': 'Tourist Behavior', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '530915', 'name': 'Food and Beverage Management', 'semester': '6th', 'credits': 2.0, 'marks': 60, 'type': 'core'},
+            {'code': '530916', 'name': 'Food and Beverage Management (Practical)', 'semester': '6th', 'credits': 1.0, 'marks': 40, 'type': 'lab'},
+            {'code': '530917', 'name': 'Computerized Reservation System (CRS)', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '530919', 'name': 'Fundamentals of Finance', 'semester': '6th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            # ===== FOURTH YEAR =====
+            # Semester 7
+            {'code': '540901', 'name': 'Geography of Tourism', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '540903', 'name': 'Community and Cultural Issues in Tourism', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '540905', 'name': 'Travel Agency and Tour Operations', 'semester': '7th', 'credits': 2.0, 'marks': 60, 'type': 'core'},
+            {'code': '540906', 'name': 'Travel Agency and Tour Operations (Practical)', 'semester': '7th', 'credits': 1.0, 'marks': 40, 'type': 'lab'},
+            {'code': '540907', 'name': 'French Language', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '540909', 'name': 'Tourism and Hospitality Entrepreneurship', 'semester': '7th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            # Semester 8
+            {'code': '540911', 'name': 'Destination Management', 'semester': '8th', 'credits': 2.0, 'marks': 60, 'type': 'core'},
+            {'code': '540912', 'name': 'Destination Management (Field Work)', 'semester': '8th', 'credits': 1.0, 'marks': 40, 'type': 'lab'},
+            {'code': '540913', 'name': 'MICE Management', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '540914', 'name': 'Internship (Report and Defense)', 'semester': '8th', 'credits': 6.0, 'marks': 200, 'type': 'project'},
+            {'code': '540916', 'name': 'Viva-Voce', 'semester': '8th', 'credits': 3.0, 'marks': 100, 'type': 'viva'},
         ]
         
         self._create_subjects(subjects, course, 'THM')
 
     def seed_mba_subjects(self):
-        """Seed MBA subjects from official NU syllabus (2017-2018)"""
+        """Seed MBA subjects from official NU syllabus (2017-2018) - One Year Program"""
         try:
             course = Course.objects.get(code='MBA')
         except Course.DoesNotExist:
             self.stdout.write(self.style.WARNING('MBA course not found, skipping MBA subjects'))
             return
 
+        # Get major options for MBA
+        try:
+            major_ais = MajorMinorOption.objects.get(code='MBA_AIS')
+            major_hrm = MajorMinorOption.objects.get(code='MBA_HRM')
+            major_mkt = MajorMinorOption.objects.get(code='MBA_MKT')
+            major_fin = MajorMinorOption.objects.get(code='MBA_FIN')
+        except MajorMinorOption.DoesNotExist:
+            major_ais = major_hrm = major_mkt = major_fin = None
+
         subjects = [
-            # Semester 1 (Core courses)
-            {'code': 'MBA501', 'name': 'Managerial Economics', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'MBA502', 'name': 'Principles of Marketing', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'MBA503', 'name': 'Accounting for Managers', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'MBA504', 'name': 'Business Communication', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'MBA505', 'name': 'Human Resource Management', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'MBA506', 'name': 'Management Information System', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            # Semester 2 (Core + Major courses)
-            {'code': 'MBA507', 'name': 'Managerial Finance', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'MBA508', 'name': 'Operations Management', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'MBA509', 'name': 'Strategic Management', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'MBA510', 'name': 'Research Methodology', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'core'},
-            {'code': 'MBA511', 'name': 'Project Work', 'semester': '2nd', 'credits': 6.0, 'marks': 200, 'type': 'project'},
+            # ===== FIRST SEMESTER (Common for all majors) =====
+            {'code': '610101', 'name': 'Advanced Research Methodology', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '610103', 'name': 'Management of Multinational Corporations', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '610105', 'name': 'Bangladesh Economy: Performance & Policies', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '610107', 'name': 'Managerial Economics', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            {'code': '610109', 'name': 'Project Management', 'semester': '1st', 'credits': 3.0, 'marks': 100, 'type': 'core'},
+            # ===== SECOND SEMESTER - AIS MAJOR =====
+            {'code': '620121', 'name': 'Advanced Financial Accounting', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            {'code': '620123', 'name': 'Corporate Financial Reporting', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            {'code': '620125', 'name': 'Corporate Tax Planning', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            {'code': '620127', 'name': 'Strategic Management Accounting', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            {'code': '620129', 'name': 'Advanced Auditing and Assurance', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_ais},
+            {'code': '620130', 'name': 'Internship Report/Project Paper (AIS)', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'project', 'major': major_ais},
+            {'code': '620132', 'name': 'Viva-Voce with Defense (AIS)', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'viva', 'major': major_ais},
+            # ===== SECOND SEMESTER - HRM MAJOR =====
+            {'code': '620141', 'name': 'Training and Development', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_hrm},
+            {'code': '620143', 'name': 'Strategic Human Resource Planning', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_hrm},
+            {'code': '620145', 'name': 'Compensation Management', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_hrm},
+            {'code': '620147', 'name': 'Human Resource Information Systems', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_hrm},
+            {'code': '620149', 'name': 'International Human Resource Management', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_hrm},
+            {'code': '620150', 'name': 'Internship Report/Project Paper (HRM)', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'project', 'major': major_hrm},
+            {'code': '620152', 'name': 'Viva-Voce with Defense (HRM)', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'viva', 'major': major_hrm},
+            # ===== SECOND SEMESTER - MARKETING MAJOR =====
+            {'code': '620161', 'name': 'Strategic Marketing', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            {'code': '620163', 'name': 'Global Marketing', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            {'code': '620165', 'name': 'Marketing for Non-Profit Organization', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            {'code': '620167', 'name': 'Financial Services Marketing', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            {'code': '620169', 'name': 'Innovation & New Product Development', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_mkt},
+            {'code': '620170', 'name': 'Internship Report/Project Paper (MKT)', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'project', 'major': major_mkt},
+            {'code': '620172', 'name': 'Viva-Voce with Defense (MKT)', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'viva', 'major': major_mkt},
+            # ===== SECOND SEMESTER - FINANCE & BANKING MAJOR =====
+            {'code': '620181', 'name': 'International Financial Management', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            {'code': '620183', 'name': 'Capital Investment Decision', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            {'code': '620185', 'name': 'Merchant & Investment Banking', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            {'code': '620187', 'name': 'Financial Derivatives', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            {'code': '620189', 'name': 'Bank Risk Management', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'major', 'major': major_fin},
+            {'code': '620190', 'name': 'Internship Report/Project Paper (FIN)', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'project', 'major': major_fin},
+            {'code': '620192', 'name': 'Viva-Voce with Defense (FIN)', 'semester': '2nd', 'credits': 3.0, 'marks': 100, 'type': 'viva', 'major': major_fin},
         ]
         
         self._create_subjects(subjects, course, 'MBA')
 
     def _create_subjects(self, subjects, course, course_code):
-        """Helper to create subjects"""
+        """Helper to create subjects with optional major assignment"""
         created_count = 0
+        updated_count = 0
         for subj_data in subjects:
+            defaults = {
+                'name': subj_data['name'],
+                'course': course,
+                'course_code': course_code,
+                'semester': subj_data['semester'],
+                'credit_hours': Decimal(str(subj_data['credits'])),
+                'total_marks': subj_data['marks'],
+                'subject_type': subj_data['type'],
+                'is_active': True,
+            }
+            # Add major if specified
+            if 'major' in subj_data and subj_data['major'] is not None:
+                defaults['major'] = subj_data['major']
+            
             subject, created = Subject.objects.update_or_create(
                 code=subj_data['code'],
-                defaults={
-                    'name': subj_data['name'],
-                    'course': course,
-                    'course_code': course_code,
-                    'semester': subj_data['semester'],
-                    'credit_hours': Decimal(str(subj_data['credits'])),
-                    'total_marks': subj_data['marks'],
-                    'subject_type': subj_data['type'],
-                    'is_active': True,
-                }
+                defaults=defaults
             )
             if created:
                 created_count += 1
+            else:
+                updated_count += 1
         
-        self.stdout.write(self.style.SUCCESS(f'Seeded {created_count} {course_code} subjects.'))
+        self.stdout.write(self.style.SUCCESS(
+            f'  {course_code}: {created_count} created, {updated_count} updated (Total: {created_count + updated_count})'
+        ))
