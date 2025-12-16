@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import MajorMinorOption, Subject, Exam, Result
+from .models import MajorMinorOption, Subject, Exam, Result, Attendance
 
 
 class MajorMinorOptionSerializer(serializers.ModelSerializer):
@@ -225,6 +225,91 @@ class StudentReportCardSerializer(serializers.Serializer):
     
     def get_exam(self, obj):
         return ExamSerializer(obj['exam']).data
+
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Attendance model
+    """
+    student_name = serializers.CharField(
+        source='student.user.get_full_name',
+        read_only=True
+    )
+    student_id = serializers.CharField(
+        source='student.student_id',
+        read_only=True
+    )
+    subject_name = serializers.CharField(source='subject.name', read_only=True)
+    subject_code = serializers.CharField(source='subject.code', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    
+    class Meta:
+        model = Attendance
+        fields = [
+            'id', 'student', 'student_name', 'student_id',
+            'subject', 'subject_name', 'subject_code',
+            'date', 'status', 'status_display',
+            'course', 'intake', 'semester', 'session',
+            'remarks', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class AttendanceDetailSerializer(serializers.ModelSerializer):
+    """
+    Detailed Attendance serializer with full student info
+    """
+    student_name = serializers.CharField(
+        source='student.user.get_full_name',
+        read_only=True
+    )
+    student_id = serializers.CharField(
+        source='student.student_id',
+        read_only=True
+    )
+    student_photo = serializers.ImageField(
+        source='student.photo',
+        read_only=True
+    )
+    subject_name = serializers.CharField(source='subject.name', read_only=True)
+    subject_code = serializers.CharField(source='subject.code', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    
+    class Meta:
+        model = Attendance
+        fields = [
+            'id', 'student', 'student_name', 'student_id', 'student_photo',
+            'subject', 'subject_name', 'subject_code',
+            'date', 'status', 'status_display',
+            'course', 'intake', 'semester', 'session',
+            'remarks', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class BulkAttendanceSerializer(serializers.Serializer):
+    """
+    Serializer for bulk attendance submission
+    """
+    student_id = serializers.IntegerField()
+    status = serializers.ChoiceField(choices=['present', 'absent'])
+
+
+class AttendanceSessionSerializer(serializers.Serializer):
+    """
+    Serializer for attendance session summary (used in history view)
+    """
+    date = serializers.DateField()
+    course = serializers.CharField()
+    intake = serializers.CharField()
+    semester = serializers.CharField()
+    subject_id = serializers.IntegerField()
+    subject_name = serializers.CharField()
+    subject_code = serializers.CharField()
+    total_students = serializers.IntegerField()
+    present_count = serializers.IntegerField()
+    absent_count = serializers.IntegerField()
+    session = serializers.CharField(allow_null=True)
 
 
 

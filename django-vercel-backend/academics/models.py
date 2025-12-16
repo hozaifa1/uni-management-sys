@@ -432,3 +432,88 @@ class Result(models.Model):
         Calculate percentage
         """
         return (self.marks_obtained / self.subject.total_marks) * 100
+
+
+class Attendance(models.Model):
+    """
+    Attendance model for tracking student attendance per subject/class.
+    """
+    
+    STATUS_CHOICES = [
+        ('present', 'Present'),
+        ('absent', 'Absent'),
+    ]
+    
+    student = models.ForeignKey(
+        'accounts.Student',
+        on_delete=models.CASCADE,
+        related_name='attendances',
+        help_text='Student'
+    )
+    
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.CASCADE,
+        related_name='attendances',
+        help_text='Subject for which attendance is being recorded'
+    )
+    
+    date = models.DateField(
+        help_text='Date of the class'
+    )
+    
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='present',
+        help_text='Attendance status (Present/Absent)'
+    )
+    
+    course = models.CharField(
+        max_length=10,
+        help_text='Course code (BBA, MBA, CSE, THM)'
+    )
+    
+    intake = models.CharField(
+        max_length=10,
+        help_text='Intake number'
+    )
+    
+    semester = models.CharField(
+        max_length=10,
+        help_text='Semester'
+    )
+    
+    session = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text='Academic session (e.g., 2023-2024)'
+    )
+    
+    remarks = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Additional remarks'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-date', 'student__student_id']
+        verbose_name = 'Attendance'
+        verbose_name_plural = 'Attendance Records'
+        unique_together = ['student', 'subject', 'date']
+        indexes = [
+            models.Index(fields=['date']),
+            models.Index(fields=['course']),
+            models.Index(fields=['intake']),
+            models.Index(fields=['semester']),
+            models.Index(fields=['subject']),
+            models.Index(fields=['student']),
+            models.Index(fields=['course', 'intake', 'semester', 'subject', 'date']),
+        ]
+    
+    def __str__(self):
+        return f"{self.student.student_id} - {self.subject.name} - {self.date} - {self.status}"

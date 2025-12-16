@@ -10,7 +10,8 @@ import {
   BarChart3,
   LogOut,
   Menu,
-  X
+  X,
+  ClipboardCheck
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -28,6 +29,7 @@ const Sidebar = () => {
       { name: 'Dashboard', href: '/dashboard', icon: Home },
       { name: 'Students', href: '/students', icon: Users },
       { name: 'Teachers', href: '/teachers', icon: GraduationCap },
+      { name: 'Attendance', href: '/attendance', icon: ClipboardCheck },
       { name: 'Payments', href: '/payments', icon: DollarSign },
       { name: 'Expenses', href: '/expenses', icon: Receipt },
       { name: 'Results', href: '/results', icon: BookOpen },
@@ -36,12 +38,14 @@ const Sidebar = () => {
     TEACHER: [
       { name: 'Dashboard', href: '/teacher/dashboard', icon: Home },
       { name: 'Students', href: '/students', icon: Users },
+      { name: 'Attendance', href: '/attendance', icon: ClipboardCheck },
       { name: 'Results', href: '/results', icon: BookOpen },
     ],
     STUDENT: [
       { name: 'Dashboard', href: '/student/dashboard', icon: Home },
       { name: 'My Results', href: '/student/results', icon: BookOpen },
       { name: 'My Payments', href: '/student/payments', icon: DollarSign },
+      { name: 'My Attendance', href: '/student/attendance', icon: ClipboardCheck },
     ],
   };
 

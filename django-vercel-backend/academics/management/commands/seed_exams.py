@@ -316,47 +316,44 @@ class Command(BaseCommand):
 
     def seed_results(self):
         """
-        Seed sample results for students.
-        Each student gets results for exams matching their course/semester.
+        Seed sample results for students (limited to avoid DB connection issues).
+        Each student gets results for a few exams matching their course/semester.
         """
         self.stdout.write(self.style.WARNING('Seeding Results...'))
         
-        students = Student.objects.all()
+        students = Student.objects.all()[:5]  # Limit to 5 students
         if not students.exists():
             self.stdout.write(self.style.WARNING('No students found. Please add students first.'))
             return
         
         results_created = 0
-        results_updated = 0
         
         for student in students:
-            # Get exams for this student's course and semester
+            # Get only 6 exams per student (2 subjects x 3 exam types)
             exams = Exam.objects.filter(
                 course=student.course,
                 semester=student.semester
-            ).select_related('subject')
+            ).select_related('subject')[:6]
             
             for exam in exams:
                 if not exam.subject:
                     continue
                 
+                # Check if result already exists
+                if Result.objects.filter(student=student, exam=exam, subject=exam.subject).exists():
+                    continue
+                
                 # Generate random marks based on exam type
                 total_marks = float(exam.total_marks)
-                # Random marks between 40% and 95% of total
                 marks = round(random.uniform(0.4, 0.95) * total_marks, 2)
                 
-                result, created = Result.objects.update_or_create(
+                Result.objects.create(
                     student=student,
                     exam=exam,
                     subject=exam.subject,
-                    defaults={
-                        'marks_obtained': Decimal(str(marks)),
-                        'remarks': 'Auto-generated sample result',
-                    }
+                    marks_obtained=Decimal(str(marks)),
+                    remarks='Auto-generated sample result',
                 )
-                if created:
-                    results_created += 1
-                else:
-                    results_updated += 1
+                results_created += 1
         
-        self.stdout.write(self.style.SUCCESS(f'Results: {results_created} created, {results_updated} updated.'))
+        self.stdout.write(self.style.SUCCESS(f'Results: {results_created} created.'))

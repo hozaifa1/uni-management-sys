@@ -5,19 +5,22 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import LoginPage from './pages/LoginPage';
+import LandingPage from './pages/LandingPage';
 import DashboardPage from './pages/DashboardPage';
 import StudentsPage from './pages/StudentsPage';
 import ResultsPage from './pages/ResultsPage';
 import PaymentsPage from './pages/PaymentsPage';
 import ReportsPage from './pages/ReportsPage';
+import AttendancePage from './pages/AttendancePage';
 import StudentDashboard from './pages/student/StudentDashboard';
 import MyResults from './pages/student/MyResults';
 import MyPayments from './pages/student/MyPayments';
+import MyAttendance from './pages/student/MyAttendance';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
 import { useAuth } from './context/AuthContext';
 
 const DefaultRedirect = () => {
-  const { isAuthenticated, loading, user } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
@@ -31,17 +34,7 @@ const DefaultRedirect = () => {
     return <Navigate to="/login" replace />;
   }
 
-  const userRole = user?.role || user?.user?.role;
-
-  if (userRole === 'STUDENT') {
-    return <Navigate to="/student/dashboard" replace />;
-  }
-
-  if (userRole === 'TEACHER') {
-    return <Navigate to="/teacher/dashboard" replace />;
-  }
-
-  return <Navigate to="/dashboard" replace />;
+  return <Navigate to="/home" replace />;
 };
 
 const AdminRedirect = () => {
@@ -69,6 +62,16 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
 
           <Route path="/admin/*" element={<AdminRedirect />} />
+
+          {/* Landing Page */}
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'TEACHER', 'STUDENT']}>
+                <LandingPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Protected Routes */}
           <Route
@@ -147,6 +150,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/attendance"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'TEACHER']}>
+                <DashboardLayout>
+                  <AttendancePage />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
           
           {/* Student Portal Routes */}
           <Route
@@ -175,6 +188,16 @@ function App() {
               <ProtectedRoute allowedRoles={['STUDENT']}>
                 <DashboardLayout>
                   <MyPayments />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/attendance"
+            element={
+              <ProtectedRoute allowedRoles={['STUDENT']}>
+                <DashboardLayout>
+                  <MyAttendance />
                 </DashboardLayout>
               </ProtectedRoute>
             }
