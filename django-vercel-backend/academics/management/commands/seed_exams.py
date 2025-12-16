@@ -4,8 +4,11 @@ Seeds: Subjects for each course/semester and 3 exams per subject (1st Incourse, 
 """
 from django.core.management.base import BaseCommand
 from datetime import date, timedelta
+from decimal import Decimal
+import random
 
 from academics.models import Exam, Subject, Result
+from accounts.models import Student
 from students.models import Course
 
 
@@ -29,8 +32,9 @@ class Command(BaseCommand):
 
         self.seed_subjects()
         self.seed_exams()
+        self.seed_results()
         
-        self.stdout.write(self.style.SUCCESS('Subject and exam seeding completed successfully!'))
+        self.stdout.write(self.style.SUCCESS('Subject, exam, and result seeding completed successfully!'))
 
     def seed_subjects(self):
         """Seed all subjects from official National University syllabi for each course/semester"""
@@ -309,3 +313,50 @@ class Command(BaseCommand):
                     exams_updated += 1
 
         self.stdout.write(self.style.SUCCESS(f'Exams: {exams_created} created, {exams_updated} updated.'))
+
+    def seed_results(self):
+        """
+        Seed sample results for students.
+        Each student gets results for exams matching their course/semester.
+        """
+        self.stdout.write(self.style.WARNING('Seeding Results...'))
+        
+        students = Student.objects.all()
+        if not students.exists():
+            self.stdout.write(self.style.WARNING('No students found. Please add students first.'))
+            return
+        
+        results_created = 0
+        results_updated = 0
+        
+        for student in students:
+            # Get exams for this student's course and semester
+            exams = Exam.objects.filter(
+                course=student.course,
+                semester=student.semester
+            ).select_related('subject')
+            
+            for exam in exams:
+                if not exam.subject:
+                    continue
+                
+                # Generate random marks based on exam type
+                total_marks = float(exam.total_marks)
+                # Random marks between 40% and 95% of total
+                marks = round(random.uniform(0.4, 0.95) * total_marks, 2)
+                
+                result, created = Result.objects.update_or_create(
+                    student=student,
+                    exam=exam,
+                    subject=exam.subject,
+                    defaults={
+                        'marks_obtained': Decimal(str(marks)),
+                        'remarks': 'Auto-generated sample result',
+                    }
+                )
+                if created:
+                    results_created += 1
+                else:
+                    results_updated += 1
+        
+        self.stdout.write(self.style.SUCCESS(f'Results: {results_created} created, {results_updated} updated.'))

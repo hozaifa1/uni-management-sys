@@ -22,7 +22,6 @@ const ResultsPage = () => {
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
-  const [selectedIntake, setSelectedIntake] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingResult, setEditingResult] = useState(null);
@@ -66,7 +65,7 @@ const ResultsPage = () => {
     loadInitialData();
   }, []);
 
-  // Fetch exams filtered by course/intake/semester when filters change
+  // Fetch exams filtered by course/semester when filters change
   useEffect(() => {
     const fetchFilteredExams = async () => {
       try {
@@ -82,7 +81,7 @@ const ResultsPage = () => {
     if (dataLoaded) {
       fetchFilteredExams();
     }
-  }, [selectedCourse, selectedIntake, selectedSemester, dataLoaded]);
+  }, [selectedCourse, selectedSemester, dataLoaded]);
 
   // Fetch exam statistics when an exam is selected
   useEffect(() => {
@@ -113,7 +112,6 @@ const ResultsPage = () => {
       if (selectedSubject) params.subject = selectedSubject;
       if (selectedStudent) params.student = selectedStudent;
       if (selectedCourse) params.course = selectedCourse;
-      if (selectedIntake) params.intake = selectedIntake;
       if (selectedSemester) params.semester = selectedSemester;
       const response = await api.get('/academics/results/', { params });
       setResults(response.data.results || response.data || []);
@@ -124,7 +122,7 @@ const ResultsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedCourse, selectedExam, selectedIntake, selectedSemester, selectedStudent, selectedSubject]);
+  }, [selectedCourse, selectedExam, selectedSemester, selectedStudent, selectedSubject]);
 
   // Fetch results when any filter changes
   useEffect(() => {
@@ -135,14 +133,7 @@ const ResultsPage = () => {
 
   const handleCourseChange = (value) => {
     setSelectedCourse(value);
-    setSelectedIntake('');
     setSelectedSemester('');
-    setSelectedStudent('');
-    setSelectedExam('');
-  };
-
-  const handleIntakeChange = (value) => {
-    setSelectedIntake(value);
     setSelectedStudent('');
     setSelectedExam('');
   };
@@ -156,7 +147,6 @@ const ResultsPage = () => {
 
   const handleResetFilters = () => {
     setSelectedCourse('');
-    setSelectedIntake('');
     setSelectedSemester('');
     setSelectedExam('');
     setSelectedSubject('');
@@ -181,13 +171,11 @@ const ResultsPage = () => {
 
     const studentsWithResults = students.filter((s) => studentIdsWithResults.has(s.id));
     const courses = [...new Set(studentsWithResults.map((s) => s.course).filter(Boolean))];
-    const intakes = [...new Set(studentsWithResults.map((s) => s.intake).filter(Boolean))];
     const semesters = [...new Set(studentsWithResults.map((s) => s.semester).filter(Boolean))];
     const examsWithResults = exams.filter((e) => examIdsWithResults.has(e.id));
 
     return {
       courses,
-      intakes,
       semesters,
       studentsWithResults,
       examsWithResults,
@@ -203,34 +191,16 @@ const ResultsPage = () => {
     if (selectedCourse) {
       filteredStudents = filteredStudents.filter((s) => s.course === selectedCourse);
     }
-    if (selectedIntake) {
-      filteredStudents = filteredStudents.filter((s) => s.intake === selectedIntake);
-    }
     if (selectedSemester) {
       filteredStudents = filteredStudents.filter((s) => s.semester === selectedSemester);
     }
-    let availableIntakes = availableOptions.intakes;
-    if (selectedCourse) {
-      availableIntakes = [
-        ...new Set(
-          availableOptions.studentsWithResults
-            .filter((s) => s.course === selectedCourse)
-            .map((s) => s.intake)
-            .filter(Boolean)
-        ),
-      ];
-    }
 
     let availableSemesters = availableOptions.semesters;
-    if (selectedCourse || selectedIntake) {
+    if (selectedCourse) {
       availableSemesters = [
         ...new Set(
           availableOptions.studentsWithResults
-            .filter(
-              (s) =>
-                (!selectedCourse || s.course === selectedCourse) &&
-                (!selectedIntake || s.intake === selectedIntake)
-            )
+            .filter((s) => !selectedCourse || s.course === selectedCourse)
             .map((s) => s.semester)
             .filter(Boolean)
         ),
@@ -262,13 +232,11 @@ const ResultsPage = () => {
     return {
       students: filteredStudents,
       exams: filteredExams,
-      intakes: availableIntakes,
       semesters: availableSemesters,
     };
   }, [
     availableOptions,
     selectedCourse,
-    selectedIntake,
     selectedSemester,
     selectedStudent,
     results,
@@ -279,9 +247,8 @@ const ResultsPage = () => {
     if (studentId) {
       const student = students.find(s => s.id === parseInt(studentId) || s.id === studentId);
       if (student) {
-        // Back-propagate student's course/intake/semester
+        // Back-propagate student's course/semester
         if (student.course) setSelectedCourse(student.course);
-        if (student.intake) setSelectedIntake(student.intake);
         if (student.semester) setSelectedSemester(student.semester);
       }
     }
@@ -383,12 +350,11 @@ const ResultsPage = () => {
 
   const filteredResults = useMemo(() => {
     return results.filter((result) => {
-      // Apply course/intake/semester/student/exam filters
-      if (selectedCourse || selectedIntake || selectedSemester) {
+      // Apply course/semester/student/exam filters
+      if (selectedCourse || selectedSemester) {
         const student = students.find(s => s.id === result.student || s.student_id === result.student_id);
         if (student) {
           if (selectedCourse && student.course !== selectedCourse) return false;
-          if (selectedIntake && student.intake !== selectedIntake) return false;
           if (selectedSemester && student.semester !== selectedSemester) return false;
         }
       }
@@ -407,7 +373,7 @@ const ResultsPage = () => {
       }
       return true;
     });
-  }, [results, students, selectedCourse, selectedIntake, selectedSemester, selectedStudent, selectedExam, selectedSubject, searchTerm]);
+  }, [results, students, selectedCourse, selectedSemester, selectedStudent, selectedExam, selectedSubject, searchTerm]);
 
   // Client-side pagination
   const totalPages = Math.ceil(filteredResults.length / ITEMS_PER_PAGE);
@@ -419,7 +385,7 @@ const ResultsPage = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCourse, selectedIntake, selectedSemester, selectedStudent, selectedExam, selectedSubject, searchTerm]);
+  }, [selectedCourse, selectedSemester, selectedStudent, selectedExam, selectedSubject, searchTerm]);
 
   const exportToCSV = () => {
     if (filteredResults.length === 0) {
@@ -526,8 +492,8 @@ const ResultsPage = () => {
 
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        {/* Row 1: Course/Intake/Semester/Exam/Subject Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
+        {/* Row 1: Course/Semester/Exam/Subject Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           {/* Course Filter */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Course</label>
@@ -540,23 +506,6 @@ const ResultsPage = () => {
               {availableOptions.courses.map((course) => (
                 <option key={course} value={course}>
                   {course}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Intake Filter */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Intake</label>
-            <select
-              value={selectedIntake}
-              onChange={(e) => handleIntakeChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">All Intakes ({filteredOptions.intakes.length})</option>
-              {filteredOptions.intakes.map((intake) => (
-                <option key={intake} value={intake}>
-                  {intake}
                 </option>
               ))}
             </select>
