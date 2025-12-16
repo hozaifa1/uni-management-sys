@@ -120,6 +120,11 @@ const StudentsPage = () => {
     return `${course}${major}`;
   };
 
+  const getCourseSemesterLabel = (student) => {
+    const base = getCourseLabel(student);
+    return `${base}${student.semester ? ` (Sem ${student.semester})` : ''}`;
+  };
+
 
   // Export all student info to PDF
   const exportStudentsPDF = () => {
@@ -137,13 +142,12 @@ const StudentsPage = () => {
 
     autoTable(doc, {
       startY: 42,
-      head: [['Student ID', 'Name', 'Course', 'Intake', 'Semester', 'Phone', 'Email']],
+      head: [['Student ID', 'Name', 'Course (Semester)', 'Intake', 'Phone', 'Email']],
       body: filteredStudents.map(s => [
         s.student_id || 'N/A',
         s.user ? `${s.user.first_name || ''} ${s.user.last_name || ''}`.trim() : 'N/A',
-        getCourseLabel(s),
+        getCourseSemesterLabel(s),
         s.intake || 'N/A',
-        s.semester || 'N/A',
         s.user?.phone_number || 'N/A',
         s.user?.email || 'N/A',
       ]),
@@ -176,7 +180,7 @@ const StudentsPage = () => {
       body: studentsWithPhone.map(s => [
         s.student_id || 'N/A',
         s.user ? `${s.user.first_name || ''} ${s.user.last_name || ''}`.trim() : 'N/A',
-        `${getCourseLabel(s)}${s.semester ? ` (Sem ${s.semester})` : ''}`,
+        getCourseSemesterLabel(s),
         s.user?.phone_number || 'N/A',
       ]),
       styles: { fontSize: 9 },
@@ -208,7 +212,7 @@ const StudentsPage = () => {
       body: studentsWithAddress.map(s => [
         s.student_id || 'N/A',
         s.user ? `${s.user.first_name || ''} ${s.user.last_name || ''}`.trim() : 'N/A',
-        `${getCourseLabel(s)}${s.semester ? ` (Sem ${s.semester})` : ''}`,
+        getCourseSemesterLabel(s),
         s.present_address || s.user?.address || 'N/A',
       ]),
       styles: { fontSize: 8 },
@@ -366,7 +370,7 @@ const StudentsPage = () => {
                   Student ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Course / Intake
+                  Course / Intake / Semester
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Session

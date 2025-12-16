@@ -131,7 +131,11 @@ const StudentDashboard = () => {
             <div className="flex items-center space-x-4 mt-3">
               <div className="flex items-center">
                 <Book className="w-4 h-4 mr-2" />
-                <span>{studentData?.course} - {studentData?.intake} Intake</span>
+                <span>
+                  {studentData?.course} - {studentData?.intake} Intake
+                  {studentData?.semester ? ` • Sem ${studentData.semester}` : ''}
+                  {studentData?.major_name ? ` • ${studentData.major_name}` : ''}
+                </span>
               </div>
               <div className="flex items-center">
                 <Calendar className="w-4 h-4 mr-2" />

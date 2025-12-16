@@ -16,6 +16,7 @@ import StudentDashboard from './pages/student/StudentDashboard';
 import MyResults from './pages/student/MyResults';
 import MyPayments from './pages/student/MyPayments';
 import MyAttendance from './pages/student/MyAttendance';
+import MyProfile from './pages/student/MyProfile';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
 import { useAuth } from './context/AuthContext';
 
@@ -198,6 +199,17 @@ function App() {
               <ProtectedRoute allowedRoles={['STUDENT']}>
                 <DashboardLayout>
                   <MyAttendance />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/student/profile"
+            element={
+              <ProtectedRoute allowedRoles={['STUDENT']}>
+                <DashboardLayout>
+                  <MyProfile />
                 </DashboardLayout>
               </ProtectedRoute>
             }

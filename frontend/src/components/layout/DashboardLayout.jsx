@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, ChevronDown, User, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Sidebar from './Sidebar';
 
 const DashboardLayout = ({ children }) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const dropdownRef = useRef(null);
+  const userRole = user?.role || user?.user?.role || 'STUDENT';
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -23,6 +26,13 @@ const DashboardLayout = ({ children }) => {
   const handleLogout = () => {
     setShowProfileDropdown(false);
     logout();
+  };
+
+  const handleMyProfile = () => {
+    setShowProfileDropdown(false);
+    if (userRole === 'STUDENT') {
+      navigate('/student/profile');
+    }
   };
 
   return (
@@ -68,7 +78,7 @@ const DashboardLayout = ({ children }) => {
                       </p>
                     </div>
                     <button
-                      onClick={() => setShowProfileDropdown(false)}
+                      onClick={handleMyProfile}
                       className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                     >
                       <User className="w-4 h-4 mr-2" />

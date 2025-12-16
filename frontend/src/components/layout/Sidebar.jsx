@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   Home,
   Users,
+  User,
   GraduationCap,
   DollarSign,
   Receipt,
@@ -43,6 +44,7 @@ const Sidebar = () => {
     ],
     STUDENT: [
       { name: 'Dashboard', href: '/student/dashboard', icon: Home },
+      { name: 'My Profile', href: '/student/profile', icon: User },
       { name: 'My Results', href: '/student/results', icon: BookOpen },
       { name: 'My Payments', href: '/student/payments', icon: DollarSign },
       { name: 'My Attendance', href: '/student/attendance', icon: ClipboardCheck },
