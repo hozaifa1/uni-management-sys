@@ -493,11 +493,16 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         intake = request.query_params.get('intake')
         semester = request.query_params.get('semester')
         
+        # All 8 semesters for a 4-year program
+        ALL_SEMESTERS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th']
+        
         # If no params, return all unique courses
         if not course:
-            courses = Student.objects.values_list('course', flat=True).distinct()
+            courses_qs = Student.objects.values_list('course', flat=True).distinct()
+            # Use set to ensure uniqueness and sort
+            courses = sorted(set(c for c in courses_qs if c))
             return Response({
-                'courses': list(courses),
+                'courses': courses,
                 'intakes': [],
                 'semesters': [],
                 'subjects': []
@@ -505,7 +510,8 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         
         # If course provided, get intakes for that course
         intakes_qs = Student.objects.filter(course=course).values_list('intake', flat=True).distinct()
-        intakes = list(intakes_qs)
+        # Use set to ensure uniqueness and sort
+        intakes = sorted(set(i for i in intakes_qs if i))
         
         if not intake:
             return Response({
@@ -515,17 +521,12 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 'subjects': []
             })
         
-        # If intake provided, get semesters
-        semesters_qs = Student.objects.filter(
-            course=course, intake=intake
-        ).values_list('semester', flat=True).distinct()
-        semesters = list(semesters_qs)
-        
+        # If intake provided, return all 8 semesters (not just those with students)
         if not semester:
             return Response({
                 'courses': [],
                 'intakes': intakes,
-                'semesters': semesters,
+                'semesters': ALL_SEMESTERS,
                 'subjects': []
             })
         
@@ -538,7 +539,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         return Response({
             'courses': [],
             'intakes': intakes,
-            'semesters': semesters,
+            'semesters': ALL_SEMESTERS,
             'subjects': subjects_data
         })
     

@@ -8,22 +8,14 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated, user } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!isAuthenticated) return;
-
-    const userRole = user?.role || user?.user?.role;
-
-    if (userRole === 'STUDENT') {
-      navigate('/student/dashboard', { replace: true });
-    } else if (userRole === 'TEACHER') {
-      navigate('/teacher/dashboard', { replace: true });
-    } else {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [isAuthenticated, navigate, user]);
+    // Redirect all users to the landing page
+    navigate('/home', { replace: true });
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,16 +23,9 @@ const LoginPage = () => {
     setIsLoading(true);
 
     try {
-      const userData = await login(username, password);
-      const userRole = userData?.role || userData?.user?.role;
-
-      if (userRole === 'STUDENT') {
-        navigate('/student/dashboard', { replace: true });
-      } else if (userRole === 'TEACHER') {
-        navigate('/teacher/dashboard', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      await login(username, password);
+      // Redirect all users to the landing page
+      navigate('/home', { replace: true });
     } catch (err) {
       setError(err.detail || 'Invalid College ID or password');
     } finally {
