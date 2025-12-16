@@ -485,7 +485,6 @@ const ReportCardViewer = () => {
               try {
                 const params = {};
                 if (selectedCourse) params.course = selectedCourse;
-                if (selectedIntake) params.intake = selectedIntake;
                 if (selectedSemester) params.semester = selectedSemester;
                 // Use the first exam with results as default if none selected
                 const examId = selectedExam || filteredOptions.exams[0]?.id;
