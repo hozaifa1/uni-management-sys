@@ -9,10 +9,8 @@ import {
   BookOpen
 } from 'lucide-react';
 import api from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
 
 const MyAttendance = () => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [attendanceData, setAttendanceData] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState('');
@@ -25,8 +23,7 @@ const MyAttendance = () => {
   const fetchAttendance = async () => {
     setLoading(true);
     try {
-      const studentId = user?.student_profile?.id || user?.id;
-      const params = { student_id: studentId };
+      const params = {};
       if (selectedSubject) {
         params.subject = selectedSubject;
       }

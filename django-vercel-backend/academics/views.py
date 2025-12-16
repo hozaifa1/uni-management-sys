@@ -961,8 +961,16 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         """
         student_id = request.query_params.get('student_id')
         subject_id = request.query_params.get('subject')
-        
-        if not student_id:
+
+        if getattr(request.user, 'role', None) == 'STUDENT':
+            student_profile = getattr(request.user, 'student_profile', None)
+            if not student_profile:
+                return Response(
+                    {'error': 'Student profile not found for this account'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            student_id = student_profile.id
+        elif not student_id:
             return Response(
                 {'error': 'student_id parameter is required'},
                 status=status.HTTP_400_BAD_REQUEST
