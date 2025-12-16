@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   ClipboardCheck, 
   Calendar, 
@@ -18,23 +18,29 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 
+const ALL_SEMESTERS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
+
 const AttendancePage = () => {
   const [activeTab, setActiveTab] = useState('log');
   
+  // Preloaded data (fetched once on mount)
+  const [allStudents, setAllStudents] = useState([]);
+  const [allSubjects, setAllSubjects] = useState([]);
+  const [initialLoading, setInitialLoading] = useState(true);
+  
   // Log Attendance State
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [courses, setCourses] = useState([]);
-  const [intakes, setIntakes] = useState([]);
-  const [semesters, setSemesters] = useState([]);
-  const [subjects, setSubjects] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedIntake, setSelectedIntake] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const [roster, setRoster] = useState([]);
   const [hasExistingAttendance, setHasExistingAttendance] = useState(false);
   const [loadingRoster, setLoadingRoster] = useState(false);
   const [savingAttendance, setSavingAttendance] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
   
   // History State
   const [historySessions, setHistorySessions] = useState([]);
@@ -52,9 +58,25 @@ const AttendancePage = () => {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
   };
 
-  // Fetch courses on mount
+  // Fetch ALL data on mount (students + subjects) - single load, no per-selection API calls
   useEffect(() => {
-    fetchCourses();
+    const loadAllData = async () => {
+      setInitialLoading(true);
+      try {
+        const [studentsRes, subjectsRes] = await Promise.all([
+          api.get('/accounts/students/', { params: { page_size: 10000 } }),
+          api.get('/academics/subjects/', { params: { page_size: 10000 } })
+        ]);
+        setAllStudents(studentsRes.data.results || studentsRes.data || []);
+        setAllSubjects(subjectsRes.data.results || subjectsRes.data || []);
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+        showToast('Failed to load data', 'error');
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+    loadAllData();
   }, []);
 
   // Fetch history when tab changes
@@ -64,68 +86,67 @@ const AttendancePage = () => {
     }
   }, [activeTab]);
 
-  const fetchCourses = async () => {
-    try {
-      const response = await api.get('/academics/attendance/hierarchy/');
-      setCourses(response.data.courses || []);
-    } catch (error) {
-      console.error('Error fetching courses:', error);
-      showToast('Failed to load courses', 'error');
-    }
-  };
+  // Derived data - computed client-side from preloaded data (instant, no API calls)
+  const courses = useMemo(() => {
+    const uniqueCourses = [...new Set(allStudents.map(s => s.course).filter(Boolean))];
+    return uniqueCourses.sort();
+  }, [allStudents]);
 
-  const handleCourseChange = async (course) => {
+  const intakes = useMemo(() => {
+    if (!selectedCourse) return [];
+    const uniqueIntakes = [...new Set(
+      allStudents.filter(s => s.course === selectedCourse).map(s => s.intake).filter(Boolean)
+    )];
+    return uniqueIntakes.sort();
+  }, [allStudents, selectedCourse]);
+
+  const subjects = useMemo(() => {
+    if (!selectedCourse || !selectedSemester) return [];
+    return allSubjects.filter(s => 
+      s.course_code === selectedCourse && 
+      s.semester === selectedSemester && 
+      s.is_active !== false
+    );
+  }, [allSubjects, selectedCourse, selectedSemester]);
+
+  // Handlers - now just set state, no API calls
+  const handleCourseChange = (course) => {
     setSelectedCourse(course);
     setSelectedIntake('');
     setSelectedSemester('');
     setSelectedSubject('');
-    setIntakes([]);
-    setSemesters([]);
-    setSubjects([]);
     setRoster([]);
-
-    if (course) {
-      try {
-        const response = await api.get(`/academics/attendance/hierarchy/?course=${course}`);
-        setIntakes(response.data.intakes || []);
-      } catch (error) {
-        console.error('Error fetching intakes:', error);
-      }
-    }
   };
 
-  const handleIntakeChange = async (intake) => {
+  const handleIntakeChange = (intake) => {
     setSelectedIntake(intake);
     setSelectedSemester('');
     setSelectedSubject('');
-    setSemesters([]);
-    setSubjects([]);
     setRoster([]);
-
-    if (intake) {
-      try {
-        const response = await api.get(`/academics/attendance/hierarchy/?course=${selectedCourse}&intake=${intake}`);
-        setSemesters(response.data.semesters || []);
-      } catch (error) {
-        console.error('Error fetching semesters:', error);
-      }
-    }
   };
 
-  const handleSemesterChange = async (semester) => {
+  const handleSemesterChange = (semester) => {
     setSelectedSemester(semester);
     setSelectedSubject('');
-    setSubjects([]);
     setRoster([]);
+  };
 
-    if (semester) {
-      try {
-        const response = await api.get(`/academics/attendance/hierarchy/?course=${selectedCourse}&intake=${selectedIntake}&semester=${semester}`);
-        setSubjects(response.data.subjects || []);
-      } catch (error) {
-        console.error('Error fetching subjects:', error);
-      }
-    }
+  const formatStudentLabel = (student) => {
+    const name = `${student.user?.first_name || ''} ${student.user?.last_name || ''}`.trim() || student.user?.username || 'Student';
+    return `${student.student_id || ''} - ${name}`;
+  };
+
+  const handleStudentSelect = (student) => {
+    setSelectedStudent(student);
+    setStudentSearch(formatStudentLabel(student));
+    setShowStudentDropdown(false);
+
+    // Directly set all values - no async calls needed since data is preloaded
+    setSelectedCourse(student.course || '');
+    setSelectedIntake(student.intake || '');
+    setSelectedSemester(student.semester || '');
+    setSelectedSubject('');
+    setRoster([]);
   };
 
   const loadRoster = async () => {
@@ -325,6 +346,20 @@ const AttendancePage = () => {
 
   const presentCount = roster.filter(s => s.status === 'present').length;
   const absentCount = roster.filter(s => s.status === 'absent').length;
+  const filteredStudents = useMemo(() => {
+    if (!studentSearch) return [];
+    const searchLower = studentSearch.toLowerCase();
+    return allStudents.filter((student) => {
+      const fullName = `${student.user?.first_name || ''} ${student.user?.last_name || ''}`.toLowerCase();
+      const studentId = (student.student_id || '').toLowerCase();
+      const username = (student.user?.username || '').toLowerCase();
+      return (
+        fullName.includes(searchLower) ||
+        studentId.includes(searchLower) ||
+        username.includes(searchLower)
+      );
+    });
+  }, [allStudents, studentSearch]);
 
   return (
     <div className="space-y-6">
@@ -389,6 +424,79 @@ const AttendancePage = () => {
         {/* Log Attendance Tab */}
         {activeTab === 'log' && (
           <div className="p-6 space-y-6">
+            {/* Student Search (optional quick select) */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Search Student (auto-fills course/intake/semester)</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Type name or ID..."
+                      value={studentSearch}
+                      onChange={(e) => {
+                        setStudentSearch(e.target.value);
+                        setShowStudentDropdown(true);
+                      }}
+                      onFocus={() => setShowStudentDropdown(true)}
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                  {showStudentDropdown && studentSearch && (
+                    <div className="relative">
+                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                        {initialLoading ? (
+                          <div className="px-4 py-3 text-sm text-gray-500">Loading students...</div>
+                        ) : filteredStudents.length > 0 ? (
+                          filteredStudents.slice(0, 10).map((student) => (
+                            <button
+                              key={student.id}
+                              type="button"
+                              onClick={() => handleStudentSelect(student)}
+                              className="w-full px-4 py-2 text-left hover:bg-purple-50 transition-colors flex items-center gap-3"
+                            >
+                              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-white text-sm font-medium">
+                                {student.user?.first_name?.[0] || student.user?.username?.[0] || 'S'}
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-900">{student.user?.first_name} {student.user?.last_name}</div>
+                                <div className="text-xs text-gray-500">
+                                  {student.student_id} • {student.course} • {student.intake} Intake • Sem {student.semester}
+                                </div>
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-sm text-gray-500">No students found</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {selectedStudent && (
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm text-gray-700">Selected:</span>
+                    <div className="px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm text-gray-800">
+                      {formatStudentLabel(selectedStudent)}<br />
+                      <span className="text-xs text-gray-500">{selectedStudent.course} • {selectedStudent.intake} Intake • Sem {selectedStudent.semester}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedStudent(null);
+                        setStudentSearch('');
+                        setShowStudentDropdown(false);
+                      }}
+                      className="text-xs text-purple-600 hover:text-purple-800"
+                    >
+                      Clear selection
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Control Bar */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
               <div>
@@ -409,9 +517,10 @@ const AttendancePage = () => {
                 <select
                   value={selectedCourse}
                   onChange={(e) => handleCourseChange(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  disabled={initialLoading}
                 >
-                  <option value="">Select Course</option>
+                  <option value="">{initialLoading ? 'Loading...' : 'Select Course'}</option>
                   {courses.map(course => (
                     <option key={course} value={course}>{course}</option>
                   ))}
@@ -442,7 +551,7 @@ const AttendancePage = () => {
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
                   <option value="">Select Semester</option>
-                  {semesters.map(sem => (
+                  {ALL_SEMESTERS.map(sem => (
                     <option key={sem} value={sem}>{sem} Semester</option>
                   ))}
                 </select>
@@ -456,7 +565,7 @@ const AttendancePage = () => {
                   disabled={!selectedSemester}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
-                  <option value="">Select Subject</option>
+                  <option value="">{subjects.length === 0 && selectedSemester ? 'No subjects for this semester' : 'Select Subject'}</option>
                   {subjects.map(subject => (
                     <option key={subject.id} value={subject.id}>{subject.name}</option>
                   ))}
