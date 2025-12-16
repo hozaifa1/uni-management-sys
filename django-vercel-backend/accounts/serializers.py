@@ -71,6 +71,7 @@ class StudentSerializer(serializers.ModelSerializer):
     Serializer for Student model with nested user data
     """
     user = UserSerializer(read_only=True)
+    major_name = serializers.CharField(source='major.name', read_only=True, allow_null=True)
     
     class Meta:
         model = Student
@@ -79,6 +80,7 @@ class StudentSerializer(serializers.ModelSerializer):
             # New fields
             'registration_number', 'national_university_id', 'full_name',
             'national_id_number', 'course', 'intake',
+            'major', 'major_name',
             # Family info
             'guardian_name', 'guardian_phone', 'guardian_yearly_income',
             'guardian_occupation',

@@ -35,6 +35,7 @@ const AttendancePage = () => {
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedIntake, setSelectedIntake] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedMajor, setSelectedMajor] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [roster, setRoster] = useState([]);
@@ -54,6 +55,9 @@ const AttendancePage = () => {
   
   // Toast State
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  const [majors, setMajors] = useState([]);
+  const [loadingMajors, setLoadingMajors] = useState(false);
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -89,6 +93,13 @@ const AttendancePage = () => {
   }, [activeTab]);
 
   // Derived data - computed client-side from preloaded data (instant, no API calls)
+  const requiresMajor = useMemo(() => {
+    if (!selectedCourse || !selectedSemester) return false;
+    if (selectedCourse === 'MBA') return selectedSemester === '2nd';
+    if (selectedCourse === 'BBA') return selectedSemester === '7th' || selectedSemester === '8th';
+    return false;
+  }, [selectedCourse, selectedSemester]);
+
   const courses = useMemo(() => {
     const uniqueCourses = [...new Set(allStudents.map(s => s.course).filter(Boolean))];
     return uniqueCourses.sort();
@@ -101,6 +112,41 @@ const AttendancePage = () => {
     )];
     return uniqueIntakes.sort();
   }, [allStudents, selectedCourse]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMajors = async () => {
+      if (!requiresMajor || !selectedCourse) {
+        setMajors([]);
+        setSelectedMajor('');
+        return;
+      }
+
+      setLoadingMajors(true);
+      try {
+        const res = await api.get('/academics/majors/by_course/', {
+          params: { course: selectedCourse }
+        });
+        const list = res.data || [];
+        if (!cancelled) {
+          setMajors(list);
+        }
+      } catch (error) {
+        console.error('Error loading majors:', error);
+        showToast('Failed to load majors', 'error');
+        if (!cancelled) setMajors([]);
+      } finally {
+        if (!cancelled) setLoadingMajors(false);
+      }
+    };
+
+    loadMajors();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [requiresMajor, selectedCourse]);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,7 +164,19 @@ const AttendancePage = () => {
       );
 
       if (locallyFiltered.length > 0) {
-        setSubjectsForSelection(locallyFiltered);
+        if (requiresMajor) {
+          if (!selectedMajor) {
+            setSubjectsForSelection(
+              locallyFiltered.filter((s) => s.major == null)
+            );
+          } else {
+            setSubjectsForSelection(
+              locallyFiltered.filter((s) => s.major == null || String(s.major) === String(selectedMajor))
+            );
+          }
+        } else {
+          setSubjectsForSelection(locallyFiltered);
+        }
         return;
       }
 
@@ -133,9 +191,20 @@ const AttendancePage = () => {
         });
         const fetched = res.data?.results || res.data || [];
         if (!cancelled) {
-          setSubjectsForSelection(
-            fetched.filter((s) => s.is_active !== false)
-          );
+          const active = fetched.filter((s) => s.is_active !== false);
+          if (requiresMajor) {
+            if (!selectedMajor) {
+              setSubjectsForSelection(
+                active.filter((s) => s.major == null)
+              );
+            } else {
+              setSubjectsForSelection(
+                active.filter((s) => s.major == null || String(s.major) === String(selectedMajor))
+              );
+            }
+          } else {
+            setSubjectsForSelection(active);
+          }
         }
       } catch (error) {
         console.error('Error loading subjects:', error);
@@ -151,7 +220,7 @@ const AttendancePage = () => {
     return () => {
       cancelled = true;
     };
-  }, [allSubjects, selectedCourse, selectedSemester]);
+  }, [allSubjects, selectedCourse, selectedSemester, selectedMajor, requiresMajor]);
 
   const subjects = useMemo(() => {
     return subjectsForSelection;
@@ -162,6 +231,7 @@ const AttendancePage = () => {
     setSelectedCourse(course);
     setSelectedIntake('');
     setSelectedSemester('');
+    setSelectedMajor('');
     setSelectedSubject('');
     setRoster([]);
   };
@@ -175,6 +245,7 @@ const AttendancePage = () => {
 
   const handleSemesterChange = (semester) => {
     setSelectedSemester(semester);
+    setSelectedMajor('');
     setSelectedSubject('');
     setRoster([]);
   };
@@ -193,6 +264,7 @@ const AttendancePage = () => {
     setSelectedCourse(student.course || '');
     setSelectedIntake(student.intake || '');
     setSelectedSemester(student.semester || '');
+    setSelectedMajor(student.major ? String(student.major) : '');
     setSelectedSubject('');
     setRoster([]);
   };
@@ -546,7 +618,7 @@ const AttendancePage = () => {
             </div>
 
             {/* Control Bar */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+            <div className={`grid grid-cols-1 md:grid-cols-2 ${requiresMajor ? 'lg:grid-cols-7' : 'lg:grid-cols-6'} gap-4`}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
                 <div className="relative">
@@ -605,15 +677,44 @@ const AttendancePage = () => {
                 </select>
               </div>
 
+              {requiresMajor && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Major</label>
+                  <select
+                    value={selectedMajor}
+                    onChange={(e) => {
+                      setSelectedMajor(e.target.value);
+                      setSelectedSubject('');
+                      setRoster([]);
+                    }}
+                    disabled={!selectedSemester || loadingMajors}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {!selectedSemester
+                        ? 'Select Semester First'
+                        : loadingMajors
+                          ? 'Loading majors...'
+                          : majors.length === 0
+                            ? 'No majors available'
+                            : 'Select Major'}
+                    </option>
+                    {majors.map((m) => (
+                      <option key={m.id} value={String(m.id)}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
                 <select
                   value={selectedSubject}
                   onChange={(e) => setSelectedSubject(e.target.value)}
-                  disabled={!selectedSemester}
+                  disabled={!selectedSemester || (requiresMajor && !selectedMajor && subjects.length === 0)}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
-                  <option value="">{loadingSubjects && selectedSemester ? 'Loading subjects...' : subjects.length === 0 && selectedSemester ? 'No subjects for this semester' : 'Select Subject'}</option>
+                  <option value="">{requiresMajor && selectedSemester && !selectedMajor ? 'Select major to view subjects' : loadingSubjects && selectedSemester ? 'Loading subjects...' : subjects.length === 0 && selectedSemester ? 'No subjects for this semester' : 'Select Subject'}</option>
                   {subjects.map(subject => (
                     <option key={subject.id} value={subject.id}>{subject.name}</option>
                   ))}
