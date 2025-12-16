@@ -114,6 +114,12 @@ const StudentsPage = () => {
     fetchStudents();
   };
 
+  const getCourseLabel = (student) => {
+    const course = student.course || 'N/A';
+    const major = student.major_name ? ` - ${student.major_name}` : '';
+    return `${course}${major}`;
+  };
+
 
   // Export all student info to PDF
   const exportStudentsPDF = () => {
@@ -135,7 +141,7 @@ const StudentsPage = () => {
       body: filteredStudents.map(s => [
         s.student_id || 'N/A',
         s.user ? `${s.user.first_name || ''} ${s.user.last_name || ''}`.trim() : 'N/A',
-        s.course || 'N/A',
+        getCourseLabel(s),
         s.intake || 'N/A',
         s.semester || 'N/A',
         s.user?.phone_number || 'N/A',
@@ -170,7 +176,7 @@ const StudentsPage = () => {
       body: studentsWithPhone.map(s => [
         s.student_id || 'N/A',
         s.user ? `${s.user.first_name || ''} ${s.user.last_name || ''}`.trim() : 'N/A',
-        s.course || 'N/A',
+        `${getCourseLabel(s)}${s.semester ? ` (Sem ${s.semester})` : ''}`,
         s.user?.phone_number || 'N/A',
       ]),
       styles: { fontSize: 9 },
@@ -202,7 +208,7 @@ const StudentsPage = () => {
       body: studentsWithAddress.map(s => [
         s.student_id || 'N/A',
         s.user ? `${s.user.first_name || ''} ${s.user.last_name || ''}`.trim() : 'N/A',
-        s.course || 'N/A',
+        `${getCourseLabel(s)}${s.semester ? ` (Sem ${s.semester})` : ''}`,
         s.present_address || s.user?.address || 'N/A',
       ]),
       styles: { fontSize: 8 },
@@ -366,9 +372,6 @@ const StudentsPage = () => {
                   Session
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Semester
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Phone
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -416,17 +419,15 @@ const StudentsPage = () => {
                         {student.intake && (
                           <span className="ml-1 text-xs text-gray-500">({student.intake} Intake)</span>
                         )}
+                        {(student.semester || student.major_name) && (
+                          <div className="mt-1 text-xs text-gray-500">
+                            {student.semester ? `Sem ${student.semester}` : ''}{student.major_name ? `${student.semester ? ' • ' : ''}${student.major_name}` : ''}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {student.session || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {student.semester ? (
-                        <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
-                          {student.semester}
-                        </span>
-                      ) : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {student.user?.phone_number || 'N/A'}
@@ -457,7 +458,7 @@ const StudentsPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
                     No students found. Add your first student to get started!
                   </td>
                 </tr>

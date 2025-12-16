@@ -316,49 +316,44 @@ class Command(BaseCommand):
 
     def seed_results(self):
         """
-        Seed sample results for every student across all matching exams.
-        Ensures no stale/disconnected results remain.
+        Seed sample results for students (limited to avoid DB connection issues).
+        Each student gets results for a few exams matching their course/semester.
         """
-        self.stdout.write(self.style.WARNING('Resetting and seeding Results...'))
-        Result.objects.all().delete()
+        self.stdout.write(self.style.WARNING('Seeding Results...'))
         
-        students = Student.objects.select_related('user').all()
+        students = Student.objects.all()[:5]  # Limit to 5 students
         if not students.exists():
             self.stdout.write(self.style.WARNING('No students found. Please add students first.'))
             return
         
         results_created = 0
-        students_with_results = 0
         
         for student in students:
+            # Get only 6 exams per student (2 subjects x 3 exam types)
             exams = Exam.objects.filter(
                 course=student.course,
                 semester=student.semester
-            ).select_related('subject')
-            
-            if not exams.exists():
-                continue
-            
-            students_with_results += 1
+            ).select_related('subject')[:6]
             
             for exam in exams:
                 if not exam.subject:
                     continue
                 
-                total_marks = float(exam.total_marks or 100)
-                marks = round(random.uniform(0.42, 0.96) * total_marks, 2)
+                # Check if result already exists
+                if Result.objects.filter(student=student, exam=exam, subject=exam.subject).exists():
+                    continue
+                
+                # Generate random marks based on exam type
+                total_marks = float(exam.total_marks)
+                marks = round(random.uniform(0.4, 0.95) * total_marks, 2)
                 
                 Result.objects.create(
                     student=student,
                     exam=exam,
                     subject=exam.subject,
                     marks_obtained=Decimal(str(marks)),
-                    remarks='Auto-generated seed result',
+                    remarks='Auto-generated sample result',
                 )
                 results_created += 1
         
-        self.stdout.write(
-            self.style.SUCCESS(
-                f'Results: {results_created} created for {students_with_results} students.'
-            )
-        )
+        self.stdout.write(self.style.SUCCESS(f'Results: {results_created} created.'))
