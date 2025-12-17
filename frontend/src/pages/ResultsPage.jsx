@@ -188,20 +188,36 @@ const ResultsPage = () => {
       ];
     }
 
-    // Filter subjects by course and semester
+    // Filter subjects by course_code and semester
     let filteredSubjects = subjects;
     if (selectedCourse) {
-      filteredSubjects = filteredSubjects.filter((s) => s.course === selectedCourse);
+      filteredSubjects = filteredSubjects.filter((s) => s.course_code === selectedCourse);
     }
     if (selectedSemester) {
       filteredSubjects = filteredSubjects.filter((s) => s.semester === selectedSemester);
     }
+
+    // Get available exam types based on results (only show types that have results)
+    let availableExamTypes = [];
+    let relevantResults = results;
+    if (selectedCourse || selectedSemester || selectedIntake) {
+      relevantResults = results.filter(r => {
+        const student = students.find(s => s.id === r.student);
+        if (!student) return false;
+        if (selectedCourse && student.course !== selectedCourse) return false;
+        if (selectedSemester && student.semester !== selectedSemester) return false;
+        if (selectedIntake && student.intake !== selectedIntake) return false;
+        return true;
+      });
+    }
+    availableExamTypes = [...new Set(relevantResults.map(r => r.exam_type).filter(Boolean))];
 
     return {
       students: filteredStudents,
       semesters: availableSemesters,
       intakes: availableIntakes,
       subjects: filteredSubjects,
+      examTypes: availableExamTypes,
     };
   }, [
     availableOptions,
@@ -209,6 +225,8 @@ const ResultsPage = () => {
     selectedSemester,
     selectedIntake,
     subjects,
+    results,
+    students,
   ]);
 
   const handleStudentChange = (studentId) => {
@@ -520,8 +538,8 @@ const ResultsPage = () => {
               onChange={(e) => setSelectedExamType(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Exam Types</option>
-              {EXAM_TYPE_OPTIONS.map((opt) => (
+              <option value="">All Exam Types ({filteredOptions.examTypes.length})</option>
+              {EXAM_TYPE_OPTIONS.filter(opt => filteredOptions.examTypes.includes(opt.value)).map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>

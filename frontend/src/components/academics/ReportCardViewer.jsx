@@ -115,14 +115,29 @@ const ReportCardViewer = () => {
           .filter(Boolean)
       )];
     }
+
+    // Get available exam types based on results (only show types that have results)
+    let relevantResults = results;
+    if (selectedCourse || selectedSemester || selectedIntake) {
+      relevantResults = results.filter(r => {
+        const student = students.find(s => s.id === r.student);
+        if (!student) return false;
+        if (selectedCourse && student.course !== selectedCourse) return false;
+        if (selectedSemester && student.semester !== selectedSemester) return false;
+        if (selectedIntake && student.intake !== selectedIntake) return false;
+        return true;
+      });
+    }
+    const availableExamTypes = [...new Set(relevantResults.map(r => r.exam_type).filter(Boolean))];
     
     return {
       students: filteredStudents,
       intakes: availableIntakes,
       semesters: availableSemesters,
-      sessions: availableSessions
+      sessions: availableSessions,
+      examTypes: availableExamTypes
     };
-  }, [availableOptions, selectedCourse, selectedIntake, selectedSemester, selectedStudent, results]);
+  }, [availableOptions, selectedCourse, selectedIntake, selectedSemester, selectedStudent, results, students]);
 
   const handleCourseChange = (value) => {
     setSelectedCourse(value);
@@ -355,8 +370,8 @@ const ReportCardViewer = () => {
                 onChange={(e) => setSelectedExamType(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="">All Exam Types</option>
-                {EXAM_TYPE_OPTIONS.map((opt) => (
+                <option value="">All Exam Types ({filteredOptions.examTypes.length})</option>
+                {EXAM_TYPE_OPTIONS.filter(opt => filteredOptions.examTypes.includes(opt.value)).map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
