@@ -369,10 +369,11 @@ class ResultViewSet(viewsets.ModelViewSet):
     def generate_report_card(self, request):
         """
         Generate PDF report card for a student
-        Query params: student_id (required), exam_id (optional - if not provided, generates semester report)
+        Query params: student_id (required), exam_id (optional), exam_type (optional - incourse_1st, incourse_2nd, final)
         """
         student_id = request.query_params.get('student_id')
         exam_id = request.query_params.get('exam_id')
+        exam_type = request.query_params.get('exam_type')
         
         if not student_id:
             return Response(
@@ -381,12 +382,14 @@ class ResultViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            pdf_buffer = generate_report_card(student_id, exam_id)
+            pdf_buffer = generate_report_card(student_id, exam_id, exam_type)
             
             # Return PDF file response
             filename = f'report_card_{student_id}'
             if exam_id:
                 filename += f'_{exam_id}'
+            elif exam_type:
+                filename += f'_{exam_type}'
             else:
                 filename += '_semester'
             filename += '.pdf'

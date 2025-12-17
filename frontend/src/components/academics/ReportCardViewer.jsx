@@ -3,6 +3,12 @@ import { Download, FileText, Mail, RotateCcw, MessageCircle, Users } from 'lucid
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
+const EXAM_TYPE_OPTIONS = [
+  { value: 'incourse_1st', label: '1st Incourse' },
+  { value: 'incourse_2nd', label: '2nd Incourse' },
+  { value: 'final', label: 'Final Exam' },
+];
+
 const ReportCardViewer = () => {
   const [results, setResults] = useState([]);
   const [students, setStudents] = useState([]);
@@ -10,6 +16,7 @@ const ReportCardViewer = () => {
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedIntake, setSelectedIntake] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedExamType, setSelectedExamType] = useState('');
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState('');
@@ -121,6 +128,7 @@ const ReportCardViewer = () => {
     setSelectedCourse(value);
     setSelectedIntake('');
     setSelectedSemester('');
+    setSelectedExamType('');
     setSelectedStudent('');
   };
 
@@ -131,6 +139,7 @@ const ReportCardViewer = () => {
 
   const handleSemesterChange = (value) => {
     setSelectedSemester(value);
+    setSelectedExamType('');
     setSelectedStudent('');
   };
 
@@ -158,20 +167,20 @@ const ReportCardViewer = () => {
     setError('');
 
     try {
-      const response = await api.get(
-        `/academics/results/generate_report_card/?student_id=${selectedStudent}`,
-        {
-          responseType: 'blob'
-        }
-      );
+      let url = `/academics/results/generate_report_card/?student_id=${selectedStudent}`;
+      if (selectedExamType) {
+        url += `&exam_type=${selectedExamType}`;
+      }
+      const response = await api.get(url, { responseType: 'blob' });
 
       const student = students.find(s => s.id === parseInt(selectedStudent) || s.id === selectedStudent);
       const studentName = student?.student_id || selectedStudent;
+      const examTypeLabel = selectedExamType ? EXAM_TYPE_OPTIONS.find(o => o.value === selectedExamType)?.label || selectedExamType : 'all';
       
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `report_card_${studentName}_${student?.semester || 'all'}_sem.pdf`);
+      link.href = blobUrl;
+      link.setAttribute('download', `report_card_${studentName}_${student?.semester || 'all'}_sem_${examTypeLabel}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
@@ -256,6 +265,7 @@ const ReportCardViewer = () => {
     setSelectedCourse('');
     setSelectedIntake('');
     setSelectedSemester('');
+    setSelectedExamType('');
     setSelectedStudent('');
     setError('');
   };
@@ -335,23 +345,43 @@ const ReportCardViewer = () => {
 
           </div>
 
-          {/* Row 2: Student Selection */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Student ({filteredOptions.students.length} with results)
-            </label>
-            <select
-              value={selectedStudent}
-              onChange={(e) => handleStudentChange(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Choose a student...</option>
-              {filteredOptions.students.map((student) => (
-                <option key={student.id} value={student.id}>
-                  {student.student_id} - {student.user?.first_name} {student.user?.last_name} ({student.course} - {student.semester} Sem)
-                </option>
-              ))}
-            </select>
+          {/* Row 2: Exam Type and Student Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {/* Exam Type Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Exam Type</label>
+              <select
+                value={selectedExamType}
+                onChange={(e) => setSelectedExamType(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">All Exam Types</option>
+                {EXAM_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Student Selection */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Student ({filteredOptions.students.length} with results)
+              </label>
+              <select
+                value={selectedStudent}
+                onChange={(e) => handleStudentChange(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Choose a student...</option>
+                {filteredOptions.students.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.student_id} - {student.user?.first_name} {student.user?.last_name} ({student.course} - {student.semester} Sem)
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Reset Filters Row */}

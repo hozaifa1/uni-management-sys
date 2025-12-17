@@ -16,13 +16,14 @@ from accounts.models import Student
 from academics.models import Exam, Result
 
 
-def generate_report_card(student_id, exam_id=None):
+def generate_report_card(student_id, exam_id=None, exam_type=None):
     """
     Generate a PDF report card for a student's results
     
     Args:
         student_id: ID of the student
-        exam_id: ID of the exam (optional - if not provided, generates semester report with all results)
+        exam_id: ID of the exam (optional)
+        exam_type: Type of exam - incourse_1st, incourse_2nd, final (optional)
     
     Returns:
         BytesIO buffer containing the PDF
@@ -45,8 +46,14 @@ def generate_report_card(student_id, exam_id=None):
             student=student,
             exam=exam
         ).select_related('subject', 'exam').order_by('subject__name')
+    elif exam_type:
+        # Get results for specific exam type
+        results = Result.objects.filter(
+            student=student,
+            exam__exam_type=exam_type
+        ).select_related('subject', 'exam').order_by('subject__name')
     else:
-        # Get all results for student's current semester
+        # Get all results for student
         results = Result.objects.filter(
             student=student
         ).select_related('subject', 'exam').order_by('subject__name', 'exam__exam_type')

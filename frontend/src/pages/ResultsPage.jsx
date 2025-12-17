@@ -20,6 +20,14 @@ const ResultsPage = () => {
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedIntake, setSelectedIntake] = useState('');
+  const [selectedExamType, setSelectedExamType] = useState('');
+
+  const EXAM_TYPE_OPTIONS = [
+    { value: 'incourse_1st', label: '1st Incourse' },
+    { value: 'incourse_2nd', label: '2nd Incourse' },
+    { value: 'final', label: 'Final Exam' },
+  ];
   const [searchTerm, setSearchTerm] = useState('');
   const [editingResult, setEditingResult] = useState(null);
   const [editMarks, setEditMarks] = useState('');
@@ -89,11 +97,22 @@ const ResultsPage = () => {
   const handleCourseChange = (value) => {
     setSelectedCourse(value);
     setSelectedSemester('');
+    setSelectedIntake('');
+    setSelectedSubject('');
     setSelectedStudent('');
+    setSelectedExamType('');
   };
 
   const handleSemesterChange = (value) => {
     setSelectedSemester(value);
+    setSelectedIntake('');
+    setSelectedSubject('');
+    setSelectedStudent('');
+    setSelectedExamType('');
+  };
+
+  const handleIntakeChange = (value) => {
+    setSelectedIntake(value);
     setSelectedStudent('');
   };
 
@@ -101,7 +120,9 @@ const ResultsPage = () => {
   const handleResetFilters = () => {
     setSelectedCourse('');
     setSelectedSemester('');
+    setSelectedIntake('');
     setSelectedSubject('');
+    setSelectedExamType('');
     setSelectedStudent('');
     setSearchTerm('');
   };
@@ -117,10 +138,12 @@ const ResultsPage = () => {
     const studentsWithResults = students.filter((s) => studentIdsWithResults.has(s.id));
     const courses = [...new Set(studentsWithResults.map((s) => s.course).filter(Boolean))];
     const semesters = [...new Set(studentsWithResults.map((s) => s.semester).filter(Boolean))];
+    const intakes = [...new Set(studentsWithResults.map((s) => s.intake).filter(Boolean))];
 
     return {
       courses,
       semesters,
+      intakes,
       studentsWithResults,
       studentIdsWithResults,
     };
@@ -136,29 +159,56 @@ const ResultsPage = () => {
     if (selectedSemester) {
       filteredStudents = filteredStudents.filter((s) => s.semester === selectedSemester);
     }
+    if (selectedIntake) {
+      filteredStudents = filteredStudents.filter((s) => s.intake === selectedIntake);
+    }
 
     let availableSemesters = availableOptions.semesters;
     if (selectedCourse) {
       availableSemesters = [
         ...new Set(
           availableOptions.studentsWithResults
-            .filter((s) => !selectedCourse || s.course === selectedCourse)
+            .filter((s) => s.course === selectedCourse)
             .map((s) => s.semester)
             .filter(Boolean)
         ),
       ];
     }
 
+    let availableIntakes = availableOptions.intakes;
+    if (selectedCourse || selectedSemester) {
+      availableIntakes = [
+        ...new Set(
+          availableOptions.studentsWithResults
+            .filter((s) => (!selectedCourse || s.course === selectedCourse) &&
+                           (!selectedSemester || s.semester === selectedSemester))
+            .map((s) => s.intake)
+            .filter(Boolean)
+        ),
+      ];
+    }
+
+    // Filter subjects by course and semester
+    let filteredSubjects = subjects;
+    if (selectedCourse) {
+      filteredSubjects = filteredSubjects.filter((s) => s.course === selectedCourse);
+    }
+    if (selectedSemester) {
+      filteredSubjects = filteredSubjects.filter((s) => s.semester === selectedSemester);
+    }
+
     return {
       students: filteredStudents,
       semesters: availableSemesters,
+      intakes: availableIntakes,
+      subjects: filteredSubjects,
     };
   }, [
     availableOptions,
     selectedCourse,
     selectedSemester,
-    selectedStudent,
-    results,
+    selectedIntake,
+    subjects,
   ]);
 
   const handleStudentChange = (studentId) => {
@@ -244,16 +294,20 @@ const ResultsPage = () => {
 
   const filteredResults = useMemo(() => {
     return results.filter((result) => {
-      // Apply course/semester/student/exam filters
-      if (selectedCourse || selectedSemester) {
+      // Apply course/semester/intake/student filters
+      if (selectedCourse || selectedSemester || selectedIntake) {
         const student = students.find(s => s.id === result.student || s.student_id === result.student_id);
         if (student) {
           if (selectedCourse && student.course !== selectedCourse) return false;
           if (selectedSemester && student.semester !== selectedSemester) return false;
+          if (selectedIntake && student.intake !== selectedIntake) return false;
         }
       }
       if (selectedStudent && result.student !== parseInt(selectedStudent) && result.student_id !== selectedStudent) return false;
       if (selectedSubject && result.subject !== parseInt(selectedSubject) && result.subject_id !== selectedSubject) return false;
+      
+      // Filter by exam type
+      if (selectedExamType && result.exam_type !== selectedExamType) return false;
       
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
@@ -266,7 +320,7 @@ const ResultsPage = () => {
       }
       return true;
     });
-  }, [results, students, selectedCourse, selectedSemester, selectedStudent, selectedSubject, searchTerm]);
+  }, [results, students, selectedCourse, selectedSemester, selectedIntake, selectedStudent, selectedSubject, selectedExamType, searchTerm]);
 
   // Client-side pagination
   const totalPages = Math.ceil(filteredResults.length / ITEMS_PER_PAGE);
@@ -278,7 +332,7 @@ const ResultsPage = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCourse, selectedSemester, selectedStudent, selectedSubject, searchTerm]);
+  }, [selectedCourse, selectedSemester, selectedIntake, selectedStudent, selectedSubject, selectedExamType, searchTerm]);
 
   const exportToCSV = () => {
     if (filteredResults.length === 0) {
@@ -385,7 +439,7 @@ const ResultsPage = () => {
 
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        {/* Row 1: Course/Semester/Subject Filters */}
+        {/* Row 1: Course/Semester/Intake Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           {/* Course Filter */}
           <div>
@@ -421,6 +475,26 @@ const ResultsPage = () => {
             </select>
           </div>
 
+          {/* Intake Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Intake</label>
+            <select
+              value={selectedIntake}
+              onChange={(e) => handleIntakeChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Intakes ({filteredOptions.intakes.length})</option>
+              {filteredOptions.intakes.map((intake) => (
+                <option key={intake} value={intake}>
+                  {intake}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Row 2: Subject/Exam Type Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {/* Subject Filter */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Subject</label>
@@ -429,17 +503,34 @@ const ResultsPage = () => {
               onChange={(e) => setSelectedSubject(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Subjects</option>
-              {subjects.map((subject) => (
+              <option value="">All Subjects ({filteredOptions.subjects.length})</option>
+              {filteredOptions.subjects.map((subject) => (
                 <option key={subject.id} value={subject.id}>
                   {subject.code ? `${subject.code} - ${subject.name}` : subject.name}
                 </option>
               ))}
             </select>
           </div>
+
+          {/* Exam Type Filter */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Exam Type</label>
+            <select
+              value={selectedExamType}
+              onChange={(e) => setSelectedExamType(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Exam Types</option>
+              {EXAM_TYPE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* Row 2: Search, Student Filter, Reset, Add */}
+        {/* Row 3: Search, Student Filter, Reset, Add */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           {/* Search */}
           <div className="relative">
