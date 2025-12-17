@@ -31,7 +31,7 @@ const ReportsPage = () => {
   const [gradeDistribution, setGradeDistribution] = useState({});
 
   const courses = ['BBA', 'MBA', 'CSE', 'THM'];
-  const intakes = Array.from({ length: 20 }, (_, i) => `${i + 1}`);
+  const intakes = ['1st', '2nd', '9th', '10th', '15th', '16th', '17th', '18th', '19th', '20th'];
   const semesters = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 
   // Fetch students for filter

@@ -17,13 +17,13 @@ class FeeStructureViewSet(viewsets.ModelViewSet):
     """
     ViewSet for FeeStructure model CRUD operations
     """
-    queryset = FeeStructure.objects.select_related('batch').all()
+    queryset = FeeStructure.objects.all()
     serializer_class = FeeStructureSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['batch', 'fee_type', 'due_date']
-    search_fields = ['batch__name', 'description']
-    ordering_fields = ['due_date', 'amount']
+    filterset_fields = ['course', 'intake', 'semester', 'fee_type', 'due_date']
+    search_fields = ['course', 'intake', 'description']
+    ordering_fields = ['due_date', 'amount', 'course', 'intake', 'semester']
     ordering = ['-due_date']
 
 
