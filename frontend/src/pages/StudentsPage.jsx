@@ -89,6 +89,14 @@ const StudentsPage = () => {
     setSelectedIntake(''); // Reset intake when course changes
   };
 
+  const handleResetFilters = () => {
+    setSelectedCourse('');
+    setSelectedIntake('');
+    setSelectedSemester('');
+    setSelectedSession('');
+    setSearchTerm('');
+  };
+
   const handleDeleteClick = (id) => {
     setDeleteConfirm({ open: true, id });
   };
@@ -281,7 +289,7 @@ const StudentsPage = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
           {/* Search */}
           <div className="md:col-span-2">
             <div className="relative">
@@ -353,6 +361,17 @@ const StudentsPage = () => {
               onChange={(e) => setSelectedSession(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+
+          {/* Reset Filters */}
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="flex items-center justify-center w-full px-4 py-2 border border-red-200 text-red-700 bg-red-50 rounded-lg hover:bg-red-100 focus:ring-2 focus:ring-red-500 transition-colors"
+            >
+              Reset Filters
+            </button>
           </div>
         </div>
       </div>
