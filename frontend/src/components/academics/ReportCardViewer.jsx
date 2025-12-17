@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Download, FileText, Mail, RotateCcw, MessageCircle, Users } from 'lucide-react';
+import { Download, FileText, Mail, RotateCcw, MessageCircle, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
@@ -22,6 +22,7 @@ const ReportCardViewer = () => {
   const [error, setError] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -286,221 +287,237 @@ const ReportCardViewer = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex items-center mb-6">
-        <FileText className="w-6 h-6 text-blue-600 mr-2" />
-        <h2 className="text-2xl font-bold text-gray-800">Report Card Viewer</h2>
-      </div>
-
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
-          {error}
+    <div className="bg-white rounded-lg shadow-md">
+      {/* Collapsible Header */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-6 flex items-center justify-between hover:bg-gray-50 transition-colors rounded-lg"
+      >
+        <div className="flex items-center">
+          <FileText className="w-6 h-6 text-blue-600 mr-2" />
+          <h2 className="text-2xl font-bold text-gray-800">Report Card Viewer</h2>
         </div>
-      )}
-
-      {dataLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600">Loading data...</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">
+            {isExpanded ? 'Click to collapse' : 'Click to expand'}
+          </span>
+          {isExpanded ? (
+            <ChevronUp className="w-5 h-5 text-gray-500" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-gray-500" />
+          )}
         </div>
-      ) : (
-        <>
-          {/* Row 1: Course/Intake/Semester/Session Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-            {/* Course Filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Course</label>
-              <select
-                value={selectedCourse}
-                onChange={(e) => handleCourseChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Courses ({availableOptions.courses.length})</option>
-                {availableOptions.courses.map((course) => (
-                  <option key={course} value={course}>
-                    {course}
-                  </option>
-                ))}
-              </select>
+      </button>
+
+      {/* Collapsible Content */}
+      {isExpanded && (
+        <div className="px-6 pb-6">
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md">
+              {error}
             </div>
+          )}
 
-            {/* Intake Filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Intake</label>
-              <select
-                value={selectedIntake}
-                onChange={(e) => handleIntakeChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Intakes ({filteredOptions.intakes.length})</option>
-                {filteredOptions.intakes.map((intake) => (
-                  <option key={intake} value={intake}>
-                    {intake}
-                  </option>
-                ))}
-              </select>
+          {dataLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-gray-600">Loading data...</span>
             </div>
+          ) : (
+            <>
+              {/* Row 1: Course/Intake/Semester/Session Filters */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                {/* Course Filter */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Course</label>
+                  <select
+                    value={selectedCourse}
+                    onChange={(e) => handleCourseChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">All Courses ({availableOptions.courses.length})</option>
+                    {availableOptions.courses.map((course) => (
+                      <option key={course} value={course}>
+                        {course}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            {/* Semester Filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Semester</label>
-              <select
-                value={selectedSemester}
-                onChange={(e) => handleSemesterChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Semesters ({filteredOptions.semesters.length})</option>
-                {filteredOptions.semesters.map((sem) => (
-                  <option key={sem} value={sem}>
-                    {sem}
-                  </option>
-                ))}
-              </select>
-            </div>
+                {/* Intake Filter */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Intake</label>
+                  <select
+                    value={selectedIntake}
+                    onChange={(e) => handleIntakeChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">All Intakes ({filteredOptions.intakes.length})</option>
+                    {filteredOptions.intakes.map((intake) => (
+                      <option key={intake} value={intake}>
+                        {intake}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-          </div>
+                {/* Semester Filter */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Semester</label>
+                  <select
+                    value={selectedSemester}
+                    onChange={(e) => handleSemesterChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">All Semesters ({filteredOptions.semesters.length})</option>
+                    {filteredOptions.semesters.map((sem) => (
+                      <option key={sem} value={sem}>
+                        {sem}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-          {/* Row 2: Exam Type and Student Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            {/* Exam Type Filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Exam Type</label>
-              <select
-                value={selectedExamType}
-                onChange={(e) => setSelectedExamType(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Exam Types ({filteredOptions.examTypes.length})</option>
-                {EXAM_TYPE_OPTIONS.filter(opt => filteredOptions.examTypes.includes(opt.value)).map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+              {/* Row 2: Exam Type and Student Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* Exam Type Filter */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Exam Type</label>
+                  <select
+                    value={selectedExamType}
+                    onChange={(e) => setSelectedExamType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">All Exam Types ({filteredOptions.examTypes.length})</option>
+                    {EXAM_TYPE_OPTIONS.filter(opt => filteredOptions.examTypes.includes(opt.value)).map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            {/* Student Selection */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
-                Student ({filteredOptions.students.length} with results)
-              </label>
-              <select
-                value={selectedStudent}
-                onChange={(e) => handleStudentChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Choose a student...</option>
-                {filteredOptions.students.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.student_id} - {student.user?.first_name} {student.user?.last_name} ({student.course} - {student.semester} Sem)
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+                {/* Student Selection */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Student ({filteredOptions.students.length} with results)
+                  </label>
+                  <select
+                    value={selectedStudent}
+                    onChange={(e) => handleStudentChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Choose a student...</option>
+                    {filteredOptions.students.map((student) => (
+                      <option key={student.id} value={student.id}>
+                        {student.student_id} - {student.user?.first_name} {student.user?.last_name} ({student.course} - {student.semester} Sem)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-          {/* Reset Filters Row */}
-          <div className="flex justify-end mb-6">
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="flex items-center px-4 py-2 border border-red-200 text-red-700 bg-red-50 rounded-md hover:bg-red-100 focus:ring-2 focus:ring-red-500"
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Reset Filters
-            </button>
-          </div>
-        </>
-      )}
+              {/* Reset Filters Row */}
+              <div className="flex justify-end mb-6">
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="flex items-center px-4 py-2 border border-red-200 text-red-700 bg-red-50 rounded-md hover:bg-red-100 focus:ring-2 focus:ring-red-500"
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reset Filters
+                </button>
+              </div>
 
-      {/* Action Buttons */}
-      {!dataLoading && (
-      <div className="flex flex-wrap gap-4">
-        <button
-          onClick={handleDownload}
-          disabled={!selectedStudent || loading}
-          className="flex items-center px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-        >
-          <Download className="w-5 h-5 mr-2" />
-          {loading ? 'Downloading...' : 'Download PDF'}
-        </button>
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-4">
+                <button
+                  onClick={handleDownload}
+                  disabled={!selectedStudent || loading}
+                  className="flex items-center px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Download className="w-5 h-5 mr-2" />
+                  {loading ? 'Downloading...' : 'Download PDF'}
+                </button>
 
-        <button
-          onClick={handleSendEmail}
-          disabled={!selectedStudent || loading}
-          className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-        >
-          <Mail className="w-5 h-5 mr-2" />
-          Send to Email
-        </button>
+                <button
+                  onClick={handleSendEmail}
+                  disabled={!selectedStudent || loading}
+                  className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Mail className="w-5 h-5 mr-2" />
+                  Send to Email
+                </button>
 
-        <button
-          onClick={handleSendWhatsApp}
-          disabled={!selectedStudent || loading}
-          className="flex items-center px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-        >
-          <MessageCircle className="w-5 h-5 mr-2" />
-          Send via WhatsApp
-        </button>
-      </div>
-      )}
+                <button
+                  onClick={handleSendWhatsApp}
+                  disabled={!selectedStudent || loading}
+                  className="flex items-center px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  <MessageCircle className="w-5 h-5 mr-2" />
+                  Send via WhatsApp
+                </button>
+              </div>
 
-      {/* Bulk Report Card Generation */}
-      {!dataLoading && (
-        <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-          <div className="flex items-center gap-2 mb-3">
-            <Users className="w-5 h-5 text-purple-600" />
-            <h3 className="font-semibold text-purple-800">Bulk Report Card Generation</h3>
-          </div>
-          <p className="text-sm text-purple-700 mb-4">
-            Generate semester report cards for all students matching the selected filters (course, semester).
-          </p>
-          <button
-            onClick={async () => {
-              if (!selectedCourse && !selectedSemester) {
-                toast.error('Please select at least a course or semester to filter students');
-                return;
-              }
-              setBulkLoading(true);
-              setBulkResult(null);
-              try {
-                const params = {};
-                if (selectedCourse) params.course = selectedCourse;
-                if (selectedSemester) params.semester = selectedSemester;
-                
-                const response = await api.get('/academics/results/generate_bulk_report_cards/', { params });
-                setBulkResult(response.data);
-                toast.success(response.data.message || `Generated ${response.data.count} report cards`);
-              } catch (error) {
-                console.error('Error generating bulk report cards:', error);
-                const errorMsg = error.response?.data?.error || 'Failed to generate bulk report cards';
-                toast.error(errorMsg);
-              } finally {
-                setBulkLoading(false);
-              }
-            }}
-            disabled={bulkLoading || (!selectedCourse && !selectedSemester)}
-            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            <Users className="w-4 h-4 mr-2" />
-            {bulkLoading ? 'Generating...' : 'Generate Bulk Report Cards'}
-          </button>
-          {bulkResult && (
-            <div className="mt-3 p-3 bg-green-100 border border-green-300 rounded-md">
-              <p className="text-sm text-green-800">
-                ✓ {bulkResult.message || `Successfully generated ${bulkResult.count} report cards`}
-              </p>
-            </div>
+              {/* Bulk Report Card Generation */}
+              <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-5 h-5 text-purple-600" />
+                  <h3 className="font-semibold text-purple-800">Bulk Report Card Generation</h3>
+                </div>
+                <p className="text-sm text-purple-700 mb-4">
+                  Generate semester report cards for all students matching the selected filters (course, semester).
+                </p>
+                <button
+                  onClick={async () => {
+                    if (!selectedCourse && !selectedSemester) {
+                      toast.error('Please select at least a course or semester to filter students');
+                      return;
+                    }
+                    setBulkLoading(true);
+                    setBulkResult(null);
+                    try {
+                      const params = {};
+                      if (selectedCourse) params.course = selectedCourse;
+                      if (selectedSemester) params.semester = selectedSemester;
+                      
+                      const response = await api.get('/academics/results/generate_bulk_report_cards/', { params });
+                      setBulkResult(response.data);
+                      toast.success(response.data.message || `Generated ${response.data.count} report cards`);
+                    } catch (error) {
+                      console.error('Error generating bulk report cards:', error);
+                      const errorMsg = error.response?.data?.error || 'Failed to generate bulk report cards';
+                      toast.error(errorMsg);
+                    } finally {
+                      setBulkLoading(false);
+                    }
+                  }}
+                  disabled={bulkLoading || (!selectedCourse && !selectedSemester)}
+                  className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  {bulkLoading ? 'Generating...' : 'Generate Bulk Report Cards'}
+                </button>
+                {bulkResult && (
+                  <div className="mt-3 p-3 bg-green-100 border border-green-300 rounded-md">
+                    <p className="text-sm text-green-800">
+                      ✓ {bulkResult.message || `Successfully generated ${bulkResult.count} report cards`}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Info Box */}
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> Only students with existing results are shown. Select a student to download or email their semester report card (includes all exam results).
+                </p>
+              </div>
+            </>
           )}
         </div>
       )}
-
-      {/* Info Box */}
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-        <p className="text-sm text-blue-800">
-          <strong>Note:</strong> Only students with existing results are shown. Select a student to download or email their semester report card (includes all exam results).
-        </p>
-      </div>
     </div>
   );
 };

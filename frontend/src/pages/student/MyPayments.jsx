@@ -1,11 +1,31 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { 
   DollarSign, Calendar, CreditCard, 
   FileText, AlertCircle, CheckCircle,
-  Download, Filter
+  Download, Filter, ChevronDown, ChevronUp
 } from 'lucide-react';
 import api from '../../services/api';
+
+const FEE_TYPE_LABELS = {
+  'semester_fee': 'Semester Fee',
+  'tuition_fee': 'Tuition Fee',
+  'admission_fee': 'Admission Fee',
+  'exam_fee': 'Exam Fee',
+  'lab_fee': 'Lab Fee',
+  'library_fee': 'Library Fee',
+  'fine': 'Fine',
+};
+
+const FEE_TYPE_COLORS = {
+  'semester_fee': 'blue',
+  'tuition_fee': 'purple',
+  'admission_fee': 'green',
+  'exam_fee': 'orange',
+  'lab_fee': 'cyan',
+  'library_fee': 'pink',
+  'fine': 'red',
+};
 
 const MyPayments = () => {
   const { user } = useAuth();
@@ -13,6 +33,7 @@ const MyPayments = () => {
   const [payments, setPayments] = useState([]);
   const [feeStructures, setFeeStructures] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [expandedTypes, setExpandedTypes] = useState({});
   const [stats, setStats] = useState({
     totalPaid: 0,
     totalDue: 0,
@@ -78,13 +99,45 @@ const MyPayments = () => {
     });
   };
 
-  const getFilteredPayments = () => {
-    // For now, just return all payments as we don't have pending status
-    // In a full implementation, you'd calculate which fee structures are unpaid
-    return payments;
+  // Group payments by fee type
+  const paymentsByType = useMemo(() => {
+    const grouped = {};
+    payments.forEach(payment => {
+      const feeType = payment.fee_type || 'other';
+      if (!grouped[feeType]) {
+        grouped[feeType] = {
+          payments: [],
+          totalAmount: 0,
+          count: 0
+        };
+      }
+      grouped[feeType].payments.push(payment);
+      grouped[feeType].totalAmount += parseFloat(payment.amount_paid || 0);
+      grouped[feeType].count += 1;
+    });
+    return grouped;
+  }, [payments]);
+
+  const toggleFeeType = (feeType) => {
+    setExpandedTypes(prev => ({
+      ...prev,
+      [feeType]: !prev[feeType]
+    }));
   };
 
-  const filteredPayments = getFilteredPayments();
+  const getColorClasses = (color) => {
+    const colorMap = {
+      blue: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200', icon: 'text-blue-600' },
+      purple: { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-200', icon: 'text-purple-600' },
+      green: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-200', icon: 'text-green-600' },
+      orange: { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-200', icon: 'text-orange-600' },
+      cyan: { bg: 'bg-cyan-100', text: 'text-cyan-800', border: 'border-cyan-200', icon: 'text-cyan-600' },
+      pink: { bg: 'bg-pink-100', text: 'text-pink-800', border: 'border-pink-200', icon: 'text-pink-600' },
+      red: { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-200', icon: 'text-red-600' },
+      gray: { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-200', icon: 'text-gray-600' },
+    };
+    return colorMap[color] || colorMap.gray;
+  };
 
   if (loading) {
     return (
@@ -221,12 +274,12 @@ const MyPayments = () => {
         )}
       </div>
 
-      {/* Payment History */}
+      {/* Payment History - Grouped by Fee Type */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-800 flex items-center">
             <DollarSign className="w-5 h-5 mr-2 text-green-600" />
-            Payment History
+            Payment History by Type
           </h3>
         </div>
 
@@ -238,61 +291,103 @@ const MyPayments = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredPayments.map((payment) => (
-              <div 
-                key={payment.id} 
-                className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-4 mb-2">
-                      <div className="p-2 bg-green-100 rounded-full">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
+            {Object.entries(paymentsByType).map(([feeType, data]) => {
+              const color = FEE_TYPE_COLORS[feeType] || 'gray';
+              const colorClasses = getColorClasses(color);
+              const isExpanded = expandedTypes[feeType] ?? true;
+              
+              return (
+                <div key={feeType} className={`border ${colorClasses.border} rounded-lg overflow-hidden`}>
+                  {/* Fee Type Header - Clickable */}
+                  <button
+                    onClick={() => toggleFeeType(feeType)}
+                    className={`w-full flex items-center justify-between p-4 ${colorClasses.bg} hover:opacity-90 transition-opacity`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 bg-white rounded-full ${colorClasses.icon}`}>
+                        <CreditCard className="w-5 h-5" />
                       </div>
-                      <div>
-                        <h4 className="font-medium text-gray-800 capitalize">
-                          {payment.fee_structure?.fee_type?.replace('_', ' ') || 'Payment'}
+                      <div className="text-left">
+                        <h4 className={`font-semibold ${colorClasses.text}`}>
+                          {FEE_TYPE_LABELS[feeType] || feeType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                         </h4>
-                        <p className="text-sm text-gray-500">
-                          Transaction ID: {payment.transaction_id || 'N/A'}
+                        <p className="text-sm text-gray-600">
+                          {data.count} payment{data.count !== 1 ? 's' : ''} • Total: ৳{data.totalAmount.toLocaleString()}
                         </p>
                       </div>
                     </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 ml-12">
-                      <div>
-                        <p className="text-xs text-gray-500">Amount Paid</p>
-                        <p className="text-sm font-semibold text-gray-800">৳{payment.amount_paid}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Payment Date</p>
-                        <p className="text-sm font-semibold text-gray-800">
-                          {new Date(payment.payment_date).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Payment Method</p>
-                        <p className="text-sm font-semibold text-gray-800 capitalize">
-                          {payment.payment_method?.replace('_', ' ')}
-                        </p>
-                      </div>
-                      {payment.discount_amount > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500">Discount</p>
-                          <p className="text-sm font-semibold text-green-600">৳{payment.discount_amount}</p>
-                        </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-3 py-1 rounded-full text-sm font-bold ${colorClasses.text} bg-white`}>
+                        ৳{data.totalAmount.toLocaleString()}
+                      </span>
+                      {isExpanded ? (
+                        <ChevronUp className={`w-5 h-5 ${colorClasses.icon}`} />
+                      ) : (
+                        <ChevronDown className={`w-5 h-5 ${colorClasses.icon}`} />
                       )}
                     </div>
+                  </button>
 
-                    {payment.remarks && (
-                      <div className="ml-12 mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                        <p className="text-xs text-blue-800">{payment.remarks}</p>
-                      </div>
-                    )}
-                  </div>
+                  {/* Collapsible Payment List */}
+                  {isExpanded && (
+                    <div className="p-4 bg-white space-y-3">
+                      {data.payments.map((payment) => (
+                        <div 
+                          key={payment.id} 
+                          className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-4 mb-2">
+                                <div className="p-2 bg-green-100 rounded-full">
+                                  <CheckCircle className="w-5 h-5 text-green-600" />
+                                </div>
+                                <div>
+                                  <p className="text-sm text-gray-500">
+                                    Transaction ID: {payment.transaction_id || 'N/A'}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 ml-12">
+                                <div>
+                                  <p className="text-xs text-gray-500">Amount Paid</p>
+                                  <p className="text-sm font-semibold text-gray-800">৳{Number(payment.amount_paid).toLocaleString()}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500">Payment Date</p>
+                                  <p className="text-sm font-semibold text-gray-800">
+                                    {new Date(payment.payment_date).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500">Payment Method</p>
+                                  <p className="text-sm font-semibold text-gray-800 capitalize">
+                                    {payment.payment_method?.replace('_', ' ')}
+                                  </p>
+                                </div>
+                                {payment.discount_amount > 0 && (
+                                  <div>
+                                    <p className="text-xs text-gray-500">Discount</p>
+                                    <p className="text-sm font-semibold text-green-600">৳{payment.discount_amount}</p>
+                                  </div>
+                                )}
+                              </div>
+
+                              {payment.remarks && (
+                                <div className="ml-12 mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                  <p className="text-xs text-blue-800">{payment.remarks}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

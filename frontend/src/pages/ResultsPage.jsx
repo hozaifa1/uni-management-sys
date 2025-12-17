@@ -420,30 +420,12 @@ const ResultsPage = () => {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Examination Results</h1>
-          <p className="text-gray-600 mt-2">Manage student exam results and generate report cards</p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={exportToCSV}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Download className="w-5 h-5" />
-            Export CSV
-          </button>
-          <button
-            onClick={exportToPDF}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <FileText className="w-5 h-5" />
-            Export PDF
-          </button>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Examination Results</h1>
+        <p className="text-gray-600 mt-2">Manage student exam results and generate report cards</p>
       </div>
 
-      {/* Report Card Viewer Section */}
+      {/* Report Card Viewer Section - Collapsible */}
       <div className="mb-8">
         <ReportCardViewer />
       </div>
@@ -596,6 +578,24 @@ const ResultsPage = () => {
           >
             <Plus className="w-5 h-5 mr-2" />
             Add Result
+          </button>
+        </div>
+
+        {/* Row 4: Export Buttons */}
+        <div className="flex gap-3 pt-4 border-t border-gray-200">
+          <button
+            onClick={exportToCSV}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Download className="w-5 h-5" />
+            Export Results CSV
+          </button>
+          <button
+            onClick={exportToPDF}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <FileText className="w-5 h-5" />
+            Export Results PDF
           </button>
         </div>
       </div>

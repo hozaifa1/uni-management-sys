@@ -25,6 +25,7 @@ const ReportsPage = () => {
   const [semesterWiseData, setSemesterWiseData] = useState([]);
   const [currentSemesterData, setCurrentSemesterData] = useState({ stats: {}, payments: [] });
   const [duesData, setDuesData] = useState({ summary: {}, data: [] });
+  const [feeTypeData, setFeeTypeData] = useState([]);
   
   // Result Reports Data
   const [examSummaryData, setExamSummaryData] = useState([]);
@@ -91,15 +92,17 @@ const ReportsPage = () => {
       if (selectedIntake) params.intake = selectedIntake;
       if (selectedStudent) params.student = selectedStudent;
 
-      const [semesterRes, currentRes, duesRes] = await Promise.all([
+      const [semesterRes, currentRes, duesRes, feeTypeRes] = await Promise.all([
         api.get('/reports/payments/semester_wise/', { params }),
         api.get('/reports/payments/current_semester/', { params: { ...params, semester: selectedSemester || '1st' } }),
         api.get('/reports/payments/dues/', { params: { ...params, semester: selectedSemester } }),
+        api.get('/reports/payments/fee_type_summary/', { params }),
       ]);
 
       setSemesterWiseData(semesterRes.data.data || []);
       setCurrentSemesterData(currentRes.data || { stats: {}, payments: [] });
       setDuesData(duesRes.data || { summary: {}, data: [] });
+      setFeeTypeData(feeTypeRes.data.data || []);
     } catch (error) {
       console.error('Error fetching payment reports:', error);
       toast.error('Failed to load payment reports');
@@ -224,7 +227,41 @@ const ReportsPage = () => {
       yPos = doc.lastAutoTable.finalY + 15;
     }
 
-    // Section 3: Due Amounts for Course Completion
+    // Section 3: Fee Type Breakdown
+    if (feeTypeData.length > 0) {
+      // Check if we need a new page
+      if (yPos > 200) {
+        doc.addPage();
+        yPos = 22;
+      }
+
+      doc.setFontSize(14);
+      doc.setTextColor(16, 185, 129);
+      doc.text('3. Payments by Fee Type', 14, yPos);
+      doc.setTextColor(0, 0, 0);
+      yPos += 6;
+
+      const totalFeeTypeAmount = feeTypeData.reduce((sum, item) => sum + (item.total_amount || 0), 0);
+      doc.setFontSize(10);
+      doc.text(`Total: TK ${totalFeeTypeAmount.toLocaleString()}`, 14, yPos);
+      yPos += 8;
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Fee Type', 'Total Amount', 'Payment Count', 'Percentage']],
+        body: feeTypeData.map(item => [
+          item.fee_type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown',
+          `TK ${item.total_amount?.toLocaleString() || 0}`,
+          item.payment_count || 0,
+          `${((item.total_amount / totalFeeTypeAmount) * 100).toFixed(1)}%`,
+        ]),
+        headStyles: { fillColor: [16, 185, 129] },
+        styles: { fontSize: 9 },
+      });
+      yPos = doc.lastAutoTable.finalY + 15;
+    }
+
+    // Section 4: Due Amounts for Course Completion
     if (duesData.data?.length > 0) {
       // Check if we need a new page
       if (yPos > 200) {
@@ -234,7 +271,7 @@ const ReportsPage = () => {
 
       doc.setFontSize(14);
       doc.setTextColor(239, 68, 68);
-      doc.text('3. Due Amounts for Course Completion', 14, yPos);
+      doc.text('4. Due Amounts for Course Completion', 14, yPos);
       doc.setTextColor(0, 0, 0);
       yPos += 6;
 
@@ -463,6 +500,56 @@ const ReportsPage = () => {
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Fee Type Distribution */}
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  Payments by Fee Type
+                </h3>
+                {feeTypeData.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={feeTypeData.map(item => ({
+                            name: item.fee_type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown',
+                            value: item.total_amount
+                          }))}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={100}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {feeTypeData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Legend />
+                        <Tooltip formatter={(value) => `৳${value.toLocaleString()}`} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="space-y-3">
+                      {feeTypeData.map((item, idx) => (
+                        <div key={item.fee_type} className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: `${COLORS[idx % COLORS.length]}15` }}>
+                          <div className="flex items-center gap-3">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
+                            <span className="font-medium capitalize">{item.fee_type?.replace('_', ' ') || 'Unknown'}</span>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold" style={{ color: COLORS[idx % COLORS.length] }}>৳{item.total_amount?.toLocaleString()}</p>
+                            <p className="text-xs text-gray-500">{item.payment_count} payments</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-10">No fee type payment data available</p>
+                )}
               </div>
 
               {/* Dues Report */}
