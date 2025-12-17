@@ -13,6 +13,7 @@ const ResultsPage = () => {
   const [results, setResults] = useState([]);
   const [students, setStudents] = useState([]);
   const [subjects, setSubjects] = useState([]);
+  const [majors, setMajors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [error, setError] = useState('');
@@ -22,6 +23,7 @@ const ResultsPage = () => {
   const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedIntake, setSelectedIntake] = useState('');
   const [selectedExamType, setSelectedExamType] = useState('');
+  const [selectedMajor, setSelectedMajor] = useState('');
 
   const EXAM_TYPE_OPTIONS = [
     { value: 'incourse_1st', label: '1st Incourse' },
@@ -45,15 +47,17 @@ const ResultsPage = () => {
     const loadInitialData = async () => {
       try {
         setLoading(true);
-        // Load exams, subjects, students, and results in parallel with large page_size
-        const [subjectsRes, studentsRes, resultsRes] = await Promise.all([
+        // Load exams, subjects, students, majors, and results in parallel with large page_size
+        const [subjectsRes, studentsRes, resultsRes, majorsRes] = await Promise.all([
           api.get('/academics/subjects/', { params: { page_size: 10000 } }),
           api.get('/accounts/students/', { params: { page_size: 10000 } }),
-          api.get('/academics/results/', { params: { page_size: 10000 } })
+          api.get('/academics/results/', { params: { page_size: 10000 } }),
+          api.get('/academics/major-options/', { params: { page_size: 100 } })
         ]);
         setSubjects(subjectsRes.data.results || subjectsRes.data || []);
         setStudents(studentsRes.data.results || studentsRes.data || []);
         setResults(resultsRes.data.results || resultsRes.data || []);
+        setMajors(majorsRes.data.results || majorsRes.data || []);
         setDataLoaded(true);
         setError('');
       } catch (err) {
@@ -101,6 +105,7 @@ const ResultsPage = () => {
     setSelectedSubject('');
     setSelectedStudent('');
     setSelectedExamType('');
+    setSelectedMajor('');
   };
 
   const handleSemesterChange = (value) => {
@@ -109,6 +114,12 @@ const ResultsPage = () => {
     setSelectedSubject('');
     setSelectedStudent('');
     setSelectedExamType('');
+    setSelectedMajor('');
+  };
+
+  const handleMajorChange = (value) => {
+    setSelectedMajor(value);
+    setSelectedSubject('');
   };
 
   const handleIntakeChange = (value) => {
@@ -124,8 +135,43 @@ const ResultsPage = () => {
     setSelectedSubject('');
     setSelectedExamType('');
     setSelectedStudent('');
+    setSelectedMajor('');
     setSearchTerm('');
   };
+
+  // Determine if the current course+semester combination has majors
+  const hasMajorsForSelection = useMemo(() => {
+    if (!selectedCourse || !selectedSemester) return false;
+    // BBA has majors in 7th and 8th semester
+    if (selectedCourse === 'BBA' && (selectedSemester === '7th' || selectedSemester === '8th')) return true;
+    // MBA has majors in 2nd semester
+    if (selectedCourse === 'MBA' && selectedSemester === '2nd') return true;
+    return false;
+  }, [selectedCourse, selectedSemester]);
+
+  // Get available majors for the selected course+semester that have results
+  const availableMajors = useMemo(() => {
+    if (!hasMajorsForSelection) return [];
+    
+    // Get majors for the selected course
+    const courseMajors = majors.filter(m => m.course === selectedCourse);
+    
+    // Find subjects that have results for this course+semester
+    const subjectsWithResults = subjects.filter(s => {
+      if (s.course_code !== selectedCourse || s.semester !== selectedSemester) return false;
+      if (s.subject_type !== 'major' || !s.major) return false;
+      // Check if this subject has any results
+      return results.some(r => r.subject === s.id || r.subject_id === s.id);
+    });
+    
+    // Get unique major IDs that have results
+    const majorIdsWithResults = new Set(
+      subjectsWithResults.map(s => typeof s.major === 'object' ? s.major.id : s.major).filter(Boolean)
+    );
+    
+    // Filter majors to only those with results
+    return courseMajors.filter(m => majorIdsWithResults.has(m.id));
+  }, [hasMajorsForSelection, majors, subjects, results, selectedCourse, selectedSemester]);
 
   // Derive options that actually have results
   const availableOptions = useMemo(() => {
@@ -188,7 +234,7 @@ const ResultsPage = () => {
       ];
     }
 
-    // Filter subjects by course_code and semester
+    // Filter subjects by course_code, semester, and major
     let filteredSubjects = subjects;
     if (selectedCourse) {
       filteredSubjects = filteredSubjects.filter((s) => s.course_code === selectedCourse);
@@ -196,6 +242,27 @@ const ResultsPage = () => {
     if (selectedSemester) {
       filteredSubjects = filteredSubjects.filter((s) => s.semester === selectedSemester);
     }
+    // If a major is selected, only show subjects for that major
+    if (selectedMajor) {
+      filteredSubjects = filteredSubjects.filter((s) => {
+        const subjectMajorId = typeof s.major === 'object' ? s.major?.id : s.major;
+        return subjectMajorId === parseInt(selectedMajor);
+      });
+    } else if (hasMajorsForSelection) {
+      // If we're in a semester with majors but no major is selected,
+      // show core subjects + all major subjects that have results
+      filteredSubjects = filteredSubjects.filter((s) => {
+        // Always show core/non-major subjects
+        if (s.subject_type !== 'major') return true;
+        // For major subjects, only show if they have results
+        return results.some(r => r.subject === s.id || r.subject_id === s.id);
+      });
+    }
+    
+    // Only show subjects that have results
+    filteredSubjects = filteredSubjects.filter((s) => 
+      results.some(r => r.subject === s.id || r.subject_id === s.id)
+    );
 
     // Get available exam types based on results (only show types that have results)
     let availableExamTypes = [];
@@ -224,6 +291,8 @@ const ResultsPage = () => {
     selectedCourse,
     selectedSemester,
     selectedIntake,
+    selectedMajor,
+    hasMajorsForSelection,
     subjects,
     results,
     students,
@@ -324,6 +393,15 @@ const ResultsPage = () => {
       if (selectedStudent && result.student !== parseInt(selectedStudent) && result.student_id !== selectedStudent) return false;
       if (selectedSubject && result.subject !== parseInt(selectedSubject) && result.subject_id !== selectedSubject) return false;
       
+      // Filter by major - if a major is selected, only show results for subjects of that major
+      if (selectedMajor) {
+        const subject = subjects.find(s => s.id === result.subject || s.id === result.subject_id);
+        if (subject) {
+          const subjectMajorId = typeof subject.major === 'object' ? subject.major?.id : subject.major;
+          if (subjectMajorId !== parseInt(selectedMajor)) return false;
+        }
+      }
+      
       // Filter by exam type
       if (selectedExamType && result.exam_type !== selectedExamType) return false;
       
@@ -338,7 +416,7 @@ const ResultsPage = () => {
       }
       return true;
     });
-  }, [results, students, selectedCourse, selectedSemester, selectedIntake, selectedStudent, selectedSubject, selectedExamType, searchTerm]);
+  }, [results, students, subjects, selectedCourse, selectedSemester, selectedIntake, selectedStudent, selectedSubject, selectedMajor, selectedExamType, searchTerm]);
 
   // Client-side pagination
   const totalPages = Math.ceil(filteredResults.length / ITEMS_PER_PAGE);
@@ -350,7 +428,7 @@ const ResultsPage = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCourse, selectedSemester, selectedIntake, selectedStudent, selectedSubject, selectedExamType, searchTerm]);
+  }, [selectedCourse, selectedSemester, selectedIntake, selectedStudent, selectedSubject, selectedMajor, selectedExamType, searchTerm]);
 
   const exportToCSV = () => {
     if (filteredResults.length === 0) {
@@ -493,7 +571,36 @@ const ResultsPage = () => {
           </div>
         </div>
 
-        {/* Row 2: Subject/Exam Type Filters */}
+        {/* Row 2: Major Filter (only shows when course+semester has majors) */}
+        {hasMajorsForSelection && availableMajors.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Major/Specialization
+                <span className="ml-1 text-blue-500 text-xs">(Optional)</span>
+              </label>
+              <select
+                value={selectedMajor}
+                onChange={(e) => handleMajorChange(e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-blue-50"
+              >
+                <option value="">All Majors ({availableMajors.length})</option>
+                {availableMajors.map((major) => (
+                  <option key={major.id} value={major.id}>
+                    {major.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2 flex items-end">
+              <p className="text-xs text-gray-500 italic">
+                This course/semester has specializations. Select a major to filter subjects by that specialization.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Row 3: Subject/Exam Type Filters */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {/* Subject Filter */}
           <div>

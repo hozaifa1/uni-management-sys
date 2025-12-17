@@ -18,8 +18,18 @@ const ReportsPage = () => {
   const [selectedIntake, setSelectedIntake] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedPaymentType, setSelectedPaymentType] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
   const [students, setStudents] = useState([]);
+
+  const paymentTypes = [
+    { value: 'semester_fee', label: 'Semester Fee' },
+    { value: 'admission_fee', label: 'Admission Fee' },
+    { value: 'tuition_fee', label: 'Tuition Fee' },
+    { value: 'exam_fee', label: 'Exam Fee' },
+    { value: 'lab_fee', label: 'Lab Fee' },
+    { value: 'library_fee', label: 'Library Fee' },
+  ];
   
   // Payment Reports Data
   const [semesterWiseData, setSemesterWiseData] = useState([]);
@@ -81,6 +91,7 @@ const ReportsPage = () => {
     setSelectedIntake('');
     setSelectedSemester('');
     setSelectedStudent('');
+    setSelectedPaymentType('');
     setStudentSearch('');
   };
 
@@ -91,6 +102,7 @@ const ReportsPage = () => {
       if (selectedCourse) params.course = selectedCourse;
       if (selectedIntake) params.intake = selectedIntake;
       if (selectedStudent) params.student = selectedStudent;
+      if (selectedPaymentType) params.fee_type = selectedPaymentType;
 
       const [semesterRes, currentRes, duesRes, feeTypeRes] = await Promise.all([
         api.get('/reports/payments/semester_wise/', { params }),
@@ -109,7 +121,7 @@ const ReportsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedCourse, selectedIntake, selectedSemester, selectedStudent]);
+  }, [selectedCourse, selectedIntake, selectedSemester, selectedStudent, selectedPaymentType]);
 
   const fetchResultReports = useCallback(async () => {
     setLoading(true);
@@ -142,7 +154,7 @@ const ReportsPage = () => {
     } else {
       fetchResultReports();
     }
-  }, [activeTab, selectedCourse, selectedIntake, selectedSemester, selectedStudent, fetchPaymentReports, fetchResultReports]);
+  }, [activeTab, selectedCourse, selectedIntake, selectedSemester, selectedStudent, selectedPaymentType, fetchPaymentReports, fetchResultReports]);
 
   // Single comprehensive PDF export that respects all filters
   const exportComprehensiveReportPDF = () => {
@@ -169,6 +181,7 @@ const ReportsPage = () => {
     if (selectedCourse) filters.push(`Course: ${selectedCourse}`);
     if (selectedIntake) filters.push(`Intake: ${selectedIntake}`);
     if (selectedSemester) filters.push(`Semester: ${selectedSemester}`);
+    if (selectedPaymentType) filters.push(`Payment Type: ${paymentTypes.find(p => p.value === selectedPaymentType)?.label || selectedPaymentType}`);
     if (studentInfo) filters.push(`Student: ${studentInfo.user?.first_name} ${studentInfo.user?.last_name} (${studentInfo.student_id})`);
     
     if (filters.length > 0) {
@@ -418,7 +431,23 @@ const ReportsPage = () => {
             </select>
           </div>
         </div>
-        {/* Row 2: Actions */}
+        {/* Row 2: Payment Type Filter (only for payments tab) */}
+        {activeTab === 'payments' && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Payment Type</label>
+              <select
+                value={selectedPaymentType}
+                onChange={(e) => setSelectedPaymentType(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Payment Types</option>
+                {paymentTypes.map(pt => <option key={pt.value} value={pt.value}>{pt.label}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
+        {/* Row 3: Actions */}
         <div className="flex gap-4">
           <button
             onClick={() => activeTab === 'payments' ? fetchPaymentReports() : fetchResultReports()}
