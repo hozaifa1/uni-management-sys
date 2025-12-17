@@ -303,9 +303,17 @@ const ResultsPage = () => {
     if (studentId) {
       const student = students.find(s => s.id === parseInt(studentId) || s.id === studentId);
       if (student) {
-        // Back-propagate student's course/semester
+        // Back-propagate student's course/semester/intake/major
         if (student.course) setSelectedCourse(student.course);
         if (student.semester) setSelectedSemester(student.semester);
+        if (student.intake) setSelectedIntake(student.intake);
+        // Set major if student has one
+        if (student.major) {
+          const majorId = typeof student.major === 'object' ? student.major.id : student.major;
+          setSelectedMajor(String(majorId));
+        } else {
+          setSelectedMajor('');
+        }
       }
     }
   };

@@ -96,6 +96,17 @@ const AddResultModal = ({ onClose, onSuccess, students = [], subjects: initialSu
     }
   }, [editingResult, students, subjects]);
 
+  // Get student's major info
+  const studentMajorInfo = useMemo(() => {
+    if (!selectedStudent?.major) return null;
+    // major can be an object or an ID
+    if (typeof selectedStudent.major === 'object') {
+      return selectedStudent.major;
+    }
+    // If it's an ID, we don't have the name - return just the ID
+    return { id: selectedStudent.major, name: null };
+  }, [selectedStudent]);
+
   const filteredSubjects = useMemo(() => {
     if (isEditMode) {
       return subjects;
@@ -122,6 +133,27 @@ const AddResultModal = ({ onClose, onSuccess, students = [], subjects: initialSu
     if (selectedStudent?.semester) {
       // Also filter by semester to show only relevant subjects
       list = list.filter((subject) => subject.semester === selectedStudent.semester);
+    }
+
+    // If student has a major, filter subjects to only show:
+    // 1. Core subjects (subject_type !== 'major' or no major assigned)
+    // 2. Major subjects that belong to the student's major
+    if (selectedStudent?.major) {
+      const studentMajorId = typeof selectedStudent.major === 'object' 
+        ? selectedStudent.major.id 
+        : selectedStudent.major;
+      
+      list = list.filter((subject) => {
+        // Core subjects (no major or not a major-type subject)
+        if (subject.subject_type !== 'major' || !subject.major) {
+          return true;
+        }
+        // Major subjects - only show if they match student's major
+        const subjectMajorId = typeof subject.major === 'object' 
+          ? subject.major.id 
+          : subject.major;
+        return subjectMajorId === studentMajorId;
+      });
     }
 
     return list;
@@ -377,6 +409,11 @@ const AddResultModal = ({ onClose, onSuccess, students = [], subjects: initialSu
               <p className="text-sm text-blue-800">
                 <strong>Selected:</strong> {getStudentDisplayName(selectedStudent)} • 
                 {selectedStudent.course} • {selectedStudent.intake} Intake • Semester {selectedStudent.semester}
+                {studentMajorInfo && (
+                  <span className="ml-1">
+                    • <span className="font-semibold text-purple-700">Major: {studentMajorInfo.name || `ID: ${studentMajorInfo.id}`}</span>
+                  </span>
+                )}
               </p>
             </div>
           )}
