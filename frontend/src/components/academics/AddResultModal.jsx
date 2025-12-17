@@ -27,6 +27,7 @@ const AddResultModal = ({ onClose, onSuccess, students = [], subjects: initialSu
   // Local copies of subjects and exams fetched based on selection
   const [exams, setExams] = useState([]);
   const [subjects, setSubjects] = useState(initialSubjects);
+  const [majors, setMajors] = useState([]);
   const [examsLoading, setExamsLoading] = useState(false);
 
   const isEditMode = !!editingResult;
@@ -35,6 +36,19 @@ const AddResultModal = ({ onClose, onSuccess, students = [], subjects: initialSu
   useEffect(() => {
     setSubjects(initialSubjects);
   }, [initialSubjects]);
+
+  // Fetch majors on mount
+  useEffect(() => {
+    const fetchMajors = async () => {
+      try {
+        const response = await api.get('/academics/majors/', { params: { page_size: 100 } });
+        setMajors(response.data.results || response.data || []);
+      } catch (err) {
+        console.error('Error fetching majors:', err);
+      }
+    };
+    fetchMajors();
+  }, []);
 
   // Fetch exams when subject is selected
   useEffect(() => {
@@ -96,16 +110,23 @@ const AddResultModal = ({ onClose, onSuccess, students = [], subjects: initialSu
     }
   }, [editingResult, students, subjects]);
 
-  // Get student's major info
+  // Get student's major info - look up name from majors list if needed
   const studentMajorInfo = useMemo(() => {
     if (!selectedStudent?.major) return null;
     // major can be an object or an ID
-    if (typeof selectedStudent.major === 'object') {
+    if (typeof selectedStudent.major === 'object' && selectedStudent.major.name) {
       return selectedStudent.major;
     }
-    // If it's an ID, we don't have the name - return just the ID
-    return { id: selectedStudent.major, name: null };
-  }, [selectedStudent]);
+    // If it's an ID, look up the name from majors list
+    const majorId = typeof selectedStudent.major === 'object' 
+      ? selectedStudent.major.id 
+      : selectedStudent.major;
+    const majorObj = majors.find(m => m.id === majorId || m.id === parseInt(majorId));
+    if (majorObj) {
+      return { id: majorObj.id, name: majorObj.name };
+    }
+    return { id: majorId, name: null };
+  }, [selectedStudent, majors]);
 
   const filteredSubjects = useMemo(() => {
     if (isEditMode) {
@@ -140,8 +161,8 @@ const AddResultModal = ({ onClose, onSuccess, students = [], subjects: initialSu
     // 2. Major subjects that belong to the student's major
     if (selectedStudent?.major) {
       const studentMajorId = typeof selectedStudent.major === 'object' 
-        ? selectedStudent.major.id 
-        : selectedStudent.major;
+        ? parseInt(selectedStudent.major.id) 
+        : parseInt(selectedStudent.major);
       
       list = list.filter((subject) => {
         // Core subjects (no major or not a major-type subject)
@@ -150,8 +171,8 @@ const AddResultModal = ({ onClose, onSuccess, students = [], subjects: initialSu
         }
         // Major subjects - only show if they match student's major
         const subjectMajorId = typeof subject.major === 'object' 
-          ? subject.major.id 
-          : subject.major;
+          ? parseInt(subject.major.id) 
+          : parseInt(subject.major);
         return subjectMajorId === studentMajorId;
       });
     }
