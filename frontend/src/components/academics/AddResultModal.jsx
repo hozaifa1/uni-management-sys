@@ -107,13 +107,21 @@ const AddResultModal = ({ onClose, onSuccess, students = [], subjects: initialSu
       const exam = exams.find((e) => e.id === parseInt(formData.exam, 10));
       if (exam?.course) {
         list = list.filter(
-          (subject) => subject.course === exam.course || subject.course_name === exam.course
+          (subject) => subject.course_code === exam.course || subject.course === exam.course || subject.course_name === exam.course
         );
       }
     }
 
     if (selectedStudent?.course) {
-      list = list.filter((subject) => subject.course === selectedStudent.course);
+      // Filter by course_code (primary) or course field as fallback
+      list = list.filter((subject) => 
+        subject.course_code === selectedStudent.course || subject.course === selectedStudent.course
+      );
+    }
+
+    if (selectedStudent?.semester) {
+      // Also filter by semester to show only relevant subjects
+      list = list.filter((subject) => subject.semester === selectedStudent.semester);
     }
 
     return list;
@@ -166,8 +174,9 @@ const AddResultModal = ({ onClose, onSuccess, students = [], subjects: initialSu
     // Constrain by selected subject (match course)
     if (formData.subject) {
       const subjectObj = subjects.find((s) => s.id === parseInt(formData.subject, 10));
-      if (subjectObj?.course) {
-        list = list.filter((student) => student.course === subjectObj.course);
+      if (subjectObj?.course_code || subjectObj?.course) {
+        const subjectCourse = subjectObj.course_code || subjectObj.course;
+        list = list.filter((student) => student.course === subjectCourse);
       }
     }
 
