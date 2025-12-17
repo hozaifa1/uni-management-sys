@@ -52,11 +52,11 @@ const PaymentsPage = () => {
     const loadInitialData = async () => {
       try {
         setLoading(true);
-        // Use Promise.allSettled to handle partial failures gracefully
+        // Fetch with reasonable page sizes for performance
         const [studentsRes, paymentsRes, examsRes] = await Promise.allSettled([
-          api.get('/accounts/students/', { params: { page_size: 10000 } }),
-          api.get('/payments/payments/', { params: { page_size: 10000 } }),
-          api.get('/academics/exams/', { params: { page_size: 10000 } }),
+          api.get('/accounts/students/', { params: { page_size: 500 } }),
+          api.get('/payments/payments/', { params: { page_size: 200 } }),
+          api.get('/academics/exams/', { params: { page_size: 100 } }),
         ]);
         
         if (studentsRes.status === 'fulfilled') {
@@ -81,7 +81,7 @@ const PaymentsPage = () => {
   const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get('/payments/payments/', { params: { page_size: 10000 } });
+      const response = await api.get('/payments/payments/', { params: { page_size: 200 } });
       setPayments(response.data.results || response.data || []);
       setCurrentPage(1);
     } catch (error) {
