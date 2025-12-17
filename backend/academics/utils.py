@@ -16,32 +16,43 @@ from accounts.models import Student
 from academics.models import Exam, Result
 
 
-def generate_report_card(student_id, exam_id):
+def generate_report_card(student_id, exam_id=None):
     """
-    Generate a PDF report card for a student's exam results
+    Generate a PDF report card for a student's results
     
     Args:
         student_id: ID of the student
-        exam_id: ID of the exam
+        exam_id: ID of the exam (optional - if not provided, generates semester report with all results)
     
     Returns:
         BytesIO buffer containing the PDF
     """
-    # Get student and exam
+    # Get student
     try:
         student = Student.objects.select_related('user').get(id=student_id)
-        exam = Exam.objects.get(id=exam_id)
-    except (Student.DoesNotExist, Exam.DoesNotExist):
-        raise ValueError("Student or Exam not found")
+    except Student.DoesNotExist:
+        raise ValueError("Student not found")
     
-    # Get all results for this student and exam
-    results = Result.objects.filter(
-        student=student,
-        exam=exam
-    ).select_related('subject').order_by('subject__name')
+    # Get exam if specified
+    exam = None
+    if exam_id:
+        try:
+            exam = Exam.objects.get(id=exam_id)
+        except Exam.DoesNotExist:
+            raise ValueError("Exam not found")
+        # Get results for specific exam
+        results = Result.objects.filter(
+            student=student,
+            exam=exam
+        ).select_related('subject', 'exam').order_by('subject__name')
+    else:
+        # Get all results for student's current semester
+        results = Result.objects.filter(
+            student=student
+        ).select_related('subject', 'exam').order_by('subject__name', 'exam__exam_type')
     
     if not results.exists():
-        raise ValueError("No results found for this student and exam")
+        raise ValueError("No results found for this student")
     
     # Create PDF buffer - compact margins to fit on 1 page
     buffer = BytesIO()
@@ -113,35 +124,38 @@ def generate_report_card(student_id, exam_id):
     elements.append(student_table)
     elements.append(Spacer(1, 0.15*inch))
     
-    # Exam Information (removed total marks per requirements)
-    elements.append(Paragraph("Examination Details", heading_style))
-    
-    exam_data = [
-        ['Exam Name:', exam.name],
-        ['Exam Type:', exam.get_exam_type_display()],
-        ['Exam Date:', exam.exam_date.strftime('%B %d, %Y')],
-    ]
-    
-    exam_table = Table(exam_data, colWidths=[2*inch, 4.5*inch])
-    exam_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#e2e8f0')),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#2d3748')),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e0'))
-    ]))
-    
-    elements.append(exam_table)
-    elements.append(Spacer(1, 0.15*inch))
-    
-    # Results Table
-    elements.append(Paragraph("Subject-wise Performance", heading_style))
-    
-    # Prepare results data - include teacher comments
-    results_data = [['Subject', 'Code', 'Marks', 'Obtained', '%', 'Grade', 'Comment']]
+    # Exam Information - only show if specific exam was requested
+    if exam:
+        elements.append(Paragraph("Examination Details", heading_style))
+        
+        exam_data = [
+            ['Exam Name:', exam.name],
+            ['Exam Type:', exam.get_exam_type_display()],
+            ['Exam Date:', exam.exam_date.strftime('%B %d, %Y')],
+        ]
+        
+        exam_table = Table(exam_data, colWidths=[2*inch, 4.5*inch])
+        exam_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#e2e8f0')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#2d3748')),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e0'))
+        ]))
+        
+        elements.append(exam_table)
+        elements.append(Spacer(1, 0.15*inch))
+        
+        # Results Table - Single exam format
+        elements.append(Paragraph("Subject-wise Performance", heading_style))
+        results_data = [['Subject', 'Code', 'Marks', 'Obtained', '%', 'Grade', 'Comment']]
+    else:
+        # Semester report - show all exam results grouped by subject
+        elements.append(Paragraph("Semester Results Summary", heading_style))
+        results_data = [['Subject', 'Exam Type', 'Marks', 'Obtained', '%', 'Grade']]
     
     total_marks_possible = 0
     total_marks_obtained = 0
@@ -150,20 +164,32 @@ def generate_report_card(student_id, exam_id):
         percentage = result.get_percentage()
         grade = result.calculate_grade()
         
-        # Truncate comment to fit in table
-        comment = (result.teacher_comment or '')[:30]
-        if result.teacher_comment and len(result.teacher_comment) > 30:
-            comment += '...'
-        
-        results_data.append([
-            result.subject.name[:20],
-            result.subject.code,
-            str(result.subject.total_marks),
-            f"{result.marks_obtained:.1f}",
-            f"{percentage:.1f}%",
-            grade,
-            comment
-        ])
+        if exam:
+            # Single exam format - include comments
+            comment = (result.teacher_comment or '')[:30]
+            if result.teacher_comment and len(result.teacher_comment) > 30:
+                comment += '...'
+            
+            results_data.append([
+                result.subject.name[:20],
+                result.subject.code,
+                str(result.subject.total_marks),
+                f"{result.marks_obtained:.1f}",
+                f"{percentage:.1f}%",
+                grade,
+                comment
+            ])
+        else:
+            # Semester report format - include exam type
+            exam_type_display = result.exam.get_exam_type_display() if result.exam else 'N/A'
+            results_data.append([
+                result.subject.name[:25],
+                exam_type_display,
+                str(result.subject.total_marks),
+                f"{result.marks_obtained:.1f}",
+                f"{percentage:.1f}%",
+                grade
+            ])
         
         total_marks_possible += result.subject.total_marks
         total_marks_obtained += float(result.marks_obtained)
@@ -172,17 +198,27 @@ def generate_report_card(student_id, exam_id):
     overall_percentage = (total_marks_obtained / total_marks_possible * 100) if total_marks_possible > 0 else 0
     
     # Add totals row
-    results_data.append([
-        'TOTAL',
-        '',
-        str(total_marks_possible),
-        f"{total_marks_obtained:.1f}",
-        f"{overall_percentage:.1f}%",
-        calculate_overall_grade(overall_percentage),
-        ''
-    ])
-    
-    results_table = Table(results_data, colWidths=[1.4*inch, 0.7*inch, 0.6*inch, 0.7*inch, 0.6*inch, 0.5*inch, 1.6*inch])
+    if exam:
+        results_data.append([
+            'TOTAL',
+            '',
+            str(total_marks_possible),
+            f"{total_marks_obtained:.1f}",
+            f"{overall_percentage:.1f}%",
+            calculate_overall_grade(overall_percentage),
+            ''
+        ])
+        results_table = Table(results_data, colWidths=[1.4*inch, 0.7*inch, 0.6*inch, 0.7*inch, 0.6*inch, 0.5*inch, 1.6*inch])
+    else:
+        results_data.append([
+            'TOTAL',
+            '',
+            str(total_marks_possible),
+            f"{total_marks_obtained:.1f}",
+            f"{overall_percentage:.1f}%",
+            calculate_overall_grade(overall_percentage)
+        ])
+        results_table = Table(results_data, colWidths=[1.8*inch, 1.0*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.6*inch])
     results_table.setStyle(TableStyle([
         # Header row
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c5282')),

@@ -6,9 +6,7 @@ import api from '../../services/api';
 const ReportCardViewer = () => {
   const [results, setResults] = useState([]);
   const [students, setStudents] = useState([]);
-  const [exams, setExams] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState('');
-  const [selectedExam, setSelectedExam] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedIntake, setSelectedIntake] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
@@ -22,13 +20,11 @@ const ReportCardViewer = () => {
     const loadData = async () => {
       try {
         setDataLoading(true);
-        const [studentsRes, examsRes, resultsRes] = await Promise.all([
+        const [studentsRes, resultsRes] = await Promise.all([
           api.get('/accounts/students/'),
-          api.get('/academics/exams/'),
           api.get('/academics/results/')
         ]);
         setStudents(studentsRes.data.results || studentsRes.data || []);
-        setExams(examsRes.data.results || examsRes.data || []);
         setResults(resultsRes.data.results || resultsRes.data || []);
       } catch (err) {
         console.error('Error loading data:', err);
@@ -43,7 +39,6 @@ const ReportCardViewer = () => {
   // Extract unique values from results that actually have data
   const availableOptions = useMemo(() => {
     const studentIdsWithResults = new Set(results.map(r => r.student));
-    const examIdsWithResults = new Set(results.map(r => r.exam));
     
     // Get students that have results
     const studentsWithResults = students.filter(s => studentIdsWithResults.has(s.id));
@@ -54,20 +49,15 @@ const ReportCardViewer = () => {
     const semesters = [...new Set(studentsWithResults.map(s => s.semester).filter(Boolean))];
     const sessions = [...new Set(studentsWithResults.map(s => s.session).filter(Boolean))];
     
-    // Get exams that have results
-    const examsWithResults = exams.filter(e => examIdsWithResults.has(e.id));
-    
     return {
       courses,
       intakes,
       semesters,
       sessions,
       studentsWithResults,
-      examsWithResults,
-      studentIdsWithResults,
-      examIdsWithResults
+      studentIdsWithResults
     };
-  }, [results, students, exams]);
+  }, [results, students]);
 
   // Filter options based on current selections
   const filteredOptions = useMemo(() => {
@@ -119,27 +109,8 @@ const ReportCardViewer = () => {
       )];
     }
     
-    // Get exams that have results for the selected student OR match the course/intake/semester filters
-    let filteredExams = availableOptions.examsWithResults;
-    if (selectedStudent) {
-      // Only show exams where this student has results
-      const studentExamIds = new Set(
-        results
-          .filter(r => r.student === parseInt(selectedStudent) || r.student === selectedStudent)
-          .map(r => r.exam)
-      );
-      filteredExams = filteredExams.filter(e => studentExamIds.has(e.id));
-    } else if (selectedCourse || selectedSemester) {
-      // Filter exams by course/semester (intake removed from Exam model)
-      filteredExams = filteredExams.filter(e => 
-        (!selectedCourse || e.course === selectedCourse) &&
-        (!selectedSemester || e.semester === selectedSemester)
-      );
-    }
-    
     return {
       students: filteredStudents,
-      exams: filteredExams,
       intakes: availableIntakes,
       semesters: availableSemesters,
       sessions: availableSessions
@@ -151,26 +122,22 @@ const ReportCardViewer = () => {
     setSelectedIntake('');
     setSelectedSemester('');
     setSelectedStudent('');
-    setSelectedExam('');
   };
 
   const handleIntakeChange = (value) => {
     setSelectedIntake(value);
     setSelectedStudent('');
-    setSelectedExam('');
   };
 
   const handleSemesterChange = (value) => {
     setSelectedSemester(value);
     setSelectedStudent('');
-    setSelectedExam('');
   };
 
 
   // Handle student selection - back-propagate course/intake/semester/session
   const handleStudentChange = (studentId) => {
     setSelectedStudent(studentId);
-    setSelectedExam(''); // Reset exam when student changes
     if (studentId) {
       const student = students.find(s => s.id === parseInt(studentId) || s.id === studentId);
       if (student) {
@@ -182,8 +149,8 @@ const ReportCardViewer = () => {
   };
 
   const handleDownload = async () => {
-    if (!selectedStudent || !selectedExam) {
-      setError('Please select both student and exam');
+    if (!selectedStudent) {
+      setError('Please select a student');
       return;
     }
 
@@ -192,7 +159,7 @@ const ReportCardViewer = () => {
 
     try {
       const response = await api.get(
-        `/academics/results/generate_report_card/?student_id=${selectedStudent}&exam_id=${selectedExam}`,
+        `/academics/results/generate_report_card/?student_id=${selectedStudent}`,
         {
           responseType: 'blob'
         }
@@ -204,14 +171,14 @@ const ReportCardViewer = () => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `report_card_${studentName}_${selectedExam}.pdf`);
+      link.setAttribute('download', `report_card_${studentName}_${student?.semester || 'all'}_sem.pdf`);
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
       toast.success('Report card downloaded successfully!');
     } catch (error) {
       console.error('Error downloading report card:', error);
-      const errorMsg = 'Failed to download report card. Please ensure the student has results for this exam.';
+      const errorMsg = 'Failed to download report card. Please ensure the student has results.';
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -220,16 +187,13 @@ const ReportCardViewer = () => {
   };
 
   const handleSendEmail = async () => {
-    if (!selectedStudent || !selectedExam) {
-      setError('Please select both student and exam');
+    if (!selectedStudent) {
+      setError('Please select a student');
       return;
     }
 
     const student = filteredOptions.students.find(
       (s) => s.id === parseInt(selectedStudent) || s.id === selectedStudent
-    );
-    const exam = filteredOptions.exams.find(
-      (e) => e.id === parseInt(selectedExam) || e.id === selectedExam
     );
 
     if (!student || !student.user?.email) {
@@ -242,11 +206,10 @@ const ReportCardViewer = () => {
     const studentName = student.user?.first_name
       ? `${student.user.first_name} ${student.user.last_name || ''}`.trim()
       : student.student_id;
-    const examName = exam?.name || 'Exam';
     const body = encodeURIComponent(
-      `Dear ${studentName},\n\nYour report card for ${examName} is ready. Please log in to the portal to view your results.\n\nCourse: ${student.course || 'N/A'}\nIntake: ${student.intake || 'N/A'}\nSemester: ${student.semester || 'N/A'}\nSession: ${student.session || 'N/A'}\n\nBest regards,\nIGMIS Administration`
+      `Dear ${studentName},\n\nYour semester report card is ready. Please log in to the portal to view your results.\n\nCourse: ${student.course || 'N/A'}\nIntake: ${student.intake || 'N/A'}\nSemester: ${student.semester || 'N/A'}\nSession: ${student.session || 'N/A'}\n\nBest regards,\nIGMIS Administration`
     );
-    const subject = encodeURIComponent(`Report Card - ${examName}`);
+    const subject = encodeURIComponent(`Semester ${student.semester || ''} Report Card`);
 
     // Open mailto in new tab
     const mailtoUrl = `mailto:${student.user.email}?subject=${subject}&body=${body}`;
@@ -255,16 +218,13 @@ const ReportCardViewer = () => {
   };
 
   const handleSendWhatsApp = () => {
-    if (!selectedStudent || !selectedExam) {
-      setError('Please select both student and exam');
+    if (!selectedStudent) {
+      setError('Please select a student');
       return;
     }
 
     const student = filteredOptions.students.find(
       (s) => s.id === parseInt(selectedStudent) || s.id === selectedStudent
-    );
-    const exam = filteredOptions.exams.find(
-      (e) => e.id === parseInt(selectedExam) || e.id === selectedExam
     );
 
     if (!student || !student.user?.phone_number) {
@@ -277,7 +237,6 @@ const ReportCardViewer = () => {
     const studentName = student.user?.first_name
       ? `${student.user.first_name} ${student.user.last_name || ''}`.trim()
       : student.student_id;
-    const examName = exam?.name || 'Exam';
     
     // Format phone number (remove spaces, add country code if needed)
     let phoneNumber = student.user.phone_number.replace(/\s+/g, '').replace(/-/g, '');
@@ -286,7 +245,7 @@ const ReportCardViewer = () => {
     }
     
     const message = encodeURIComponent(
-      `Dear ${studentName},\n\nYour report card for ${examName} is ready.\n\nCourse: ${student.course || 'N/A'}\nIntake: ${student.intake || 'N/A'}\nSemester: ${student.semester || 'N/A'}\n\nPlease log in to the portal to view your detailed results.\n\nBest regards,\nIGMIS Administration`
+      `Dear ${studentName},\n\nYour semester report card is ready.\n\nCourse: ${student.course || 'N/A'}\nIntake: ${student.intake || 'N/A'}\nSemester: ${student.semester || 'N/A'}\n\nPlease log in to the portal to view your detailed results.\n\nBest regards,\nIGMIS Administration`
     );
 
     window.open(`https://wa.me/${phoneNumber.replace('+', '')}?text=${message}`, '_blank');
@@ -298,7 +257,6 @@ const ReportCardViewer = () => {
     setSelectedIntake('');
     setSelectedSemester('');
     setSelectedStudent('');
-    setSelectedExam('');
     setError('');
   };
 
@@ -377,45 +335,23 @@ const ReportCardViewer = () => {
 
           </div>
 
-          {/* Row 2: Student and Exam Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-            {/* Student Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Student ({filteredOptions.students.length} with results)
-              </label>
-              <select
-                value={selectedStudent}
-                onChange={(e) => handleStudentChange(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Choose a student...</option>
-                {filteredOptions.students.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.student_id} - {student.user?.first_name} {student.user?.last_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Exam Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Exam ({filteredOptions.exams.length} with results)
-              </label>
-              <select
-                value={selectedExam}
-                onChange={(e) => setSelectedExam(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Choose an exam...</option>
-                {filteredOptions.exams.map((exam) => (
-                  <option key={exam.id} value={exam.id}>
-                    {exam.name} - {new Date(exam.exam_date).toLocaleDateString()}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {/* Row 2: Student Selection */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Student ({filteredOptions.students.length} with results)
+            </label>
+            <select
+              value={selectedStudent}
+              onChange={(e) => handleStudentChange(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Choose a student...</option>
+              {filteredOptions.students.map((student) => (
+                <option key={student.id} value={student.id}>
+                  {student.student_id} - {student.user?.first_name} {student.user?.last_name} ({student.course} - {student.semester} Sem)
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Reset Filters Row */}
@@ -437,7 +373,7 @@ const ReportCardViewer = () => {
       <div className="flex flex-wrap gap-4">
         <button
           onClick={handleDownload}
-          disabled={!selectedStudent || !selectedExam || loading}
+          disabled={!selectedStudent || loading}
           className="flex items-center px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
           <Download className="w-5 h-5 mr-2" />
@@ -446,7 +382,7 @@ const ReportCardViewer = () => {
 
         <button
           onClick={handleSendEmail}
-          disabled={!selectedStudent || !selectedExam || loading}
+          disabled={!selectedStudent || loading}
           className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
           <Mail className="w-5 h-5 mr-2" />
@@ -455,7 +391,7 @@ const ReportCardViewer = () => {
 
         <button
           onClick={handleSendWhatsApp}
-          disabled={!selectedStudent || !selectedExam || loading}
+          disabled={!selectedStudent || loading}
           className="flex items-center px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
           <MessageCircle className="w-5 h-5 mr-2" />
@@ -472,7 +408,7 @@ const ReportCardViewer = () => {
             <h3 className="font-semibold text-purple-800">Bulk Report Card Generation</h3>
           </div>
           <p className="text-sm text-purple-700 mb-4">
-            Generate report cards for all students matching the selected filters (course, semester). Select an exam to generate bulk reports.
+            Generate semester report cards for all students matching the selected filters (course, semester).
           </p>
           <button
             onClick={async () => {
@@ -486,9 +422,6 @@ const ReportCardViewer = () => {
                 const params = {};
                 if (selectedCourse) params.course = selectedCourse;
                 if (selectedSemester) params.semester = selectedSemester;
-                // Use the first exam with results as default if none selected
-                const examId = selectedExam || filteredOptions.exams[0]?.id;
-                if (examId) params.exam_id = examId;
                 
                 const response = await api.get('/academics/results/generate_bulk_report_cards/', { params });
                 setBulkResult(response.data);
@@ -520,7 +453,7 @@ const ReportCardViewer = () => {
       {/* Info Box */}
       <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
         <p className="text-sm text-blue-800">
-          <strong>Note:</strong> Only students with existing results are shown. Select a student and an exam to download or email their report card.
+          <strong>Note:</strong> Only students with existing results are shown. Select a student to download or email their semester report card (includes all exam results).
         </p>
       </div>
     </div>

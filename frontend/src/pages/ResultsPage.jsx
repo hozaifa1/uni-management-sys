@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, Plus, Edit, Trash2, Eye, RotateCcw, Users, TrendingUp, Award, XCircle, BarChart3, Download, FileText } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
+import { Search, Plus, Edit, Trash2, RotateCcw, Download, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -12,13 +11,11 @@ import LoadingSkeleton from '../components/common/LoadingSkeleton';
 
 const ResultsPage = () => {
   const [results, setResults] = useState([]);
-  const [exams, setExams] = useState([]);
   const [students, setStudents] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [error, setError] = useState('');
-  const [selectedExam, setSelectedExam] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
@@ -30,8 +27,6 @@ const ResultsPage = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalEditResult, setModalEditResult] = useState(null);
-  const [examStats, setExamStats] = useState(null);
-  const [statsLoading, setStatsLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,13 +38,11 @@ const ResultsPage = () => {
       try {
         setLoading(true);
         // Load exams, subjects, students, and results in parallel with large page_size
-        const [examsRes, subjectsRes, studentsRes, resultsRes] = await Promise.all([
-          api.get('/academics/exams/', { params: { page_size: 10000 } }),
+        const [subjectsRes, studentsRes, resultsRes] = await Promise.all([
           api.get('/academics/subjects/', { params: { page_size: 10000 } }),
           api.get('/accounts/students/', { params: { page_size: 10000 } }),
           api.get('/academics/results/', { params: { page_size: 10000 } })
         ]);
-        setExams(examsRes.data.results || examsRes.data || []);
         setSubjects(subjectsRes.data.results || subjectsRes.data || []);
         setStudents(studentsRes.data.results || studentsRes.data || []);
         setResults(resultsRes.data.results || resultsRes.data || []);
@@ -65,50 +58,12 @@ const ResultsPage = () => {
     loadInitialData();
   }, []);
 
-  // Fetch exams filtered by course/semester when filters change
-  useEffect(() => {
-    const fetchFilteredExams = async () => {
-      try {
-        const params = {};
-        if (selectedCourse) params.course = selectedCourse;
-        if (selectedSemester) params.semester = selectedSemester;
-        const examsRes = await api.get('/academics/exams/', { params });
-        setExams(examsRes.data.results || examsRes.data || []);
-      } catch (err) {
-        console.error('Error fetching exams:', err);
-      }
-    };
-    if (dataLoaded) {
-      fetchFilteredExams();
-    }
-  }, [selectedCourse, selectedSemester, dataLoaded]);
 
-  // Fetch exam statistics when an exam is selected
-  useEffect(() => {
-    const fetchExamStats = async () => {
-      if (!selectedExam) {
-        setExamStats(null);
-        return;
-      }
-      try {
-        setStatsLoading(true);
-        const response = await api.get(`/academics/exams/${selectedExam}/statistics/`);
-        setExamStats(response.data);
-      } catch (err) {
-        console.error('Error fetching exam statistics:', err);
-        setExamStats(null);
-      } finally {
-        setStatsLoading(false);
-      }
-    };
-    fetchExamStats();
-  }, [selectedExam]);
 
   const fetchResults = useCallback(async () => {
     try {
       setLoading(true);
       const params = {};
-      if (selectedExam) params.exam = selectedExam;
       if (selectedSubject) params.subject = selectedSubject;
       if (selectedStudent) params.student = selectedStudent;
       if (selectedCourse) params.course = selectedCourse;
@@ -122,7 +77,7 @@ const ResultsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedCourse, selectedExam, selectedSemester, selectedStudent, selectedSubject]);
+  }, [selectedCourse, selectedSemester, selectedStudent, selectedSubject]);
 
   // Fetch results when any filter changes
   useEffect(() => {
@@ -135,20 +90,17 @@ const ResultsPage = () => {
     setSelectedCourse(value);
     setSelectedSemester('');
     setSelectedStudent('');
-    setSelectedExam('');
   };
 
   const handleSemesterChange = (value) => {
     setSelectedSemester(value);
     setSelectedStudent('');
-    setSelectedExam('');
   };
 
 
   const handleResetFilters = () => {
     setSelectedCourse('');
     setSelectedSemester('');
-    setSelectedExam('');
     setSelectedSubject('');
     setSelectedStudent('');
     setSearchTerm('');
@@ -162,27 +114,17 @@ const ResultsPage = () => {
         .filter(Boolean)
         .map((id) => (typeof id === 'number' ? id : parseInt(id, 10) || id))
     );
-    const examIdsWithResults = new Set(
-      results
-        .map((r) => r.exam ?? r.exam_id)
-        .filter(Boolean)
-        .map((id) => (typeof id === 'number' ? id : parseInt(id, 10) || id))
-    );
-
     const studentsWithResults = students.filter((s) => studentIdsWithResults.has(s.id));
     const courses = [...new Set(studentsWithResults.map((s) => s.course).filter(Boolean))];
     const semesters = [...new Set(studentsWithResults.map((s) => s.semester).filter(Boolean))];
-    const examsWithResults = exams.filter((e) => examIdsWithResults.has(e.id));
 
     return {
       courses,
       semesters,
       studentsWithResults,
-      examsWithResults,
       studentIdsWithResults,
-      examIdsWithResults,
     };
-  }, [results, students, exams]);
+  }, [results, students]);
 
   // Filter options based on current selections
   const filteredOptions = useMemo(() => {
@@ -207,31 +149,8 @@ const ResultsPage = () => {
       ];
     }
 
-    let filteredExams = availableOptions.examsWithResults;
-    if (selectedStudent) {
-      const studentExamIds = new Set(
-        results
-          .filter(
-            (r) =>
-              r.student === parseInt(selectedStudent, 10) ||
-              r.student === selectedStudent ||
-              r.student_id === parseInt(selectedStudent, 10) ||
-              r.student_id === selectedStudent
-          )
-          .map((r) => r.exam ?? r.exam_id)
-      );
-      filteredExams = filteredExams.filter((e) => studentExamIds.has(e.id));
-    } else if (selectedCourse || selectedSemester) {
-      filteredExams = filteredExams.filter(
-        (e) =>
-          (!selectedCourse || e.course === selectedCourse) &&
-          (!selectedSemester || e.semester === selectedSemester)
-      );
-    }
-
     return {
       students: filteredStudents,
-      exams: filteredExams,
       semesters: availableSemesters,
     };
   }, [
@@ -279,33 +198,8 @@ const ResultsPage = () => {
   const handleAddResultSuccess = async () => {
     closeAddResultModal();
     await fetchResults();
-    if (selectedExam) {
-      try {
-        const response = await api.get(`/academics/exams/${selectedExam}/statistics/`);
-        setExamStats(response.data);
-      } catch (err) {
-        console.error('Error refreshing exam statistics:', err);
-      }
-    }
   };
 
-  const getGradeChartData = () => {
-    if (!examStats?.grade_distribution) return [];
-    const colors = {
-      'A+': '#10b981',
-      'A': '#34d399',
-      'A-': '#3b82f6',
-      'B': '#60a5fa',
-      'C': '#fbbf24',
-      'D': '#f97316',
-      'F': '#ef4444'
-    };
-    return Object.entries(examStats.grade_distribution).map(([grade, count]) => ({
-      grade,
-      count,
-      color: colors[grade] || '#6b7280'
-    }));
-  };
 
   const handleUpdate = async () => {
     if (!editingResult) return;
@@ -359,7 +253,6 @@ const ResultsPage = () => {
         }
       }
       if (selectedStudent && result.student !== parseInt(selectedStudent) && result.student_id !== selectedStudent) return false;
-      if (selectedExam && result.exam !== parseInt(selectedExam) && result.exam_id !== selectedExam) return false;
       if (selectedSubject && result.subject !== parseInt(selectedSubject) && result.subject_id !== selectedSubject) return false;
       
       if (searchTerm) {
@@ -373,7 +266,7 @@ const ResultsPage = () => {
       }
       return true;
     });
-  }, [results, students, selectedCourse, selectedSemester, selectedStudent, selectedExam, selectedSubject, searchTerm]);
+  }, [results, students, selectedCourse, selectedSemester, selectedStudent, selectedSubject, searchTerm]);
 
   // Client-side pagination
   const totalPages = Math.ceil(filteredResults.length / ITEMS_PER_PAGE);
@@ -385,7 +278,7 @@ const ResultsPage = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCourse, selectedSemester, selectedStudent, selectedExam, selectedSubject, searchTerm]);
+  }, [selectedCourse, selectedSemester, selectedStudent, selectedSubject, searchTerm]);
 
   const exportToCSV = () => {
     if (filteredResults.length === 0) {
@@ -492,8 +385,8 @@ const ResultsPage = () => {
 
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        {/* Row 1: Course/Semester/Exam/Subject Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        {/* Row 1: Course/Semester/Subject Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           {/* Course Filter */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Course</label>
@@ -523,23 +416,6 @@ const ResultsPage = () => {
               {filteredOptions.semesters.map((sem) => (
                 <option key={sem} value={sem}>
                   {sem}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Exam Filter */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Exam</label>
-            <select
-              value={selectedExam}
-              onChange={(e) => setSelectedExam(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">All Exams ({filteredOptions.exams.length})</option>
-              {filteredOptions.exams.map((exam) => (
-                <option key={exam.id} value={exam.id}>
-                  {exam.name}
                 </option>
               ))}
             </select>
@@ -614,146 +490,6 @@ const ResultsPage = () => {
           </button>
         </div>
       </div>
-
-      {/* Exam Statistics Section */}
-      {selectedExam && (
-        <div className="mb-6">
-          {statsLoading ? (
-            <div className="bg-white rounded-lg shadow-md p-8 text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <p className="mt-2 text-gray-600">Loading statistics...</p>
-            </div>
-          ) : examStats && examStats.total_students > 0 ? (
-            <>
-              {/* Statistics Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                {/* Total Students Card */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Total Students</p>
-                      <p className="text-3xl font-bold text-gray-900">{examStats.total_students}</p>
-                    </div>
-                    <div className="p-3 bg-blue-100 rounded-full">
-                      <Users className="w-6 h-6 text-blue-600" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Average Marks Card */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Average Marks</p>
-                      <p className="text-3xl font-bold text-gray-900">{examStats.average_marks?.toFixed(1)}</p>
-                      <p className="text-xs text-gray-400">out of {examStats.exam?.total_marks || 100}</p>
-                    </div>
-                    <div className="p-3 bg-purple-100 rounded-full">
-                      <TrendingUp className="w-6 h-6 text-purple-600" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pass Rate Card */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Pass Rate</p>
-                      <p className="text-3xl font-bold text-green-600">{examStats.pass_rate?.toFixed(1)}%</p>
-                      <p className="text-xs text-gray-400">{examStats.passed} passed / {examStats.failed} failed</p>
-                    </div>
-                    <div className="p-3 bg-green-100 rounded-full">
-                      <Award className="w-6 h-6 text-green-600" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Fail Count Card */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Failed Students</p>
-                      <p className="text-3xl font-bold text-red-600">{examStats.failed}</p>
-                      <p className="text-xs text-gray-400">{((examStats.failed / examStats.total_students) * 100).toFixed(1)}% of total</p>
-                    </div>
-                    <div className="p-3 bg-red-100 rounded-full">
-                      <XCircle className="w-6 h-6 text-red-600" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Charts Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Grade Distribution Bar Chart */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <BarChart3 className="w-5 h-5 text-gray-600" />
-                    <h3 className="text-lg font-semibold text-gray-800">Grade Distribution</h3>
-                  </div>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={getGradeChartData()} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis dataKey="grade" tick={{ fontSize: 12 }} />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                          formatter={(value) => [`${value} students`, 'Count']}
-                        />
-                        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                          {getGradeChartData().map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Pass/Fail Pie Chart */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Award className="w-5 h-5 text-gray-600" />
-                    <h3 className="text-lg font-semibold text-gray-800">Pass/Fail Distribution</h3>
-                  </div>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: 'Passed', value: examStats.passed, color: '#10b981' },
-                            { name: 'Failed', value: examStats.failed, color: '#ef4444' }
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={50}
-                          outerRadius={80}
-                          paddingAngle={2}
-                          dataKey="value"
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        >
-                          <Cell fill="#10b981" />
-                          <Cell fill="#ef4444" />
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                          formatter={(value) => [`${value} students`, 'Count']}
-                        />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : examStats?.message ? (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center text-yellow-700">
-              {examStats.message}
-            </div>
-          ) : null}
-        </div>
-      )}
 
       {/* Results Table */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -950,7 +686,6 @@ const ResultsPage = () => {
           onClose={closeAddResultModal}
           onSuccess={handleAddResultSuccess}
           students={students}
-          exams={exams}
           subjects={subjects}
           editingResult={modalEditResult}
         />

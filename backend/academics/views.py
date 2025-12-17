@@ -368,15 +368,15 @@ class ResultViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def generate_report_card(self, request):
         """
-        Generate PDF report card for a student's exam
-        Query params: student_id, exam_id
+        Generate PDF report card for a student
+        Query params: student_id (required), exam_id (optional - if not provided, generates semester report)
         """
         student_id = request.query_params.get('student_id')
         exam_id = request.query_params.get('exam_id')
         
-        if not student_id or not exam_id:
+        if not student_id:
             return Response(
-                {'error': 'student_id and exam_id parameters are required'},
+                {'error': 'student_id parameter is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -384,11 +384,18 @@ class ResultViewSet(viewsets.ModelViewSet):
             pdf_buffer = generate_report_card(student_id, exam_id)
             
             # Return PDF file response
+            filename = f'report_card_{student_id}'
+            if exam_id:
+                filename += f'_{exam_id}'
+            else:
+                filename += '_semester'
+            filename += '.pdf'
+            
             response = FileResponse(
                 pdf_buffer,
                 content_type='application/pdf',
                 as_attachment=True,
-                filename=f'report_card_{student_id}_{exam_id}.pdf'
+                filename=filename
             )
             return response
             

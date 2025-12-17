@@ -9,10 +9,11 @@ const EXAM_TYPE_OPTIONS = [
   { value: 'final', label: 'Final Exam' },
 ];
 
-const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams = [], subjects: initialSubjects = [], editingResult = null }) => {
+const AddResultModal = ({ onClose, onSuccess, students = [], subjects: initialSubjects = [], editingResult = null }) => {
   const [formData, setFormData] = useState({
     student: '',
     exam: '',
+    exam_type: '',
     subject: '',
     marks_obtained: '',
     remarks: '',
@@ -23,20 +24,54 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
 
-  // Local copies of exams/subjects
-  const [exams, setExams] = useState(initialExams);
+  // Local copies of subjects and exams fetched based on selection
+  const [exams, setExams] = useState([]);
   const [subjects, setSubjects] = useState(initialSubjects);
+  const [examsLoading, setExamsLoading] = useState(false);
 
   const isEditMode = !!editingResult;
 
-  // Sync initial props
-  useEffect(() => {
-    setExams(initialExams);
-  }, [initialExams]);
-
+  // Sync initial subjects prop
   useEffect(() => {
     setSubjects(initialSubjects);
   }, [initialSubjects]);
+
+  // Fetch exams when subject is selected
+  useEffect(() => {
+    const fetchExamsForSubject = async () => {
+      if (!formData.subject) {
+        setExams([]);
+        return;
+      }
+      try {
+        setExamsLoading(true);
+        const response = await api.get('/academics/exams/', {
+          params: { subject: formData.subject, page_size: 100 }
+        });
+        setExams(response.data.results || response.data || []);
+      } catch (err) {
+        console.error('Error fetching exams:', err);
+        setExams([]);
+      } finally {
+        setExamsLoading(false);
+      }
+    };
+    if (!isEditMode) {
+      fetchExamsForSubject();
+    }
+  }, [formData.subject, isEditMode]);
+
+  // Auto-select exam when subject and exam_type are both selected
+  useEffect(() => {
+    if (!isEditMode && formData.subject && formData.exam_type && exams.length > 0) {
+      const matchingExam = exams.find(e => e.exam_type === formData.exam_type);
+      if (matchingExam) {
+        setFormData(prev => ({ ...prev, exam: matchingExam.id }));
+      } else {
+        setFormData(prev => ({ ...prev, exam: '' }));
+      }
+    }
+  }, [formData.subject, formData.exam_type, exams, isEditMode]);
 
   useEffect(() => {
     if (editingResult) {
@@ -60,31 +95,6 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
       }
     }
   }, [editingResult, students, subjects]);
-
-  // Derived filters
-  const filteredExams = useMemo(() => {
-    if (isEditMode) {
-      return exams;
-    }
-
-    let list = exams;
-
-    // Filter by student's course and semester
-    if (selectedStudent) {
-      list = list.filter((exam) =>
-        (!selectedStudent.course || exam.course === selectedStudent.course) &&
-        (!selectedStudent.semester || exam.semester === selectedStudent.semester)
-      );
-    }
-
-    // Filter by selected subject (exams are now linked to subjects)
-    if (formData.subject) {
-      const subjectId = parseInt(formData.subject, 10);
-      list = list.filter((exam) => exam.subject === subjectId);
-    }
-
-    return list;
-  }, [exams, formData.subject, isEditMode, selectedStudent]);
 
   const filteredSubjects = useMemo(() => {
     if (isEditMode) {
@@ -116,10 +126,10 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
     if (name === 'subject') {
       const subject = subjects.find(s => s.id === parseInt(value));
       setSelectedSubject(subject);
-    }
-    if (name === 'exam' && !isEditMode) {
-      setFormData((prev) => ({ ...prev, subject: '' }));
-      setSelectedSubject(null);
+      // Reset exam type and exam when subject changes
+      if (!isEditMode) {
+        setFormData((prev) => ({ ...prev, exam_type: '', exam: '' }));
+      }
     }
   };
 
@@ -362,36 +372,6 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
             </div>
           )}
 
-          {/* Exam Section */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Exam <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="exam"
-              value={formData.exam}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isEditMode}
-            >
-              <option value="">
-                {filteredExams.length === 0 && selectedStudent
-                  ? `No exams for ${selectedStudent.course} - ${selectedStudent.intake} - Sem ${selectedStudent.semester}`
-                  : 'Select Exam'}
-              </option>
-              {filteredExams.map((exam) => (
-                <option key={exam.id} value={exam.id}>
-                  {exam.name || `${exam.course} - ${exam.semester} Sem - ${exam.subject_name} - ${exam.exam_type_display || exam.exam_type?.replace('_', ' ')}`}
-                </option>
-              ))}
-            </select>
-            {filteredExams.length === 0 && selectedStudent && (
-              <p className="text-sm text-yellow-600 mt-1">
-                No exams found for this student's course/semester. Please ensure exams are seeded.
-              </p>
-            )}
-          </div>
-
           {/* Subject Section */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -418,6 +398,42 @@ const AddResultModal = ({ onClose, onSuccess, students = [], exams: initialExams
             {filteredSubjects.length === 0 && selectedStudent && (
               <p className="text-sm text-yellow-600 mt-1">
                 No subjects found for this student's course. Please ensure subjects are seeded.
+              </p>
+            )}
+          </div>
+
+          {/* Exam Type Section */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Exam Type <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="exam_type"
+              value={formData.exam_type}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={isEditMode || !formData.subject}
+            >
+              <option value="">
+                {!formData.subject ? 'Select a subject first' : 'Select Exam Type'}
+              </option>
+              {EXAM_TYPE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            {examsLoading && (
+              <p className="text-sm text-gray-500 mt-1">Loading exams...</p>
+            )}
+            {!examsLoading && formData.subject && formData.exam_type && !formData.exam && (
+              <p className="text-sm text-yellow-600 mt-1">
+                No exam found for this subject and exam type. Please ensure exams are seeded.
+              </p>
+            )}
+            {formData.exam && (
+              <p className="text-sm text-green-600 mt-1">
+                ✓ Exam auto-selected based on subject and type
               </p>
             )}
           </div>
