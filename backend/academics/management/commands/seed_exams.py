@@ -30,7 +30,8 @@ class Command(BaseCommand):
             Subject.objects.all().delete()
             self.stdout.write(self.style.WARNING('Existing data cleared.'))
 
-        self.seed_subjects()
+        if not Subject.objects.filter(is_active=True).exists():
+            self.seed_subjects()
         self.seed_exams()
         self.seed_results()
         
@@ -50,11 +51,11 @@ class Command(BaseCommand):
                     {'code': '211501', 'name': 'History of the Emergence of Independent Bangladesh'},
                 ],
                 '2nd': [
-                    {'code': '510111', 'name': 'Principles of Management'},
-                    {'code': '510113', 'name': 'Taxation in Bangladesh'},
-                    {'code': '510115', 'name': 'Computer & Information Technology'},
-                    {'code': '510117', 'name': 'Theory and Practices of Banking'},
-                    {'code': '510119', 'name': 'Micro Economics'},
+                    {'code': '510121', 'name': 'Principles of Management'},
+                    {'code': '510123', 'name': 'Taxation in Bangladesh'},
+                    {'code': '510125', 'name': 'Computer & Information Technology'},
+                    {'code': '510127', 'name': 'Theory and Practices of Banking'},
+                    {'code': '510129', 'name': 'Micro Economics'},
                 ],
                 '3rd': [
                     {'code': '520101', 'name': 'Business Statistics-I'},
@@ -233,27 +234,33 @@ class Command(BaseCommand):
                 course = Course.objects.get(code=course_code)
                 for semester, subjects in semesters.items():
                     for subj_data in subjects:
-                        # Use course_code prefix for unique subject codes
-                        full_code = f"{course_code}_{subj_data['code']}"
-                        
-                        subject, created = Subject.objects.update_or_create(
-                            code=full_code,
-                            defaults={
-                                'name': subj_data['name'],
-                                'course': course,
-                                'course_code': course_code,
-                                'semester': semester,
-                                'total_marks': 100,
-                                'credit_hours': 3.0,
-                                'subject_type': 'core',
-                                'is_active': True,
-                            }
-                        )
-                        if created:
-                            subjects_created += 1
-                            self.stdout.write(f'  Created: {subject.code} - {subject.name} ({course_code} {semester} Sem)')
-                        else:
+                        existing_by_code = Subject.objects.filter(code=subj_data['code']).first()
+                        if existing_by_code:
                             subjects_updated += 1
+                            continue
+
+                        existing_by_name = Subject.objects.filter(
+                            course_code=course_code,
+                            semester=semester,
+                            name=subj_data['name'],
+                        ).first()
+                        if existing_by_name:
+                            subjects_updated += 1
+                            continue
+
+                        subject = Subject.objects.create(
+                            code=subj_data['code'],
+                            name=subj_data['name'],
+                            course=course,
+                            course_code=course_code,
+                            semester=semester,
+                            total_marks=100,
+                            credit_hours=3.0,
+                            subject_type='core',
+                            is_active=True,
+                        )
+                        subjects_created += 1
+                        self.stdout.write(f'  Created: {subject.code} - {subject.name} ({course_code} {semester} Sem)')
                             
             except Course.DoesNotExist:
                 self.stdout.write(self.style.WARNING(f'  Course {course_code} not found, skipping subjects'))
