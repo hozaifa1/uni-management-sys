@@ -52,7 +52,7 @@ const ResultsPage = () => {
           api.get('/academics/subjects/', { params: { page_size: 10000 } }),
           api.get('/accounts/students/', { params: { page_size: 10000 } }),
           api.get('/academics/results/', { params: { page_size: 10000 } }),
-          api.get('/academics/major-options/', { params: { page_size: 100 } })
+          api.get('/academics/majors/', { params: { page_size: 100 } })
         ]);
         setSubjects(subjectsRes.data.results || subjectsRes.data || []);
         setStudents(studentsRes.data.results || studentsRes.data || []);

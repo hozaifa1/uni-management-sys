@@ -19,8 +19,10 @@ const ReportsPage = () => {
   const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedPaymentType, setSelectedPaymentType] = useState('');
+  const [selectedMajor, setSelectedMajor] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
   const [students, setStudents] = useState([]);
+  const [majors, setMajors] = useState([]);
 
   const paymentTypes = [
     { value: 'semester_fee', label: 'Semester Fee' },
@@ -45,17 +47,21 @@ const ReportsPage = () => {
   const intakes = ['1st', '2nd', '9th', '10th', '15th', '16th', '17th', '18th', '19th', '20th'];
   const semesters = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 
-  // Fetch students for filter
+  // Fetch students and majors for filter
   useEffect(() => {
-    const fetchStudents = async () => {
+    const fetchInitialData = async () => {
       try {
-        const response = await api.get('/accounts/students/', { params: { page_size: 10000 } });
-        setStudents(response.data.results || response.data || []);
+        const [studentsRes, majorsRes] = await Promise.all([
+          api.get('/accounts/students/', { params: { page_size: 10000 } }),
+          api.get('/academics/majors/', { params: { page_size: 100 } })
+        ]);
+        setStudents(studentsRes.data.results || studentsRes.data || []);
+        setMajors(majorsRes.data.results || majorsRes.data || []);
       } catch (error) {
-        console.error('Error fetching students:', error);
+        console.error('Error fetching initial data:', error);
       }
     };
-    fetchStudents();
+    fetchInitialData();
   }, []);
 
   // Filter students based on course/intake/semester
@@ -92,8 +98,32 @@ const ReportsPage = () => {
     setSelectedSemester('');
     setSelectedStudent('');
     setSelectedPaymentType('');
+    setSelectedMajor('');
     setStudentSearch('');
   };
+
+  // Determine if the current course+semester combination has majors
+  const hasMajorsForSelection = useMemo(() => {
+    if (!selectedCourse || !selectedSemester) return false;
+    // BBA has majors in 7th and 8th semester
+    if (selectedCourse === 'BBA' && (selectedSemester === '7th' || selectedSemester === '8th')) return true;
+    // MBA has majors in 2nd semester
+    if (selectedCourse === 'MBA' && selectedSemester === '2nd') return true;
+    return false;
+  }, [selectedCourse, selectedSemester]);
+
+  // Get available majors for the selected course
+  const availableMajors = useMemo(() => {
+    if (!hasMajorsForSelection) return [];
+    return majors.filter(m => m.course === selectedCourse);
+  }, [hasMajorsForSelection, majors, selectedCourse]);
+
+  // Reset major when course/semester changes
+  useEffect(() => {
+    if (!hasMajorsForSelection) {
+      setSelectedMajor('');
+    }
+  }, [hasMajorsForSelection]);
 
   const fetchPaymentReports = useCallback(async () => {
     setLoading(true);
@@ -131,6 +161,7 @@ const ReportsPage = () => {
       if (selectedIntake) params.intake = selectedIntake;
       if (selectedSemester) params.semester = selectedSemester;
       if (selectedStudent) params.student = selectedStudent;
+      if (selectedMajor) params.major = selectedMajor;
 
       // Fetch exam summary and grade distribution
       const [examRes, gradeRes] = await Promise.all([
@@ -146,7 +177,7 @@ const ReportsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedCourse, selectedIntake, selectedSemester, selectedStudent]);
+  }, [selectedCourse, selectedIntake, selectedSemester, selectedStudent, selectedMajor]);
 
   useEffect(() => {
     if (activeTab === 'payments') {
@@ -154,7 +185,7 @@ const ReportsPage = () => {
     } else {
       fetchResultReports();
     }
-  }, [activeTab, selectedCourse, selectedIntake, selectedSemester, selectedStudent, selectedPaymentType, fetchPaymentReports, fetchResultReports]);
+  }, [activeTab, selectedCourse, selectedIntake, selectedSemester, selectedStudent, selectedPaymentType, selectedMajor, fetchPaymentReports, fetchResultReports]);
 
   // Single comprehensive PDF export that respects all filters
   const exportComprehensiveReportPDF = () => {
@@ -444,6 +475,30 @@ const ReportsPage = () => {
                 <option value="">All Payment Types</option>
                 {paymentTypes.map(pt => <option key={pt.value} value={pt.value}>{pt.label}</option>)}
               </select>
+            </div>
+          </div>
+        )}
+        {/* Row 2b: Major Filter (only for results tab when course+semester has majors) */}
+        {activeTab === 'results' && hasMajorsForSelection && availableMajors.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Major/Specialization
+                <span className="ml-1 text-blue-500 text-xs">(Optional)</span>
+              </label>
+              <select
+                value={selectedMajor}
+                onChange={(e) => setSelectedMajor(e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-blue-50"
+              >
+                <option value="">All Majors ({availableMajors.length})</option>
+                {availableMajors.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+            </div>
+            <div className="md:col-span-3 flex items-end">
+              <p className="text-xs text-gray-500 italic">
+                {selectedCourse} {selectedSemester} semester has specializations. Select a major to filter results.
+              </p>
             </div>
           </div>
         )}
