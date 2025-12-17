@@ -243,40 +243,48 @@ class ResultReportViewSet(viewsets.ViewSet):
         if semester:
             exam_filter &= Q(semester=semester)
         
-        exams = Exam.objects.filter(exam_filter).order_by('-exam_date')
+        # Limit to recent exams and prefetch results for efficiency
+        exams = Exam.objects.filter(exam_filter).select_related('subject').prefetch_related('results').order_by('-exam_date')[:100]
         
         exam_stats = []
         for exam in exams:
-            results = exam.results.all()
-            total_students = results.count()
-            
-            if total_students > 0:
-                avg_marks = results.aggregate(avg=Sum('marks_obtained') / total_students)['avg'] or 0
-                passing_marks = exam.total_marks * 0.33
-                passed = results.filter(marks_obtained__gte=passing_marks).count()
-                failed = total_students - passed
-                pass_rate = (passed / total_students) * 100
-            else:
-                avg_marks = 0
-                passed = 0
-                failed = 0
-                pass_rate = 0
-            
-            exam_stats.append({
-                'exam_id': exam.id,
-                'exam_name': exam.name,
-                'exam_type': exam.exam_type,
-                'course': exam.course,
-                'semester': exam.semester,
-                'subject_name': exam.subject.name if exam.subject else None,
-                'exam_date': exam.exam_date,
-                'total_marks': exam.total_marks,
-                'total_students': total_students,
-                'average_marks': float(avg_marks),
-                'passed': passed,
-                'failed': failed,
-                'pass_rate': float(pass_rate)
-            })
+            try:
+                results = exam.results.all()
+                total_students = results.count()
+                
+                if total_students > 0:
+                    from django.db.models import Avg
+                    avg_marks = results.aggregate(avg=Avg('marks_obtained'))['avg'] or 0
+                    passing_marks = exam.total_marks * 0.33
+                    passed = results.filter(marks_obtained__gte=passing_marks).count()
+                    failed = total_students - passed
+                    pass_rate = (passed / total_students) * 100
+                else:
+                    avg_marks = 0
+                    passed = 0
+                    failed = 0
+                    pass_rate = 0
+                
+                exam_stats.append({
+                    'exam_id': exam.id,
+                    'exam_name': exam.name,
+                    'exam_type': exam.exam_type,
+                    'course': exam.course,
+                    'semester': exam.semester,
+                    'subject_name': exam.subject.name if exam.subject else None,
+                    'exam_date': exam.exam_date,
+                    'total_marks': exam.total_marks,
+                    'total_students': total_students,
+                    'average_marks': float(avg_marks),
+                    'passed': passed,
+                    'failed': failed,
+                    'pass_rate': float(pass_rate)
+                })
+            except Exception as e:
+                # Skip problematic exams but log the error
+                import logging
+                logging.error(f"Error processing exam {exam.id}: {e}")
+                continue
         
         return Response({
             'report_type': 'exam_summary',

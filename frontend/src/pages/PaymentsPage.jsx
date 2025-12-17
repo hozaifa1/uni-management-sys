@@ -52,14 +52,22 @@ const PaymentsPage = () => {
     const loadInitialData = async () => {
       try {
         setLoading(true);
-        const [studentsRes, paymentsRes, examsRes] = await Promise.all([
+        // Use Promise.allSettled to handle partial failures gracefully
+        const [studentsRes, paymentsRes, examsRes] = await Promise.allSettled([
           api.get('/accounts/students/', { params: { page_size: 10000 } }),
           api.get('/payments/payments/', { params: { page_size: 10000 } }),
           api.get('/academics/exams/', { params: { page_size: 10000 } }),
         ]);
-        setStudents(studentsRes.data.results || studentsRes.data || []);
-        setPayments(paymentsRes.data.results || paymentsRes.data || []);
-        setExams(examsRes.data.results || examsRes.data || []);
+        
+        if (studentsRes.status === 'fulfilled') {
+          setStudents(studentsRes.value.data.results || studentsRes.value.data || []);
+        }
+        if (paymentsRes.status === 'fulfilled') {
+          setPayments(paymentsRes.value.data.results || paymentsRes.value.data || []);
+        }
+        if (examsRes.status === 'fulfilled') {
+          setExams(examsRes.value.data.results || examsRes.value.data || []);
+        }
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {

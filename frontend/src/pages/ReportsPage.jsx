@@ -117,13 +117,18 @@ const ReportsPage = () => {
       if (selectedSemester) params.semester = selectedSemester;
       if (selectedStudent) params.student = selectedStudent;
 
-      const [examRes, gradeRes] = await Promise.all([
+      // Use Promise.allSettled to handle partial failures gracefully
+      const [examRes, gradeRes] = await Promise.allSettled([
         api.get('/reports/results/exam_summary/', { params }),
         api.get('/reports/results/grade_distribution/', { params }),
       ]);
 
-      setExamSummaryData(examRes.data.data || []);
-      setGradeDistribution(gradeRes.data || {});
+      if (examRes.status === 'fulfilled') {
+        setExamSummaryData(examRes.value.data.data || []);
+      }
+      if (gradeRes.status === 'fulfilled') {
+        setGradeDistribution(gradeRes.value.data || {});
+      }
     } catch (error) {
       console.error('Error fetching result reports:', error);
       toast.error('Failed to load result reports');
