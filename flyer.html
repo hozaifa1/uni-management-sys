@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexora ScholarSuite — University LMS Flyer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a1628;
+      --panel: #0f2038;
+      --accent: #f3b63f;
+      --accent-2: #7be1ff;
+      --text: #eef3fb;
+      --muted: #c6d1e3;
+      --shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Manrope", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 15% 20%, rgba(123,225,255,0.18), transparent 30%),
+                  radial-gradient(circle at 85% 15%, rgba(243,182,63,0.18), transparent 32%),
+                  linear-gradient(135deg, #0a1628 0%, #08111f 70%, #060d18 100%);
+      color: var(--text);
+      padding: 16px 12px 20px;
+      display: flex;
+      justify-content: center;
+    }
+    .page {
+      width: min(1060px, 100%);
+      background: linear-gradient(145deg, rgba(15,32,56,0.9), rgba(10,22,40,0.9));
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: var(--shadow);
+      border-radius: 18px;
+      padding: 16px 16px 14px;
+      position: relative;
+      overflow: hidden;
+    }
+    .glow {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(600px at 20% 50%, rgba(243,182,63,0.09), transparent 60%),
+                  radial-gradient(520px at 80% 40%, rgba(123,225,255,0.10), transparent 55%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    header {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 999px;
+      padding: 9px 14px 9px 10px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.2px;
+    }
+    .badge span {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: linear-gradient(145deg, var(--accent), #f0a527);
+      color: #0b1628;
+      font-weight: 700;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: 13px;
+    }
+    h1 {
+      margin: 4px 0 6px;
+      font-family: "Space Grotesk", "Manrope", sans-serif;
+      font-size: clamp(24px, 3.1vw, 32px);
+      letter-spacing: -0.35px;
+    }
+    h1 .highlight {
+      color: var(--accent);
+      text-shadow: 0 8px 20px rgba(243,182,63,0.35);
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.38;
+      max-width: 540px;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 6px;
+    }
+    .metric-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .metric-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(123,225,255,0.12), transparent);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+    .metric-title {
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 3px;
+      letter-spacing: 0.2px;
+    }
+    .metric-value {
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .metric-value span {
+      color: var(--accent);
+    }
+    .hero-graphic {
+      background: radial-gradient(circle at 25% 25%, rgba(123,225,255,0.14), transparent 45%),
+                  linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 18px;
+      padding: 12px;
+      position: relative;
+      box-shadow: 0 16px 32px rgba(0,0,0,0.3);
+    }
+    .hero-graphic h3 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+      color: var(--muted);
+    }
+    .hero-graphic ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 8px;
+    }
+    .hero-graphic li {
+      display: grid;
+      grid-template-columns: 26px 1fr;
+      gap: 8px;
+      align-items: center;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 8px;
+      border-radius: 12px;
+    }
+    .icon-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #7be1ff, #5ab3ff);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #0b1628;
+      font-weight: 800;
+      font-size: 13px;
+      box-shadow: 0 8px 20px rgba(123,225,255,0.3);
+    }
+    .features {
+      margin: 6px 0 6px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 8px;
+    }
+    .feature-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      padding: 10px;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.24);
+    }
+    .feature-card h4 {
+      margin: 2px 0 3px;
+      font-size: 13px;
+      letter-spacing: 0.05px;
+    }
+    .feature-card p {
+      margin: 0;
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.32;
+    }
+    .gallery {
+      margin: 8px 0 8px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px;
+      padding: 9px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+    }
+    .gallery-grid {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+    }
+    .gallery-item {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: #0b1628;
+      min-height: 90px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      filter: saturate(1.05) contrast(1.05);
+      background: #0b1628;
+    }
+    .tag {
+      position: absolute;
+      top: 7px;
+      left: 7px;
+      background: rgba(0,0,0,0.55);
+      color: #fdfdfd;
+      padding: 5px 8px;
+      border-radius: 9px;
+      font-size: 11px;
+      letter-spacing: 0.2px;
+      border: 1px solid rgba(255,255,255,0.15);
+      backdrop-filter: blur(4px);
+    }
+    .footer {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+    .testimonial {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      padding: 9px 11px;
+      font-size: 11.5px;
+      line-height: 1.32;
+      color: var(--muted);
+    }
+    .contact {
+      background: linear-gradient(135deg, #1d2f4a, #13233c);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: grid;
+      gap: 6px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+    }
+    .contact h4 { margin: 0; font-size: 15px; }
+    .contact a, .contact div { color: var(--text); text-decoration: none; font-weight: 600; font-size: 13px; }
+    @media print {
+      @page { 
+        size: A4 portrait; 
+        margin: 8mm; 
+      }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      html {
+        width: 210mm;
+        height: 297mm;
+      }
+      body {
+        width: 210mm !important;
+        height: 297mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        background: #0a1628;
+        display: block;
+      }
+      h1 { 
+        font-size: 28px !important; 
+        margin: 3px 0 4px !important;
+      }
+      .subtitle { 
+        font-size: 11px !important; 
+        line-height: 1.3 !important;
+      }
+      .badge {
+        font-size: 10px !important;
+        padding: 7px 12px 7px 9px !important;
+      }
+      .page {
+        width: 100% !important;
+        max-width: none !important;
+        height: auto !important;
+        padding: 5mm 5mm 4mm !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 10px !important;
+        background: linear-gradient(145deg, rgba(15,32,56,0.95), rgba(10,22,40,0.95)) !important;
+        overflow: hidden !important;
+        page-break-inside: avoid !important;
+        page-break-after: avoid !important;
+        transform: scale(0.98);
+        transform-origin: top center;
+      }
+      header { 
+        gap: 8px !important; 
+        margin-bottom: 6px !important; 
+      }
+      .hero-graphic { 
+        padding: 10px !important; 
+        border-radius: 14px !important;
+      }
+      .hero-graphic h3 {
+        font-size: 12px !important;
+        margin-bottom: 5px !important;
+      }
+      .hero-graphic ul {
+        gap: 6px !important;
+      }
+      .hero-graphic li { 
+        padding: 7px !important;
+        font-size: 11px !important;
+      }
+      .icon-dot {
+        width: 24px !important;
+        height: 24px !important;
+        font-size: 11px !important;
+      }
+      .metrics { 
+        gap: 5px !important; 
+        margin-bottom: 5px !important;
+      }
+      .features { 
+        gap: 5px !important; 
+        margin: 5px 0 !important;
+      }
+      .gallery-grid { 
+        gap: 5px !important; 
+      }
+      .metric-card, .feature-card { 
+        padding: 8px 9px !important; 
+      }
+      .metric-title {
+        font-size: 10px !important;
+      }
+      .metric-value {
+        font-size: 14px !important;
+      }
+      .feature-card h4 {
+        font-size: 12px !important;
+        margin: 2px 0 2px !important;
+      }
+      .feature-card p {
+        font-size: 10.5px !important;
+      }
+      .gallery { 
+        padding: 7px !important; 
+        margin: 6px 0 5px !important; 
+        border-radius: 12px !important;
+      }
+      .gallery-grid { 
+        grid-template-columns: repeat(3, minmax(0,1fr)) !important; 
+      }
+      .gallery-item { 
+        min-height: 70px !important; 
+        max-height: 70px !important;
+      }
+      .tag {
+        font-size: 9px !important;
+        padding: 4px 7px !important;
+      }
+      .footer { 
+        gap: 7px !important; 
+        margin-top: 6px !important; 
+      }
+      .testimonial {
+        padding: 8px 10px !important;
+        font-size: 10.5px !important;
+      }
+      .contact {
+        padding: 10px 12px !important;
+      }
+      .contact h4 {
+        font-size: 13px !important;
+      }
+      .contact a, .contact div {
+        font-size: 11px !important;
+      }
+      header, section, .footer { 
+        break-inside: avoid !important; 
+        page-break-inside: avoid !important; 
+      }
+    }
+    @media (max-width: 960px) {
+      header, .footer { grid-template-columns: 1fr; }
+      .metrics, .features, .gallery-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+    @media (max-width: 700px) {
+      .metrics, .features { grid-template-columns: 1fr; }
+      .gallery-grid { grid-template-columns: repeat(1, minmax(0,1fr)); }
+      body { padding: 18px 12px; }
+      .page { padding: 22px 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="glow" aria-hidden="true"></div>
+    <header>
+      <div>
+        <div class="badge"><span>NX</span> Simple LMS for your campus</div>
+        <h1><span class="highlight">Nexora ScholarSuite</span> — keep classes, attendance, and grades in one place.</h1>
+        <p class="subtitle">
+          Built for BBA, THM, CSE, and MBA. One page for course info, attendance, exams, and results—no more scattered sheets.
+        </p>
+      </div>
+      <div class="hero-graphic">
+        <h3>Why teams like it</h3>
+        <ul>
+          <li><span class="icon-dot">1</span><div>Set up a course once; reuse it for every batch.</div></li>
+          <li><span class="icon-dot">2</span><div>Exam sets are ready in minutes—no blank templates.</div></li>
+          <li><span class="icon-dot">3</span><div>Grade by course and semester to avoid mix-ups.</div></li>
+          <li><span class="icon-dot">4</span><div>See students, attendance, and report cards in one dashboard.</div></li>
+        </ul>
+      </div>
+    </header>
+
+    <section class="metrics">
+      <div class="metric-card">
+        <div class="metric-title">Programs covered</div>
+        <div class="metric-value"><span>4</span> active (BBA, THM, CSE, MBA)</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Exam setup</div>
+        <div class="metric-value">Ready-made exam sets for quick starts</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Data confidence</div>
+        <div class="metric-value">Aligned with each course plan and credit map</div>
+      </div>
+    </section>
+
+    <section class="features">
+      <div class="feature-card">
+        <h4>Courses stay consistent</h4>
+        <p>One source of truth for subjects, credits, and marks.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Grading without mistakes</h4>
+        <p>Pick the course and semester; the right students and exams appear.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Clear daily view</h4>
+        <p>Dashboards show attendance, students, report cards, and results together.</p>
+      </div>
+    </section>
+
+    <section class="gallery">
+      <div class="gallery-grid">
+        <div class="gallery-item">
+          <span class="tag">Dashboard</span>
+          <img src="./images/home.jpg" alt="Home dashboard">
+        </div>
+        <div class="gallery-item">
+          <span class="tag">Students</span>
+          <img src="./images/students.jpg" alt="Students directory">
+        </div>
+        <div class="gallery-item">
+          <span class="tag">Attendance</span>
+          <img src="./images/attendance.jpg" alt="Attendance insights">
+        </div>
+        <div class="gallery-item">
+          <span class="tag">Report Cards</span>
+          <img src="./images/reportcard.jpg" alt="Report card preview">
+        </div>
+        <div class="gallery-item">
+          <span class="tag">Results Console</span>
+          <img src="./images/results.jpg" alt="Results console">
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">
+      <div class="testimonial">
+        “We keep courses, attendance, and marks tidy in one place, so faculty focus on teaching instead of chasing files.”
+      </div>
+      <div class="contact">
+        <h4>Let’s modernize your campus</h4>
+        <a href="https://nexora-solves.vercel.app" target="_blank" rel="noopener">nexora-solves.vercel.app</a>
+        <a href="mailto:20hozaifa02@gmail.com">20hozaifa02@gmail.com</a>
+        <div>+8801615001456</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
