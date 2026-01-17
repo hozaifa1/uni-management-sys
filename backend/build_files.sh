@@ -11,6 +11,10 @@ python3.12 -m pip install --upgrade pip
 # Install dependencies
 python3.12 -m pip install -r requirements.txt
 
+# Run database migrations
+echo "Running migrations..."
+python3.12 manage.py migrate --noinput
+
 # Create staticfiles_build directory if it doesn't exist
 mkdir -p staticfiles_build/static
 
