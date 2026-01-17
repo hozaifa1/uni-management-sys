@@ -87,9 +87,8 @@ class StudentViewSet(viewsets.ModelViewSet):
         
         try:
             with transaction.atomic():
-                # Delete student first (this will cascade to payments, results, attendance)
-                student.delete()
-                # Then delete the associated user account
+                # Delete user first, which will cascade to student
+                # Student deletion will cascade to payments, results, attendance
                 user.delete()
             
             return Response(
@@ -104,13 +103,12 @@ class StudentViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['get'])
     def profile(self, request, pk=None):
-        """Get complete student profile with enrollments and payments"""
+        """Get complete student profile with payments"""
         student = self.get_object()
         serializer = self.get_serializer(student)
         
         # Add additional data
         data = serializer.data
-        data['enrollments_count'] = student.enrollments.count()
         data['payments_count'] = student.payments.count()
         
         return Response(data)
