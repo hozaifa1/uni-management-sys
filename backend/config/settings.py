@@ -217,7 +217,10 @@ if CORS_ORIGINS_ENV:
                 origin = f'http://{origin}'
             else:
                 origin = f'https://{origin}'
-        origins.append(origin)
+        # Strip trailing slashes to avoid CORS validation errors
+        origin = origin.rstrip('/')
+        if origin:  # Only add non-empty origins
+            origins.append(origin)
     CORS_ALLOWED_ORIGINS = origins
 else:
     CORS_ALLOWED_ORIGINS = [
