@@ -108,7 +108,10 @@ const StudentsPage = () => {
       fetchStudents();
     } catch (error) {
       console.error('Error deleting student:', error);
-      toast.error('Failed to delete student');
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      const errorMsg = error.response?.data?.error || error.response?.data?.details || 'Failed to delete student';
+      toast.error(errorMsg);
     }
   };
 
