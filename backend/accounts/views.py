@@ -82,30 +82,15 @@ class StudentViewSet(viewsets.ModelViewSet):
         """
         Delete student and associated user account
         """
-        import traceback
-        import logging
-        logger = logging.getLogger(__name__)
-        
         student = self.get_object()
         user = student.user
         
-        try:
-            with transaction.atomic():
-                # Delete user first, which will cascade to student
-                # Student deletion will cascade to payments, results, attendance
-                user.delete()
-            
-            return Response(
-                {'message': 'Student and associated user deleted successfully.'},
-                status=status.HTTP_204_NO_CONTENT
-            )
-        except Exception as e:
-            error_traceback = traceback.format_exc()
-            logger.error(f"Error deleting student: {str(e)}\n{error_traceback}")
-            return Response(
-                {'error': f'Failed to delete student: {str(e)}', 'details': error_traceback},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        with transaction.atomic():
+            # Delete user - this will CASCADE to student due to OneToOneField
+            # Student deletion will CASCADE to payments, results, attendance
+            user.delete()
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
     @action(detail=True, methods=['get'])
     def profile(self, request, pk=None):
