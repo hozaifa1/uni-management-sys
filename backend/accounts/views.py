@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db import transaction
 
 from .models import User, Student
 from .serializers import (
@@ -76,6 +77,30 @@ class StudentViewSet(viewsets.ModelViewSet):
         if self.action in ['update', 'partial_update']:
             return StudentUpdateSerializer
         return StudentSerializer
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Delete student and associated user account
+        """
+        student = self.get_object()
+        user = student.user
+        
+        try:
+            with transaction.atomic():
+                # Delete student first (this will cascade to payments, results, attendance)
+                student.delete()
+                # Then delete the associated user account
+                user.delete()
+            
+            return Response(
+                {'message': 'Student and associated user deleted successfully.'},
+                status=status.HTTP_204_NO_CONTENT
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to delete student: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @action(detail=True, methods=['get'])
     def profile(self, request, pk=None):
