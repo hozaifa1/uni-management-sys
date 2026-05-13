@@ -301,6 +301,15 @@ const PaymentsPage = () => {
     });
   }, [payments, students, selectedFeeType, selectedMethod, selectedStudent, selectedExam, selectedCourse, selectedIntake, selectedSemester, dateFrom, dateTo, searchTerm]);
 
+  const filteredTotals = useMemo(() => {
+    const totalAmount = filteredPayments.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
+    const totalReceived = filteredPayments.reduce(
+      (sum, p) => sum + (Number(p.amount_paid || 0) - Number(p.discount_amount || 0)),
+      0
+    );
+    return { totalAmount, totalReceived };
+  }, [filteredPayments]);
+
   // Client-side pagination
   const totalPages = Math.ceil(filteredPayments.length / ITEMS_PER_PAGE);
   const paginatedPayments = useMemo(() => {
@@ -351,9 +360,13 @@ const PaymentsPage = () => {
       p.payment_regularity || 'N/A',
     ]);
 
+    const totalAmount = filteredPayments.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
+    const totalsRow = ['TOTAL', '', totalAmount, '', '', '', '', ''];
+
     const csvContent = [
       headers.join(','),
-      ...csvData.map(row => row.map(cell => `"${cell}"`).join(','))
+      ...csvData.map(row => row.map(cell => `"${cell}"`).join(',')),
+      totalsRow.map(cell => `"${cell}"`).join(','),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -384,6 +397,10 @@ const PaymentsPage = () => {
     doc.text(`Total Records: ${filteredPayments.length}`, 14, 36);
 
     // Table - calculate received amount (amount - discount)
+    const pdfTotalAmount = filteredPayments.reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0);
+    const pdfTotalDiscount = filteredPayments.reduce((sum, p) => sum + parseFloat(p.discount_amount || 0), 0);
+    const pdfTotalReceived = pdfTotalAmount - pdfTotalDiscount;
+
     autoTable(doc, {
       startY: 42,
       head: [['Student Name', 'Student ID', 'Amount', 'Discount', 'Received', 'Date', 'Method', 'Fee Type', 'Regularity']],
@@ -401,8 +418,10 @@ const PaymentsPage = () => {
           p.payment_regularity || 'N/A',
         ];
       }),
+      foot: [['TOTAL', '', `${pdfTotalAmount}`, `${pdfTotalDiscount}`, `${pdfTotalReceived}`, '', '', '', '']],
       styles: { fontSize: 7 },
       headStyles: { fillColor: [59, 130, 246] },
+      footStyles: { fillColor: [243, 244, 246], textColor: [17, 24, 39], fontStyle: 'bold' },
     });
 
     doc.save(`payments_export_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -429,29 +448,13 @@ const PaymentsPage = () => {
           <h1 className="text-3xl font-bold text-gray-900">Payments</h1>
           <p className="text-gray-600 mt-1">Manage student payment records and transactions</p>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={exportToCSV}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Download className="w-5 h-5" />
-            Export CSV
-          </button>
-          <button
-            onClick={exportToPDF}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <FileText className="w-5 h-5" />
-            Export PDF
-          </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md"
-          >
-            <Plus className="w-5 h-5" />
-            Add Payment
-          </button>
-        </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md"
+        >
+          <Plus className="w-5 h-5" />
+          Add Payment
+        </button>
       </div>
 
       {/* Filters */}
@@ -651,6 +654,35 @@ const PaymentsPage = () => {
         </div>
       </div>
 
+      {/* Export Buttons & Summary */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-gray-500">
+          {filteredPayments.length} payment{filteredPayments.length !== 1 ? 's' : ''} found
+          {filteredPayments.length > 0 && (
+            <span className="ml-3 text-gray-700">
+              · Total Amount: <span className="font-semibold">৳{filteredTotals.totalAmount.toLocaleString()}</span>
+              <span className="mx-2">·</span>Total Received: <span className="font-semibold text-green-600">৳{filteredTotals.totalReceived.toLocaleString()}</span>
+            </span>
+          )}
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={exportToCSV}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </button>
+          <button
+            onClick={exportToPDF}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+          >
+            <FileText className="w-4 h-4" />
+            Export PDF
+          </button>
+        </div>
+      </div>
+
       {/* Payments Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
@@ -769,6 +801,22 @@ const PaymentsPage = () => {
                 </tr>
               )}
             </tbody>
+            {filteredPayments.length > 0 && (
+              <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                <tr>
+                  <td className="px-6 py-3 text-sm font-bold text-gray-700">
+                    Total ({filteredPayments.length})
+                  </td>
+                  <td className="px-6 py-3 text-sm font-bold text-gray-900">
+                    ৳{filteredTotals.totalAmount.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-3 text-sm font-bold text-green-600">
+                    ৳{filteredTotals.totalReceived.toLocaleString()}
+                  </td>
+                  <td colSpan="6"></td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
 
