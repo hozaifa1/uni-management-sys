@@ -6,10 +6,10 @@ set -e
 echo "Build Start"
 
 # Upgrade pip to ensure latest wheel support
-python3.12 -m pip install --upgrade pip
+python3.12 -m pip install --upgrade pip --break-system-packages
 
 # Install dependencies
-python3.12 -m pip install -r requirements.txt
+python3.12 -m pip install -r requirements.txt --break-system-packages
 
 # Run database migrations
 echo "Running migrations..."
