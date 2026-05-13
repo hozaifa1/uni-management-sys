@@ -92,9 +92,9 @@ const MyPayments = () => {
     const totalDue = totalAmount - totalPaid;
 
     setStats({
-      totalPaid: totalPaid.toFixed(2),
-      totalDue: Math.max(totalDue, 0).toFixed(2),
-      totalAmount: totalAmount.toFixed(2),
+      totalPaid: Math.round(totalPaid),
+      totalDue: Math.round(Math.max(totalDue, 0)),
+      totalAmount: Math.round(totalAmount),
       paymentsCount: payments.length
     });
   };
@@ -170,7 +170,7 @@ const MyPayments = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Amount</p>
-              <p className="text-2xl font-bold text-gray-800">৳{stats.totalAmount}</p>
+              <p className="text-2xl font-bold text-gray-800">৳{Number(stats.totalAmount).toLocaleString()}</p>
             </div>
             <div className="p-3 bg-blue-100 rounded-full">
               <FileText className="w-6 h-6 text-blue-600" />
@@ -182,7 +182,7 @@ const MyPayments = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Paid</p>
-              <p className="text-2xl font-bold text-green-600">৳{stats.totalPaid}</p>
+              <p className="text-2xl font-bold text-green-600">৳{Number(stats.totalPaid).toLocaleString()}</p>
             </div>
             <div className="p-3 bg-green-100 rounded-full">
               <CheckCircle className="w-6 h-6 text-green-600" />
@@ -194,7 +194,7 @@ const MyPayments = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Due</p>
-              <p className="text-2xl font-bold text-red-600">৳{stats.totalDue}</p>
+              <p className="text-2xl font-bold text-red-600">৳{Number(stats.totalDue).toLocaleString()}</p>
             </div>
             <div className="p-3 bg-red-100 rounded-full">
               <AlertCircle className="w-6 h-6 text-red-600" />

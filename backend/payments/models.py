@@ -77,7 +77,7 @@ class FeeStructure(models.Model):
     
     amount = models.DecimalField(
         max_digits=10,
-        decimal_places=2,
+        decimal_places=0,
         help_text='Fee amount'
     )
     
@@ -147,7 +147,7 @@ class Payment(models.Model):
     
     amount_paid = models.DecimalField(
         max_digits=10,
-        decimal_places=2,
+        decimal_places=0,
         help_text='Amount paid'
     )
     
@@ -171,8 +171,8 @@ class Payment(models.Model):
     
     discount_amount = models.DecimalField(
         max_digits=10,
-        decimal_places=2,
-        default=0.00,
+        decimal_places=0,
+        default=0,
         help_text='Discount applied'
     )
     
@@ -257,7 +257,7 @@ class Expense(models.Model):
     
     amount = models.DecimalField(
         max_digits=10,
-        decimal_places=2,
+        decimal_places=0,
         help_text='Expense amount'
     )
     

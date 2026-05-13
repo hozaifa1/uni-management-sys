@@ -130,7 +130,7 @@ class StudentCreateSerializer(serializers.ModelSerializer):
     # Make numeric fields optional and allow null/blank
     ssc_passing_year = serializers.IntegerField(required=False, allow_null=True)
     hsc_passing_year = serializers.IntegerField(required=False, allow_null=True)
-    guardian_yearly_income = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    guardian_yearly_income = serializers.DecimalField(max_digits=12, decimal_places=0, required=False, allow_null=True)
     ssc_gpa = serializers.DecimalField(max_digits=4, decimal_places=2, required=False, allow_null=True)
     hsc_gpa = serializers.DecimalField(max_digits=4, decimal_places=2, required=False, allow_null=True)
     
@@ -221,7 +221,7 @@ class StudentUpdateSerializer(serializers.ModelSerializer):
     # Make numeric fields optional and allow null/blank
     ssc_passing_year = serializers.IntegerField(required=False, allow_null=True)
     hsc_passing_year = serializers.IntegerField(required=False, allow_null=True)
-    guardian_yearly_income = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    guardian_yearly_income = serializers.DecimalField(max_digits=12, decimal_places=0, required=False, allow_null=True)
     ssc_gpa = serializers.DecimalField(max_digits=4, decimal_places=2, required=False, allow_null=True)
     hsc_gpa = serializers.DecimalField(max_digits=4, decimal_places=2, required=False, allow_null=True)
     

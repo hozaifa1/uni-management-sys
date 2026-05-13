@@ -88,7 +88,7 @@ const StudentDashboard = () => {
     setStats({
       totalSubjects: results.length,
       averageGrade: avgGrade,
-      totalPaid: totalPaid.toFixed(2),
+      totalPaid: Math.round(totalPaid),
       pendingPayments: 0 // This would need fee structure data
     });
   };
@@ -176,7 +176,7 @@ const StudentDashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Paid</p>
-              <p className="text-2xl font-bold text-gray-800">৳{stats.totalPaid}</p>
+              <p className="text-2xl font-bold text-gray-800">৳{Number(stats.totalPaid).toLocaleString()}</p>
             </div>
             <div className="p-3 bg-purple-100 rounded-full">
               <DollarSign className="w-6 h-6 text-purple-600" />

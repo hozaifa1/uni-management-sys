@@ -137,10 +137,10 @@ class PaymentStatisticsSerializer(serializers.Serializer):
     """
     Serializer for payment statistics
     """
-    total_revenue = serializers.DecimalField(max_digits=15, decimal_places=2)
-    total_expenses = serializers.DecimalField(max_digits=15, decimal_places=2)
-    net_profit = serializers.DecimalField(max_digits=15, decimal_places=2)
-    pending_payments = serializers.DecimalField(max_digits=15, decimal_places=2)
+    total_revenue = serializers.DecimalField(max_digits=15, decimal_places=0)
+    total_expenses = serializers.DecimalField(max_digits=15, decimal_places=0)
+    net_profit = serializers.DecimalField(max_digits=15, decimal_places=0)
+    pending_payments = serializers.DecimalField(max_digits=15, decimal_places=0)
     total_students = serializers.IntegerField()
     monthly_breakdown = serializers.ListField(child=serializers.DictField())
 

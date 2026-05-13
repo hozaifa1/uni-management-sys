@@ -235,7 +235,7 @@ class Student(models.Model):
 
     guardian_yearly_income = models.DecimalField(
         max_digits=12,
-        decimal_places=2,
+        decimal_places=0,
         blank=True,
         null=True,
         help_text="Guardian's yearly income"
