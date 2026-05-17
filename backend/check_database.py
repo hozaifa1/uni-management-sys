@@ -62,25 +62,17 @@ print("=" * 60)
 
 # Check admin user
 try:
-    if User.objects.filter(username='admin').exists():
-        admin = User.objects.get(username='admin')
-        print("✅ Admin user EXISTS")
+    if User.objects.filter(username='IGMIS_registrar').exists():
+        admin = User.objects.get(username='IGMIS_registrar')
+        print("✅ Registrar user EXISTS")
         print(f"   Username: {admin.username}")
         print(f"   Email: {admin.email}")
         print(f"   Active: {admin.is_active}")
         print(f"   Staff: {admin.is_staff}")
         print(f"   Superuser: {admin.is_superuser}")
         print(f"   Role: {admin.role}")
-        
-        # Test password
-        print("\n   Testing password...")
-        if admin.check_password('admin123'):
-            print("   ✅ Password 'admin123' is CORRECT")
-        else:
-            print("   ❌ Password 'admin123' is WRONG")
-            print("   ⚠️  Need to reset password!")
     else:
-        print("❌ Admin user DOES NOT EXIST")
+        print("❌ Registrar user DOES NOT EXIST")
         print("\n   Run: python create_admin.py")
 except Exception as e:
     print(f"❌ Error checking admin user: {e}")

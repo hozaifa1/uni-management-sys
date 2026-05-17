@@ -87,24 +87,36 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('✓ Cleared existing test data'))
 
     def create_admin(self):
-        """Create admin user"""
-        if User.objects.filter(username='admin').exists():
-            self.stdout.write(self.style.WARNING('⚠️  Admin user already exists, skipping...'))
-            return User.objects.get(username='admin')
-        
+        """Create registrar (admin) user"""
+        import os
+        username = 'IGMIS_registrar'
+        password = os.environ.get('IGMIS_REGISTRAR_PASSWORD')
+        if not password:
+            self.stdout.write(self.style.ERROR(
+                '❌ IGMIS_REGISTRAR_PASSWORD env var is required to create the registrar.'
+            ))
+            return None
+
+        # Remove legacy demo accounts
+        User.objects.filter(username__in=['admin', 'test', 'demo']).delete()
+
+        if User.objects.filter(username=username).exists():
+            self.stdout.write(self.style.WARNING('⚠️  Registrar already exists, skipping...'))
+            return User.objects.get(username=username)
+
         admin = User.objects.create_user(
-            username='admin',
-            email='admin@igmis.edu',
-            password='admin123',
-            first_name='System',
-            last_name='Administrator',
+            username=username,
+            email='registrar@igmis.edu',
+            password=password,
+            first_name='IGMIS',
+            last_name='Registrar',
             role='ADMIN',
             phone_number='+8801700000000',
             is_staff=True,
             is_superuser=True,
             is_active=True
         )
-        self.stdout.write(self.style.SUCCESS('✓ Created admin user'))
+        self.stdout.write(self.style.SUCCESS('✓ Created registrar user'))
         return admin
 
     def create_teachers(self):
@@ -510,10 +522,10 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('📋 LOGIN CREDENTIALS'))
         self.stdout.write(self.style.SUCCESS('='*60))
         
-        self.stdout.write(self.style.WARNING('\n👤 ADMIN:'))
-        self.stdout.write('   Username: admin')
-        self.stdout.write('   Password: admin123')
-        self.stdout.write('   Email: admin@igmis.edu')
+        self.stdout.write(self.style.WARNING('\n👤 REGISTRAR:'))
+        self.stdout.write('   Username: IGMIS_registrar')
+        self.stdout.write('   Password: (set via IGMIS_REGISTRAR_PASSWORD env var)')
+        self.stdout.write('   Email: registrar@igmis.edu')
         
         self.stdout.write(self.style.WARNING('\n👨‍🏫 TEACHERS:'))
         self.stdout.write('   Username: teacher1 | Password: teacher123')

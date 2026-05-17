@@ -84,11 +84,27 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
         monthly_breakdown.reverse()
 
+        def _pct_change(curr, prev):
+            curr = float(curr or 0)
+            prev = float(prev or 0)
+            if prev == 0:
+                return None
+            return round(((curr - prev) / prev) * 100, 1)
+
+        revenue_this_month = monthly_breakdown[-1]['revenue'] if monthly_breakdown else 0
+        revenue_last_month = monthly_breakdown[-2]['revenue'] if len(monthly_breakdown) >= 2 else 0
+        expenses_this_month = monthly_breakdown[-1]['expenses'] if monthly_breakdown else 0
+        expenses_last_month = monthly_breakdown[-2]['expenses'] if len(monthly_breakdown) >= 2 else 0
+
         data = {
             'total_revenue': total_revenue,
             'total_expenses': total_expenses,
             'net_profit': net_profit,
             'total_students': total_students,
+            'revenue_this_month': revenue_this_month,
+            'expenses_this_month': expenses_this_month,
+            'revenue_trend_pct': _pct_change(revenue_this_month, revenue_last_month),
+            'expense_trend_pct': _pct_change(expenses_this_month, expenses_last_month),
             'monthly_breakdown': monthly_breakdown,
         }
 

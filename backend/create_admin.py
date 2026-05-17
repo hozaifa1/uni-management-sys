@@ -1,52 +1,58 @@
 """
-Script to create admin user in Railway database
-Run this once after deploying to Railway
+Script to create / reset the registrar (admin) user.
+Removes any legacy 'admin' account and provisions the IGMIS_registrar account.
 """
 import os
 import django
 
-# Setup Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from accounts.models import User
 
+REGISTRAR_USERNAME = 'IGMIS_registrar'
+REGISTRAR_PASSWORD = os.environ.get('IGMIS_REGISTRAR_PASSWORD')
+REGISTRAR_EMAIL = 'registrar@igmis.edu'
+
+if not REGISTRAR_PASSWORD:
+    raise SystemExit(
+        "IGMIS_REGISTRAR_PASSWORD env var is required. "
+        "Set it before running this script (no default is provided for security)."
+    )
+
+
 def create_admin_user():
-    """Create admin user if it doesn't exist"""
-    
-    # Check if admin user already exists
-    if User.objects.filter(username='admin').exists():
-        print("✅ Admin user already exists!")
-        admin = User.objects.get(username='admin')
-        print(f"   Username: {admin.username}")
-        print(f"   Email: {admin.email}")
-        print(f"   Role: {admin.role}")
-        print(f"   Active: {admin.is_active}")
+    legacy_qs = User.objects.filter(username__in=['admin', 'test', 'demo'])
+    legacy_count = legacy_qs.count()
+    if legacy_count:
+        legacy_qs.delete()
+        print(f"Removed {legacy_count} legacy account(s).")
+
+    if User.objects.filter(username=REGISTRAR_USERNAME).exists():
+        user = User.objects.get(username=REGISTRAR_USERNAME)
+        user.set_password(REGISTRAR_PASSWORD)
+        user.is_staff = True
+        user.is_superuser = True
+        user.is_active = True
+        user.role = 'ADMIN'
+        user.email = REGISTRAR_EMAIL
+        user.save()
+        print(f"Reset password for existing user '{REGISTRAR_USERNAME}'.")
         return
-    
-    print("Creating admin user...")
-    
-    # Create admin user
-    admin_user = User.objects.create_user(
-        username='admin',
-        email='admin@igmis.edu',
-        password='admin123',
-        first_name='System',
-        last_name='Administrator',
-        role='ADMIN',  # Simple CharField, not ForeignKey
+
+    User.objects.create_user(
+        username=REGISTRAR_USERNAME,
+        email=REGISTRAR_EMAIL,
+        password=REGISTRAR_PASSWORD,
+        first_name='IGMIS',
+        last_name='Registrar',
+        role='ADMIN',
         is_staff=True,
         is_superuser=True,
-        is_active=True
+        is_active=True,
     )
-    
-    print("✅ Admin user created successfully!")
-    print(f"   Username: admin")
-    print(f"   Password: admin123")
-    print(f"   Email: {admin_user.email}")
-    print(f"   Role: {admin_user.role}")
-    print("\n⚠️  IMPORTANT: Change this password after first login!")
+    print(f"Created user '{REGISTRAR_USERNAME}'.")
+
 
 if __name__ == '__main__':
     create_admin_user()
-
-

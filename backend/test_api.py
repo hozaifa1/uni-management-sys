@@ -2,6 +2,7 @@
 Simple script to test API endpoints
 Run Django server first: python manage.py runserver
 """
+import os
 import requests
 import json
 
@@ -21,8 +22,8 @@ def test_jwt_token():
     response = requests.post(
         f'{BASE_URL}/api/token/',
         json={
-            'username': 'admin',
-            'password': 'admin123'
+            'username': os.environ.get('IGMIS_REGISTRAR_USERNAME', 'IGMIS_registrar'),
+            'password': os.environ.get('IGMIS_REGISTRAR_PASSWORD', '')
         }
     )
     print(f"Status: {response.status_code}")

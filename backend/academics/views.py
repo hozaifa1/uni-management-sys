@@ -116,6 +116,18 @@ class ExamViewSet(viewsets.ModelViewSet):
         ).all()
         serializer = ResultSerializer(results, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def upcoming(self, request):
+        """Return upcoming exams (exam_date >= today), soonest first."""
+        from django.utils import timezone
+        today = timezone.now().date()
+        limit = int(request.query_params.get('limit', 5))
+        upcoming = Exam.objects.select_related('subject').filter(
+            exam_date__gte=today
+        ).order_by('exam_date')[:limit]
+        serializer = ExamSerializer(upcoming, many=True)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):

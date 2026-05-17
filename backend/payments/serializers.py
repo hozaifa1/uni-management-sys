@@ -111,4 +111,8 @@ class PaymentStatisticsSerializer(serializers.Serializer):
     total_expenses = serializers.DecimalField(max_digits=15, decimal_places=0)
     net_profit = serializers.DecimalField(max_digits=15, decimal_places=0)
     total_students = serializers.IntegerField()
+    revenue_this_month = serializers.DecimalField(max_digits=15, decimal_places=0)
+    expenses_this_month = serializers.DecimalField(max_digits=15, decimal_places=0)
+    revenue_trend_pct = serializers.FloatField(allow_null=True)
+    expense_trend_pct = serializers.FloatField(allow_null=True)
     monthly_breakdown = serializers.ListField(child=serializers.DictField())
