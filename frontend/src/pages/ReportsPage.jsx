@@ -36,7 +36,6 @@ const ReportsPage = () => {
   // Payment Reports Data
   const [semesterWiseData, setSemesterWiseData] = useState([]);
   const [currentSemesterData, setCurrentSemesterData] = useState({ stats: {}, payments: [] });
-  const [duesData, setDuesData] = useState({ summary: {}, data: [] });
   const [feeTypeData, setFeeTypeData] = useState([]);
   
   // Result Reports Data
@@ -134,16 +133,14 @@ const ReportsPage = () => {
       if (selectedStudent) params.student = selectedStudent;
       if (selectedPaymentType) params.fee_type = selectedPaymentType;
 
-      const [semesterRes, currentRes, duesRes, feeTypeRes] = await Promise.all([
+      const [semesterRes, currentRes, feeTypeRes] = await Promise.all([
         api.get('/reports/payments/semester_wise/', { params }),
         api.get('/reports/payments/current_semester/', { params: { ...params, semester: selectedSemester || '1st' } }),
-        api.get('/reports/payments/dues/', { params: { ...params, semester: selectedSemester } }),
         api.get('/reports/payments/fee_type_summary/', { params }),
       ]);
 
       setSemesterWiseData(semesterRes.data.data || []);
       setCurrentSemesterData(currentRes.data || { stats: {}, payments: [] });
-      setDuesData(duesRes.data || { summary: {}, data: [] });
       setFeeTypeData(feeTypeRes.data.data || []);
     } catch (error) {
       console.error('Error fetching payment reports:', error);
@@ -303,43 +300,6 @@ const ReportsPage = () => {
         styles: { fontSize: 9 },
       });
       yPos = doc.lastAutoTable.finalY + 15;
-    }
-
-    // Section 4: Due Amounts for Course Completion
-    if (duesData.data?.length > 0) {
-      // Check if we need a new page
-      if (yPos > 200) {
-        doc.addPage();
-        yPos = 22;
-      }
-
-      doc.setFontSize(14);
-      doc.setTextColor(239, 68, 68);
-      doc.text('4. Due Amounts for Course Completion', 14, yPos);
-      doc.setTextColor(0, 0, 0);
-      yPos += 6;
-
-      // Summary stats
-      doc.setFontSize(10);
-      doc.text(`Total Students: ${duesData.summary?.total_students || 0} | Students with Dues: ${duesData.summary?.students_with_dues || 0} | Total Due: TK ${duesData.summary?.total_due?.toLocaleString() || 0}`, 14, yPos);
-      yPos += 8;
-
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Student ID', 'Name', 'Course', 'Intake', 'Semester', 'Total Fee', 'Paid', 'Due']],
-        body: duesData.data.map(d => [
-          d.student_id,
-          d.student_name,
-          d.course,
-          d.intake,
-          d.semester,
-          `TK ${d.total_fee?.toLocaleString() || 0}`,
-          `TK ${d.total_paid?.toLocaleString() || 0}`,
-          `TK ${d.due_amount?.toLocaleString() || 0}`,
-        ]),
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [239, 68, 68] },
-      });
     }
 
     // Generate filename with filters
@@ -636,61 +596,6 @@ const ReportsPage = () => {
                 )}
               </div>
 
-              {/* Dues Report */}
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
-                  <AlertCircle className="w-5 h-5 text-red-600" />
-                  Due for Course Completion
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600">Total Students</p>
-                    <p className="text-xl font-bold">{duesData.summary?.total_students || 0}</p>
-                  </div>
-                  <div className="p-4 bg-red-50 rounded-lg">
-                    <p className="text-sm text-red-600">Students with Dues</p>
-                    <p className="text-xl font-bold text-red-800">{duesData.summary?.students_with_dues || 0}</p>
-                  </div>
-                  <div className="p-4 bg-red-100 rounded-lg">
-                    <p className="text-sm text-red-700">Total Due Amount</p>
-                    <p className="text-xl font-bold text-red-800">৳{duesData.summary?.total_due?.toLocaleString() || 0}</p>
-                  </div>
-                </div>
-                {duesData.data?.length > 0 && (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Course</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Fee</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {duesData.data.slice(0, 10).map((d, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-sm">
-                              <div className="font-medium">{d.student_name}</div>
-                              <div className="text-gray-500 text-xs">{d.student_id}</div>
-                            </td>
-                            <td className="px-4 py-3 text-sm">{d.course} - {d.intake}</td>
-                            <td className="px-4 py-3 text-sm">৳{d.total_fee?.toLocaleString()}</td>
-                            <td className="px-4 py-3 text-sm text-green-600">৳{d.total_paid?.toLocaleString()}</td>
-                            <td className="px-4 py-3 text-sm font-bold text-red-600">৳{d.due_amount?.toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {duesData.data.length > 10 && (
-                      <p className="text-sm text-gray-500 mt-2 text-center">
-                        Showing 10 of {duesData.data.length} students. Export PDF for full list.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
             </div>
           )}
 

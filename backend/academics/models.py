@@ -307,10 +307,10 @@ class Result(models.Model):
     """
     Result model storing student exam results
     """
-    
+
     student = models.ForeignKey(
         'accounts.Student',
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='results',
         help_text='Student'
     )
@@ -446,7 +446,7 @@ class Attendance(models.Model):
     
     student = models.ForeignKey(
         'accounts.Student',
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='attendances',
         help_text='Student'
     )

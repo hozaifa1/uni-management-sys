@@ -17,7 +17,6 @@ const StudentDashboard = () => {
     totalSubjects: 0,
     averageGrade: 'N/A',
     totalPaid: 0,
-    pendingPayments: 0
   });
 
   useEffect(() => {
@@ -89,7 +88,6 @@ const StudentDashboard = () => {
       totalSubjects: results.length,
       averageGrade: avgGrade,
       totalPaid: Math.round(totalPaid),
-      pendingPayments: 0 // This would need fee structure data
     });
   };
 
@@ -297,7 +295,9 @@ const StudentDashboard = () => {
                       {new Date(payment.payment_date).toLocaleDateString()}
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-800">
-                      {payment.fee_structure?.fee_type || 'N/A'}
+                      {payment.fee_type
+                        ? payment.fee_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+                        : 'N/A'}
                     </td>
                     <td className="py-3 px-4 text-sm font-medium text-gray-800">
                       ৳{payment.amount_paid}

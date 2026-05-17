@@ -11,7 +11,7 @@ import random
 from accounts.models import User, Student
 from students.models import Course, Batch, Enrollment, Teacher
 from academics.models import Subject, Exam, Result
-from payments.models import FeeStructure, Payment, Expense
+from payments.models import Payment, Expense
 
 
 class Command(BaseCommand):
@@ -50,8 +50,8 @@ class Command(BaseCommand):
         # Create enrollments
         self.create_enrollments(students, student_batch_map)
 
-        # Create fee structures
-        self.create_fee_structures(batches)
+        # NOTE: FeeStructure model removed — the system no longer tracks
+        # expected/due fees, only actual payments. Skip seeding fee structures.
 
         # Create exams
         exams = self.create_exams(batches)
@@ -75,7 +75,6 @@ class Command(BaseCommand):
         Payment.objects.all().delete()
         Expense.objects.all().delete()
         Result.objects.all().delete()
-        FeeStructure.objects.all().delete()
         Exam.objects.all().delete()
         Enrollment.objects.all().delete()
         Student.objects.all().delete()
@@ -391,33 +390,6 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'✓ Created {len(enrollments)} enrollments'))
         return enrollments
 
-    def create_fee_structures(self, batches):
-        """Create fee structures for batches"""
-        fee_structures = []
-        today = timezone.now().date()
-
-        for batch in batches:
-            fee_types = [
-                ('admission', Decimal('10000.00'), today - timedelta(days=30)),
-                ('tuition', Decimal('40000.00'), today + timedelta(days=30)),
-                ('exam', Decimal('5000.00'), today + timedelta(days=60)),
-            ]
-
-            for fee_type, amount, due_date in fee_types:
-                fee_structure, created = FeeStructure.objects.get_or_create(
-                    batch=batch,
-                    fee_type=fee_type,
-                    defaults={
-                        'amount': amount,
-                        'due_date': due_date,
-                        'description': f'{fee_type.title()} fee for {batch.name}'
-                    }
-                )
-                fee_structures.append(fee_structure)
-        
-        self.stdout.write(self.style.SUCCESS(f'✓ Created {len(fee_structures)} fee structures'))
-        return fee_structures
-
     def create_exams(self, batches):
         """Create exams for batches"""
         exams = []
@@ -480,47 +452,29 @@ class Command(BaseCommand):
         return results
 
     def create_payments(self, students, student_batch_map):
-        """Create payment records for students"""
+        """Create sample payment records — actuals only, no fee structures."""
         payments = []
         today = timezone.now().date()
 
-        for student in students:
-            # Get fee structures for student's batch
-            batch = student_batch_map.get(student.id)
-            if not batch:
-                continue
-            fee_structures = FeeStructure.objects.filter(batch=batch)
-            
-            for index, fee_structure in enumerate(fee_structures):
-                if Payment.objects.filter(student=student, fee_structure=fee_structure).exists():
-                    continue
-                    
-                if index == 0:
-                    # Admission fees are fully paid
-                    payment_percentage = 1.0
-                elif index == 1:
-                    # Tuition fees partially paid to keep pending dues visible
-                    payment_percentage = random.uniform(0.6, 0.85)
-                else:
-                    # Randomly decide to skip additional fees for some students
-                    if random.random() < 0.4:
-                        continue
-                    payment_percentage = random.uniform(0.4, 0.9)
+        fee_types = ['admission_fee', 'tuition_fee', 'exam_fee', 'lab_fee']
 
-                amount = fee_structure.amount * Decimal(str(payment_percentage))
-                
+        for student in students:
+            if not student_batch_map.get(student.id):
+                continue
+            # 1-3 sample payments per student
+            for _ in range(random.randint(1, 3)):
                 payment = Payment.objects.create(
                     student=student,
-                    fee_structure=fee_structure,
-                    amount_paid=amount,
-                    payment_date=today - timedelta(days=random.randint(1, 30)),
+                    fee_type=random.choice(fee_types),
+                    amount_paid=Decimal(str(random.randint(5000, 40000))),
+                    payment_date=today - timedelta(days=random.randint(1, 60)),
                     payment_method=random.choice(['cash', 'bank_transfer', 'online']),
                     transaction_id=f'TXN{random.randint(100000, 999999)}',
-                    discount_amount=Decimal('0.00'),
-                    remarks='Regular payment'
+                    discount_amount=Decimal('0'),
+                    remarks='Regular payment',
                 )
                 payments.append(payment)
-        
+
         self.stdout.write(self.style.SUCCESS(f'✓ Created {len(payments)} payment records'))
         return payments
 

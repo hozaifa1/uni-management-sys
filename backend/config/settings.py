@@ -30,10 +30,23 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-q!hm2a(m$w83l&ya0f+1!79!3ss5j397g2*&qfp8wyx6r_6hch')
+# No insecure fallback — refuse to boot without a real SECRET_KEY.
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    # Allow a generated dev key only when DEBUG is explicitly on AND running
+    # under manage.py (e.g. local development). Production must set SECRET_KEY.
+    if os.getenv('DEBUG', 'False') == 'True':
+        import secrets
+        SECRET_KEY = 'dev-only-' + secrets.token_urlsafe(50)
+    else:
+        raise RuntimeError(
+            "SECRET_KEY environment variable is required. "
+            "Refusing to start with an insecure default."
+        )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+# Default is FALSE — must be explicitly opted into for local development.
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 # Parse ALLOWED_HOSTS from environment variable (comma-separated)
 ALLOWED_HOSTS_ENV = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1')
@@ -60,9 +73,9 @@ if not DEBUG:
         '.vercel.app',
     ])
     
-# Allow all hosts if explicitly set (for debugging only)
-if os.getenv('DISABLE_ALLOWED_HOSTS_CHECK', 'False') == 'True':
-    ALLOWED_HOSTS = ['*']
+# NOTE: A previous DISABLE_ALLOWED_HOSTS_CHECK escape hatch has been removed
+# to prevent accidental Host-header injection in production. ALLOWED_HOSTS
+# must be explicitly configured via env var.
 
 
 # Application definition
@@ -78,6 +91,7 @@ INSTALLED_APPS = [
     # Third-party apps
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'cloudinary',
     'cloudinary_storage',

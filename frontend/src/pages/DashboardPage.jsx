@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Users, DollarSign, AlertCircle, GraduationCap, TrendingUp, Calendar } from 'lucide-react';
+import { Users, DollarSign, GraduationCap, TrendingUp, Calendar, Wallet } from 'lucide-react';
 import api from '../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -28,7 +28,7 @@ const DashboardPage = () => {
     totalStudents: 0,
     totalTeachers: 0,
     totalRevenue: 0,
-    pendingPayments: 0,
+    totalExpenses: 0,
   });
   const [recentPayments, setRecentPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +54,7 @@ const DashboardPage = () => {
         totalStudents: studentsRes.data.count || studentsRes.data.length || 0,
         totalTeachers: teachersRes.data.count || teachersRes.data.length || 0,
         totalRevenue: paymentsStatsRes.data.total_revenue || 0,
-        pendingPayments: paymentsStatsRes.data.pending_payments || 0,
+        totalExpenses: paymentsStatsRes.data.total_expenses || 0,
       });
 
       setRecentPayments(recentPaymentsRes.data.results || recentPaymentsRes.data || []);
@@ -114,10 +114,10 @@ const DashboardPage = () => {
           trend="+8% from last month"
         />
         <StatCard
-          title="Pending Payments"
-          value={stats.pendingPayments}
-          icon={AlertCircle}
-          color="bg-gradient-to-br from-red-500 to-red-600"
+          title="Total Expenses"
+          value={`৳${Number(stats.totalExpenses).toLocaleString()}`}
+          icon={Wallet}
+          color="bg-gradient-to-br from-orange-500 to-orange-600"
         />
       </div>
 

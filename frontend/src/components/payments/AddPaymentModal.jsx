@@ -27,7 +27,6 @@ const REGULARITY_OPTIONS = [
 const AddPaymentModal = ({ onClose, onSuccess, students = [] }) => {
   const [formData, setFormData] = useState({
     student: '',
-    fee_structure: '',
     fee_type: '',
     amount_paid: '',
     discount_amount: '0',
@@ -120,10 +119,6 @@ const AddPaymentModal = ({ onClose, onSuccess, students = [] }) => {
         transaction_id: formData.transaction_id || null,
         remarks: formData.remarks || null,
       };
-
-      if (formData.fee_structure) {
-        payload.fee_structure = formData.fee_structure;
-      }
 
       await api.post('/payments/payments/', payload);
       toast.success('Payment added successfully!');

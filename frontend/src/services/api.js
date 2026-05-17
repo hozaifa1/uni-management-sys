@@ -91,7 +91,19 @@ export const register = async (userData) => {
   }
 };
 
-export const logout = () => {
+export const logout = async () => {
+  // Best-effort server-side blacklist of the refresh token.
+  const refresh = localStorage.getItem('refresh_token');
+  if (refresh) {
+    try {
+      await api.post('/accounts/auth/logout/', { refresh });
+    } catch (err) {
+      // Network/server issue — proceed with local cleanup anyway.
+      // The token will still expire naturally per JWT lifetime.
+      // eslint-disable-next-line no-console
+      console.warn('Server-side logout failed; clearing local session.', err);
+    }
+  }
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
   localStorage.removeItem('user');

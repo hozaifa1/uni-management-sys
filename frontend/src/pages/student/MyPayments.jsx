@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  DollarSign, Calendar, CreditCard, 
+import {
+  DollarSign, CreditCard,
   FileText, AlertCircle, CheckCircle,
-  Download, Filter, ChevronDown, ChevronUp
+  ChevronDown, ChevronUp,
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -31,53 +31,35 @@ const MyPayments = () => {
   const { user } = useAuth();
   const [studentData, setStudentData] = useState(null);
   const [payments, setPayments] = useState([]);
-  const [feeStructures, setFeeStructures] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedTypes, setExpandedTypes] = useState({});
   const [stats, setStats] = useState({
     totalPaid: 0,
-    totalDue: 0,
-    totalAmount: 0,
-    paymentsCount: 0
+    paymentsCount: 0,
   });
 
   useEffect(() => {
     fetchPaymentData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchPaymentData = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch student profile
       const studentResponse = await api.get('/accounts/students/', {
-        params: { user: user?.id }
+        params: { user: user?.id },
       });
       const students = studentResponse.data.results || studentResponse.data;
-      const studentProfile = students.find(s => s.user?.id === user?.id) || students[0];
+      const studentProfile = students.find((s) => s.user?.id === user?.id) || students[0];
       setStudentData(studentProfile);
 
       if (studentProfile) {
-        // Fetch payments
         const paymentsResponse = await api.get(`/payments/payments/?student=${studentProfile.id}`);
         const studentPayments = paymentsResponse.data.results || paymentsResponse.data;
         setPayments(studentPayments);
-
-        // Fetch fee structures based on course/semester
-        let fees = [];
-        if (studentProfile.course && studentProfile.semester) {
-          try {
-            const feeResponse = await api.get(`/payments/fee-structures/?course=${studentProfile.course}&semester=${studentProfile.semester}`);
-            fees = feeResponse.data.results || feeResponse.data;
-          } catch (feeError) {
-            console.error('Error fetching fee structures:', feeError);
-            // Continue without fee structures - we can still show payment data
-          }
-        }
-        setFeeStructures(fees);
-
-        // Calculate stats from actual payments data
-        calculateStats(studentPayments, fees);
+        calculateStats(studentPayments);
       }
     } catch (error) {
       console.error('Error fetching payment data:', error);
@@ -86,29 +68,27 @@ const MyPayments = () => {
     }
   };
 
-  const calculateStats = (payments, feeStructures) => {
-    const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0);
-    const totalAmount = feeStructures.reduce((sum, f) => sum + parseFloat(f.amount || 0), 0);
-    const totalDue = totalAmount - totalPaid;
-
+  const calculateStats = (paymentList) => {
+    const totalPaid = paymentList.reduce(
+      (sum, p) => sum + parseFloat(p.amount_paid || 0),
+      0,
+    );
     setStats({
       totalPaid: Math.round(totalPaid),
-      totalDue: Math.round(Math.max(totalDue, 0)),
-      totalAmount: Math.round(totalAmount),
-      paymentsCount: payments.length
+      paymentsCount: paymentList.length,
     });
   };
 
   // Group payments by fee type
   const paymentsByType = useMemo(() => {
     const grouped = {};
-    payments.forEach(payment => {
+    payments.forEach((payment) => {
       const feeType = payment.fee_type || 'other';
       if (!grouped[feeType]) {
         grouped[feeType] = {
           payments: [],
           totalAmount: 0,
-          count: 0
+          count: 0,
         };
       }
       grouped[feeType].payments.push(payment);
@@ -119,9 +99,9 @@ const MyPayments = () => {
   }, [payments]);
 
   const toggleFeeType = (feeType) => {
-    setExpandedTypes(prev => ({
+    setExpandedTypes((prev) => ({
       ...prev,
-      [feeType]: !prev[feeType]
+      [feeType]: !prev[feeType],
     }));
   };
 
@@ -155,7 +135,7 @@ const MyPayments = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800">My Payments</h1>
         <p className="text-gray-600 mt-2">
-          View your payment history and pending dues
+          Your recorded payment history
           {studentData?.student_id && (
             <span className="block text-sm text-gray-500 mt-1">
               Student ID: {studentData.student_id}
@@ -165,39 +145,17 @@ const MyPayments = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Total Amount</p>
-              <p className="text-2xl font-bold text-gray-800">৳{Number(stats.totalAmount).toLocaleString()}</p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <FileText className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Paid</p>
-              <p className="text-2xl font-bold text-green-600">৳{Number(stats.totalPaid).toLocaleString()}</p>
+              <p className="text-2xl font-bold text-green-600">
+                ৳{Number(stats.totalPaid).toLocaleString()}
+              </p>
             </div>
             <div className="p-3 bg-green-100 rounded-full">
               <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Total Due</p>
-              <p className="text-2xl font-bold text-red-600">৳{Number(stats.totalDue).toLocaleString()}</p>
-            </div>
-            <div className="p-3 bg-red-100 rounded-full">
-              <AlertCircle className="w-6 h-6 text-red-600" />
             </div>
           </div>
         </div>
@@ -215,65 +173,6 @@ const MyPayments = () => {
         </div>
       </div>
 
-      {/* Fee Structures */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-          <FileText className="w-5 h-5 mr-2 text-blue-600" />
-          Fee Structure
-        </h3>
-        {feeStructures.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">No fee structure available</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Fee Type</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Amount</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Due Date</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {feeStructures.map((fee) => {
-                  // Check if this fee is paid
-                  const paidAmount = payments
-                    .filter(p => p.fee_structure?.id === fee.id)
-                    .reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0);
-                  const isPaid = paidAmount >= parseFloat(fee.amount);
-                  const isOverdue = new Date(fee.due_date) < new Date() && !isPaid;
-
-                  return (
-                    <tr key={fee.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm font-medium text-gray-800 capitalize">
-                        {fee.fee_type?.replace('_', ' ')}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-800">
-                        ৳{fee.amount}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-800">
-                        {new Date(fee.due_date).toLocaleDateString()}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          isPaid
-                            ? 'bg-green-100 text-green-800'
-                            : isOverdue
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {isPaid ? 'Paid' : isOverdue ? 'Overdue' : 'Pending'}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
       {/* Payment History - Grouped by Fee Type */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-4">
@@ -287,7 +186,9 @@ const MyPayments = () => {
           <div className="text-center py-12">
             <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-800 mb-2">No Payments Yet</h3>
-            <p className="text-gray-600">Your payment history will appear here once you make payments.</p>
+            <p className="text-gray-600">
+              Your payment history will appear here once payments are recorded.
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -295,10 +196,9 @@ const MyPayments = () => {
               const color = FEE_TYPE_COLORS[feeType] || 'gray';
               const colorClasses = getColorClasses(color);
               const isExpanded = expandedTypes[feeType] ?? true;
-              
+
               return (
                 <div key={feeType} className={`border ${colorClasses.border} rounded-lg overflow-hidden`}>
-                  {/* Fee Type Header - Clickable */}
                   <button
                     onClick={() => toggleFeeType(feeType)}
                     className={`w-full flex items-center justify-between p-4 ${colorClasses.bg} hover:opacity-90 transition-opacity`}
@@ -309,10 +209,12 @@ const MyPayments = () => {
                       </div>
                       <div className="text-left">
                         <h4 className={`font-semibold ${colorClasses.text}`}>
-                          {FEE_TYPE_LABELS[feeType] || feeType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          {FEE_TYPE_LABELS[feeType] ||
+                            feeType.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                         </h4>
                         <p className="text-sm text-gray-600">
-                          {data.count} payment{data.count !== 1 ? 's' : ''} • Total: ৳{data.totalAmount.toLocaleString()}
+                          {data.count} payment{data.count !== 1 ? 's' : ''} •
+                          Total: ৳{data.totalAmount.toLocaleString()}
                         </p>
                       </div>
                     </div>
@@ -328,12 +230,11 @@ const MyPayments = () => {
                     </div>
                   </button>
 
-                  {/* Collapsible Payment List */}
                   {isExpanded && (
                     <div className="p-4 bg-white space-y-3">
                       {data.payments.map((payment) => (
-                        <div 
-                          key={payment.id} 
+                        <div
+                          key={payment.id}
                           className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                         >
                           <div className="flex items-center justify-between">
@@ -348,11 +249,13 @@ const MyPayments = () => {
                                   </p>
                                 </div>
                               </div>
-                              
+
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 ml-12">
                                 <div>
                                   <p className="text-xs text-gray-500">Amount Paid</p>
-                                  <p className="text-sm font-semibold text-gray-800">৳{Number(payment.amount_paid).toLocaleString()}</p>
+                                  <p className="text-sm font-semibold text-gray-800">
+                                    ৳{Number(payment.amount_paid).toLocaleString()}
+                                  </p>
                                 </div>
                                 <div>
                                   <p className="text-xs text-gray-500">Payment Date</p>
@@ -369,7 +272,9 @@ const MyPayments = () => {
                                 {payment.discount_amount > 0 && (
                                   <div>
                                     <p className="text-xs text-gray-500">Discount</p>
-                                    <p className="text-sm font-semibold text-green-600">৳{payment.discount_amount}</p>
+                                    <p className="text-sm font-semibold text-green-600">
+                                      ৳{payment.discount_amount}
+                                    </p>
                                   </div>
                                 )}
                               </div>
@@ -399,8 +304,8 @@ const MyPayments = () => {
           <div>
             <p className="text-sm text-blue-800 font-medium mb-1">Payment Information</p>
             <p className="text-sm text-blue-700">
-              For any payment-related queries, please contact the accounts department. 
-              Make sure to keep your transaction receipts for future reference.
+              For any payment-related queries, please contact the accounts department.
+              Keep your transaction receipts for future reference.
             </p>
           </div>
         </div>
@@ -410,4 +315,3 @@ const MyPayments = () => {
 };
 
 export default MyPayments;
-
