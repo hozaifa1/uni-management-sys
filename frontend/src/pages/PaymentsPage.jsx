@@ -479,20 +479,19 @@ const PaymentsPage = () => {
       return;
     }
 
-    const headers = ['Student Name', 'Student ID', 'Amount', 'Payment Date', 'Method', 'Transaction ID', 'Fee Type', 'Regularity'];
+    const headers = ['Student Name', 'Student ID', 'Amount', 'Payment Date', 'Method', 'Fee Type', 'Regularity'];
     const csvData = filteredPayments.map(p => [
       p.student_name || 'N/A',
       p.student_id || 'N/A',
       p.amount_paid,
       p.payment_date,
       p.payment_method,
-      p.transaction_id || 'N/A',
       p.fee_type || 'N/A',
       p.payment_regularity || 'N/A',
     ]);
 
     const totalAmount = filteredPayments.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
-    const totalsRow = ['TOTAL', '', totalAmount, '', '', '', '', ''];
+    const totalsRow = ['TOTAL', '', totalAmount, '', '', '', ''];
 
     const csvContent = [
       headers.join(','),
@@ -873,8 +872,8 @@ const PaymentsPage = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Method
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Transaction ID
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Due (latest sem)
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Regularity
@@ -927,8 +926,28 @@ const PaymentsPage = () => {
                         {payment.payment_method?.replace('_', ' ') || 'N/A'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                      {payment.transaction_id || '-'}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                      {(() => {
+                        const studentId = payment.student ?? payment.student_id;
+                        const order = ['1st Sem','2nd Sem','3rd Sem','4th Sem','5th Sem','6th Sem','7th Sem','8th Sem'];
+                        const studentSummaries = summaries.filter(s => s.student === studentId);
+                        if (studentSummaries.length === 0) return <span className="text-gray-400">—</span>;
+                        const latest = [...studentSummaries].sort(
+                          (a, b) => order.indexOf(b.semester) - order.indexOf(a.semester)
+                        )[0];
+                        const due = Number(latest.closing_balance || 0);
+                        const cumDue = Number(latest.cumulative_due_after_semester || 0);
+                        return (
+                          <div className="text-right">
+                            <div className={`font-semibold ${due > 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                              ৳{due.toLocaleString()}
+                            </div>
+                            {cumDue > 0 && (
+                              <div className="text-xs text-gray-500">Cum: ৳{cumDue.toLocaleString()}</div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${
@@ -972,7 +991,7 @@ const PaymentsPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
                     No payments found. Add your first payment to get started!
                   </td>
                 </tr>
