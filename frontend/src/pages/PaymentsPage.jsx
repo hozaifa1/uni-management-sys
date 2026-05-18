@@ -479,19 +479,41 @@ const PaymentsPage = () => {
       return;
     }
 
-    const headers = ['Student Name', 'Student ID', 'Amount', 'Payment Date', 'Method', 'Fee Type', 'Regularity'];
-    const csvData = filteredPayments.map(p => [
-      p.student_name || 'N/A',
-      p.student_id || 'N/A',
-      p.amount_paid,
-      p.payment_date,
-      p.payment_method,
-      p.fee_type || 'N/A',
-      p.payment_regularity || 'N/A',
-    ]);
+    const semOrder = ['1st Sem','2nd Sem','3rd Sem','4th Sem','5th Sem','6th Sem','7th Sem','8th Sem'];
+    const latestByStudent = summaries.reduce((acc, s) => {
+      const cur = acc[s.student];
+      if (!cur || semOrder.indexOf(s.semester) > semOrder.indexOf(cur.semester)) {
+        acc[s.student] = s;
+      }
+      return acc;
+    }, {});
+    const duesFor = (p) => {
+      const sid = p.student ?? p.student_id;
+      const latest = latestByStudent[sid];
+      return {
+        closing: latest ? Number(latest.closing_balance || 0) : 0,
+        cumulative: latest ? Number(latest.cumulative_due_after_semester || 0) : 0,
+      };
+    };
+
+    const headers = ['Student Name', 'Student ID', 'Amount', 'Payment Date', 'Method', 'Fee Type', 'Regularity', 'Due (latest sem)', 'Cumulative Due'];
+    const csvData = filteredPayments.map(p => {
+      const d = duesFor(p);
+      return [
+        p.student_name || 'N/A',
+        p.student_id || 'N/A',
+        p.amount_paid,
+        p.payment_date,
+        p.payment_method,
+        p.fee_type || 'N/A',
+        p.payment_regularity || 'N/A',
+        d.closing,
+        d.cumulative,
+      ];
+    });
 
     const totalAmount = filteredPayments.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
-    const totalsRow = ['TOTAL', '', totalAmount, '', '', '', ''];
+    const totalsRow = ['TOTAL', '', totalAmount, '', '', '', '', '', ''];
 
     const csvContent = [
       headers.join(','),
@@ -531,11 +553,29 @@ const PaymentsPage = () => {
     const pdfTotalDiscount = filteredPayments.reduce((sum, p) => sum + parseFloat(p.discount_amount || 0), 0);
     const pdfTotalReceived = pdfTotalAmount - pdfTotalDiscount;
 
+    const semOrder = ['1st Sem','2nd Sem','3rd Sem','4th Sem','5th Sem','6th Sem','7th Sem','8th Sem'];
+    const latestByStudent = summaries.reduce((acc, s) => {
+      const cur = acc[s.student];
+      if (!cur || semOrder.indexOf(s.semester) > semOrder.indexOf(cur.semester)) {
+        acc[s.student] = s;
+      }
+      return acc;
+    }, {});
+    const duesFor = (p) => {
+      const sid = p.student ?? p.student_id;
+      const latest = latestByStudent[sid];
+      return {
+        closing: latest ? Number(latest.closing_balance || 0) : 0,
+        cumulative: latest ? Number(latest.cumulative_due_after_semester || 0) : 0,
+      };
+    };
+
     autoTable(doc, {
       startY: 42,
-      head: [['Student Name', 'Student ID', 'Amount', 'Discount', 'Received', 'Date', 'Method', 'Fee Type', 'Regularity']],
+      head: [['Student Name', 'Student ID', 'Amount', 'Discount', 'Received', 'Date', 'Method', 'Fee Type', 'Regularity', 'Due', 'Cum. Due']],
       body: filteredPayments.map(p => {
         const received = parseFloat(p.amount_paid || 0) - parseFloat(p.discount_amount || 0);
+        const d = duesFor(p);
         return [
           p.student_name || 'N/A',
           p.student_id || 'N/A',
@@ -546,9 +586,11 @@ const PaymentsPage = () => {
           p.payment_method?.replace('_', ' ') || 'N/A',
           p.fee_type?.replace('_', ' ') || 'N/A',
           p.payment_regularity || 'N/A',
+          `${d.closing}`,
+          `${d.cumulative}`,
         ];
       }),
-      foot: [['TOTAL', '', `${pdfTotalAmount}`, `${pdfTotalDiscount}`, `${pdfTotalReceived}`, '', '', '', '']],
+      foot: [['TOTAL', '', `${pdfTotalAmount}`, `${pdfTotalDiscount}`, `${pdfTotalReceived}`, '', '', '', '', '', '']],
       styles: { fontSize: 7 },
       headStyles: { fillColor: [59, 130, 246] },
       footStyles: { fillColor: [243, 244, 246], textColor: [17, 24, 39], fontStyle: 'bold' },
