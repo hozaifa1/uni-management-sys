@@ -7,12 +7,25 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Expense, Payment
+from config.permissions import IsAdminOrCoordinatorCreateOnly
+
+from .models import (
+    AdmissionRecord,
+    DailyAccount,
+    Expense,
+    FeeStructure,
+    Payment,
+    SemesterSummary,
+)
 from .serializers import (
+    AdmissionRecordSerializer,
+    DailyAccountSerializer,
     ExpenseSerializer,
+    FeeStructureSerializer,
     PaymentDetailSerializer,
     PaymentSerializer,
     PaymentStatisticsSerializer,
+    SemesterSummarySerializer,
 )
 
 
@@ -22,9 +35,9 @@ class PaymentViewSet(viewsets.ModelViewSet):
     """
 
     queryset = Payment.objects.select_related('student', 'student__user').all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrCoordinatorCreateOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['student', 'payment_method', 'payment_date', 'fee_type']
+    filterset_fields = ['student', 'payment_method', 'payment_date', 'fee_type', 'semester']
     search_fields = [
         'student__student_id', 'student__user__first_name',
         'student__user__last_name', 'transaction_id',
@@ -148,7 +161,7 @@ class ExpenseViewSet(viewsets.ModelViewSet):
 
     queryset = Expense.objects.select_related('created_by').all()
     serializer_class = ExpenseSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrCoordinatorCreateOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['expense_type', 'expense_date']
     search_fields = ['description', 'paid_to']
@@ -191,3 +204,89 @@ class ExpenseViewSet(viewsets.ModelViewSet):
             'total_expenses': total,
             'breakdown': summary,
         })
+
+
+class SemesterSummaryViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Read-only per-student-per-semester financial summary (dues, balances,
+    attendance). Sourced from Excel ledger — the system does not auto-compute.
+    """
+
+    queryset = SemesterSummary.objects.select_related('student', 'student__user').all()
+    serializer_class = SemesterSummarySerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['student', 'semester', 'program', 'intake_batch']
+    search_fields = ['student__roll_number', 'student__full_name']
+    ordering_fields = ['semester', 'closing_balance', 'cumulative_due_after_semester']
+    ordering = ['-cumulative_due_after_semester']
+
+    @action(detail=False, methods=['get'])
+    def dues_overview(self, request):
+        """Total outstanding dues across the institution."""
+        agg = SemesterSummary.objects.aggregate(
+            total_due=Sum('cumulative_due_after_semester'),
+            total_received=Sum('cumulative_received_after_semester'),
+        )
+        return Response({
+            'total_due': agg['total_due'] or 0,
+            'total_received': agg['total_received'] or 0,
+            'student_count': SemesterSummary.objects.values('student').distinct().count(),
+        })
+
+
+class AdmissionRecordViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = AdmissionRecord.objects.select_related('student', 'student__user').all()
+    serializer_class = AdmissionRecordSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['program', 'intake_batch']
+    search_fields = ['roll_number', 'name', 'registration_number']
+    ordering_fields = ['admission_date']
+    ordering = ['-admission_date']
+
+
+class DailyAccountViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = DailyAccount.objects.all()
+    serializer_class = DailyAccountSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['year_group', 'date']
+    search_fields = ['description']
+    ordering_fields = ['date']
+    ordering = ['-date']
+
+    @action(detail=False, methods=['get'])
+    def cashflow(self, request):
+        """Monthly cashflow rollup from daily ledger."""
+        from django.db.models.functions import TruncMonth
+        rows = (
+            DailyAccount.objects
+            .exclude(date__isnull=True)
+            .annotate(m=TruncMonth('date'))
+            .values('m')
+            .annotate(
+                receive=Sum('cash_receive'),
+                expense=Sum('cash_expense'),
+            )
+            .order_by('m')
+        )
+        return Response([
+            {
+                'month': r['m'].strftime('%Y-%m') if r['m'] else None,
+                'receive': float(r['receive'] or 0),
+                'expense': float(r['expense'] or 0),
+                'net': float((r['receive'] or 0) - (r['expense'] or 0)),
+            }
+            for r in rows
+        ])
+
+
+class FeeStructureViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = FeeStructure.objects.all()
+    serializer_class = FeeStructureSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['program']
+    ordering_fields = ['order']
+    ordering = ['program', 'order']

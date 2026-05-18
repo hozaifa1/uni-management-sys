@@ -78,6 +78,8 @@ class StudentSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'student_id', 'date_of_birth',
             # New fields
+            'roll_number', 'intake_batch',
+            'total_program_fee', 'semester_fee', 'monthly_tuition_fee', 'fee_waiver',
             'registration_number', 'national_university_id', 'full_name',
             'national_id_number', 'course', 'intake',
             'major', 'major_name',
@@ -142,6 +144,8 @@ class StudentCreateSerializer(serializers.ModelSerializer):
             # Basic student info
             'date_of_birth', 'blood_group', 'photo',
             # New fields
+            'roll_number', 'intake_batch',
+            'total_program_fee', 'semester_fee', 'monthly_tuition_fee', 'fee_waiver',
             'registration_number', 'national_university_id', 'full_name',
             'national_id_number', 'course', 'intake',
             # Family info
@@ -231,6 +235,8 @@ class StudentUpdateSerializer(serializers.ModelSerializer):
             # Basic student info
             'date_of_birth', 'blood_group', 'photo',
             # New fields
+            'roll_number', 'intake_batch',
+            'total_program_fee', 'semester_fee', 'monthly_tuition_fee', 'fee_waiver',
             'registration_number', 'national_university_id', 'full_name',
             'national_id_number', 'course', 'intake',
             'major',

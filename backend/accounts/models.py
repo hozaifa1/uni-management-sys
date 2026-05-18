@@ -11,12 +11,13 @@ class User(AbstractUser):
     
     ROLE_CHOICES = [
         ('ADMIN', 'Admin'),
+        ('COORDINATOR', 'Coordinator'),
         ('TEACHER', 'Teacher'),
         ('STUDENT', 'Student'),
     ]
-    
+
     role = models.CharField(
-        max_length=10,
+        max_length=15,
         choices=ROLE_CHOICES,
         default='STUDENT',
         help_text='User role in the system'
@@ -121,11 +122,18 @@ class Student(models.Model):
     INTAKE_CHOICES = [
         ('1st', '1st'),
         ('2nd', '2nd'),
+        ('7th', '7th'),
+        ('8th', '8th'),
         ('9th', '9th'),
         ('10th', '10th'),
+        ('11th', '11th'),
+        ('12th', '12th'),
+        ('13th', '13th'),
+        ('14th', '14th'),
         ('15th', '15th'),
         ('16th', '16th'),
         ('17th', '17th'),
+        ('17th-SW', '17th-SW'),
         ('18th', '18th'),
         ('19th', '19th'),
         ('20th', '20th'),
@@ -143,6 +151,50 @@ class Student(models.Model):
         unique=True,
         editable=False,
         help_text='Auto-generated student ID'
+    )
+
+    roll_number = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text='College roll number (from admission records)'
+    )
+
+    intake_batch = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text='Intake batch label as recorded in source data (e.g. "14th", "17th-SW")'
+    )
+
+    total_program_fee = models.DecimalField(
+        max_digits=12,
+        decimal_places=0,
+        default=0,
+        help_text='Total tuition fee for the whole program (Tk)'
+    )
+
+    semester_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=0,
+        default=0,
+        help_text='Fee per semester form-fillup (Tk)'
+    )
+
+    monthly_tuition_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=0,
+        default=0,
+        help_text='Monthly tuition fee (Tk)'
+    )
+
+    fee_waiver = models.DecimalField(
+        max_digits=10,
+        decimal_places=0,
+        default=0,
+        help_text='Total fee waiver granted (Tk)'
     )
 
     registration_number = models.CharField(
@@ -188,6 +240,8 @@ class Student(models.Model):
     )
     
     date_of_birth = models.DateField(
+        blank=True,
+        null=True,
         help_text='Student date of birth'
     )
     
@@ -249,6 +303,8 @@ class Student(models.Model):
     )
     
     admission_date = models.DateField(
+        blank=True,
+        null=True,
         help_text='Date of admission'
     )
 

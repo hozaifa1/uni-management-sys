@@ -10,13 +10,17 @@ const PAYMENT_METHOD_OPTIONS = [
 ];
 
 const FEE_TYPE_OPTIONS = [
-  { value: 'lab_fee', label: 'Lab Fee' },
-  { value: 'library_fee', label: 'Library Fee' },
-  { value: 'fine', label: 'Fine' },
-  { value: 'semester_fee', label: 'Semester Fee' },
-  { value: 'tuition_fee', label: 'Tuition Fee' },
+  { value: 'tuition', label: 'Tuition Fee' },
+  { value: 'application_fee', label: 'Application Fee' },
   { value: 'admission_fee', label: 'Admission Fee' },
-  { value: 'exam_fee', label: 'Exam Fee' },
+  { value: 'mt_exam_fee', label: 'Midterm Exam Fee' },
+  { value: 'nu_exam_fee', label: 'NU Exam Fee' },
+  { value: 'semester_fee', label: 'Semester Fee' },
+  { value: 'library_deposit', label: 'Library Deposit' },
+  { value: 'library_fine', label: 'Library Fine' },
+  { value: 'lab_fee', label: 'Lab Fee' },
+  { value: 'fine', label: 'Fine' },
+  { value: 'other', label: 'Other' },
 ];
 
 const REGULARITY_OPTIONS = [
@@ -30,6 +34,8 @@ const AddPaymentModal = ({ onClose, onSuccess, students = [] }) => {
     fee_type: '',
     amount_paid: '',
     discount_amount: '0',
+    late_fine: '0',
+    semester: '',
     payment_date: new Date().toISOString().split('T')[0],
     payment_method: 'cash',
     payment_regularity: 'regular',
@@ -112,6 +118,8 @@ const AddPaymentModal = ({ onClose, onSuccess, students = [] }) => {
         student: formData.student,
         amount_paid: formData.amount_paid,
         discount_amount: formData.discount_amount || 0,
+        late_fine: formData.late_fine || 0,
+        semester: formData.semester || null,
         payment_date: formData.payment_date,
         payment_method: formData.payment_method,
         payment_regularity: formData.payment_regularity || 'regular',
@@ -216,11 +224,19 @@ const AddPaymentModal = ({ onClose, onSuccess, students = [] }) => {
 
           {/* Selected Student Info */}
           {selectedStudent && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
               <p className="text-sm text-blue-800">
-                <strong>Selected:</strong> {getStudentDisplayName(selectedStudent)} • 
-                {selectedStudent.course} • {selectedStudent.intake} Intake • {selectedStudent.semester} Semester
+                <strong>Selected:</strong> {getStudentDisplayName(selectedStudent)} •
+                {' '}{selectedStudent.course} • {selectedStudent.intake_batch || selectedStudent.intake} Intake • {selectedStudent.semester} Semester
               </p>
+              {(selectedStudent.total_program_fee || selectedStudent.monthly_tuition_fee || selectedStudent.semester_fee) ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-blue-900">
+                  <div><span className="font-medium">Program fee:</span> ৳{Number(selectedStudent.total_program_fee || 0).toLocaleString()}</div>
+                  <div><span className="font-medium">Monthly:</span> ৳{Number(selectedStudent.monthly_tuition_fee || 0).toLocaleString()}</div>
+                  <div><span className="font-medium">Semester:</span> ৳{Number(selectedStudent.semester_fee || 0).toLocaleString()}</div>
+                  <div><span className="font-medium">Waiver:</span> ৳{Number(selectedStudent.fee_waiver || 0).toLocaleString()}</div>
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -261,6 +277,39 @@ const AddPaymentModal = ({ onClose, onSuccess, students = [] }) => {
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          {/* Semester + Late Fine */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+              <select
+                name="semester"
+                value={formData.semester}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">— None —</option>
+                {['1st Sem','2nd Sem','3rd Sem','4th Sem','5th Sem','6th Sem','7th Sem','8th Sem'].map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Late Fine</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">৳</span>
+                <input
+                  type="number"
+                  name="late_fine"
+                  value={formData.late_fine}
+                  onChange={handleChange}
+                  min="0"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0"
+                />
+              </div>
             </div>
           </div>
 

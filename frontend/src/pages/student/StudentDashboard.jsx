@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  User, Book, DollarSign, Calendar, 
-  TrendingUp, Award, FileText, Clock 
+import {
+  User, Book, DollarSign, Calendar,
+  TrendingUp, Award, FileText, Clock, AlertCircle
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -12,6 +12,7 @@ const StudentDashboard = () => {
   const [results, setResults] = useState([]);
   const [payments, setPayments] = useState([]);
   const [upcomingExams, setUpcomingExams] = useState([]);
+  const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalSubjects: 0,
@@ -42,9 +43,17 @@ const StudentDashboard = () => {
         setResults(studentResults.slice(0, 5)); // Latest 5 results
 
         // Fetch payments
-        const paymentsResponse = await api.get(`/payments/payments/?student=${studentProfile.id}`);
+        const paymentsResponse = await api.get(`/payments/payments/?student=${studentProfile.id}&page_size=500`);
         const studentPayments = paymentsResponse.data.results || paymentsResponse.data;
         setPayments(studentPayments.slice(0, 5)); // Latest 5 payments
+
+        // Fetch semester summaries (dues) for this student
+        try {
+          const summariesResponse = await api.get(`/payments/semester-summaries/?student=${studentProfile.id}`);
+          setSummaries(summariesResponse.data.results || summariesResponse.data || []);
+        } catch (e) {
+          console.warn('No semester summaries available', e);
+        }
 
         // Fetch upcoming exams based on course/semester
         if (studentProfile.course && studentProfile.semester) {
@@ -143,6 +152,66 @@ const StudentDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Fee Structure + Dues */}
+      {(studentData?.total_program_fee > 0 || summaries.length > 0) && (() => {
+        const order = ['1st Sem','2nd Sem','3rd Sem','4th Sem','5th Sem','6th Sem','7th Sem','8th Sem'];
+        const latest = [...summaries].sort(
+          (a, b) => order.indexOf(b.semester) - order.indexOf(a.semester)
+        )[0];
+        const totalPaid = payments.reduce((s, p) => s + Number(p.amount_paid || 0), 0);
+        return (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
+              <AlertCircle className="w-5 h-5 mr-2 text-red-600" />
+              My Fees &amp; Dues
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="text-xs text-blue-700">Program Fee</div>
+                <div className="text-lg font-bold text-blue-900">৳{Number(studentData?.total_program_fee || 0).toLocaleString()}</div>
+              </div>
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="text-xs text-blue-700">Monthly Tuition</div>
+                <div className="text-lg font-bold text-blue-900">৳{Number(studentData?.monthly_tuition_fee || 0).toLocaleString()}</div>
+              </div>
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="text-xs text-blue-700">Semester Fee</div>
+                <div className="text-lg font-bold text-blue-900">৳{Number(studentData?.semester_fee || 0).toLocaleString()}</div>
+              </div>
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="text-xs text-blue-700">Fee Waiver</div>
+                <div className="text-lg font-bold text-blue-900">৳{Number(studentData?.fee_waiver || 0).toLocaleString()}</div>
+              </div>
+            </div>
+            {latest && (
+              <>
+                <div className="text-xs text-gray-500 mb-2">Latest: {latest.semester}</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="text-xs text-green-700">Received this Sem</div>
+                    <div className="text-lg font-bold text-green-700">৳{Number(latest.semester_total_received || 0).toLocaleString()}</div>
+                  </div>
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="text-xs text-amber-700">Closing Balance</div>
+                    <div className={`text-lg font-bold ${Number(latest.closing_balance) > 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                      ৳{Number(latest.closing_balance || 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="text-xs text-red-700">Cumulative Due</div>
+                    <div className="text-lg font-bold text-red-700">৳{Number(latest.cumulative_due_after_semester || 0).toLocaleString()}</div>
+                  </div>
+                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="text-xs text-purple-700">Total Paid (all-time)</div>
+                    <div className="text-lg font-bold text-purple-700">৳{Number(totalPaid).toLocaleString()}</div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

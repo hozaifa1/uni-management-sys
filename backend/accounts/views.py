@@ -86,7 +86,8 @@ class StudentViewSet(viewsets.ModelViewSet):
     ViewSet for Student model CRUD operations
     """
     queryset = Student.objects.select_related('user').all()
-    permission_classes = [IsAuthenticated]
+    from config.permissions import IsAdminOrCoordinatorCreateOnly
+    permission_classes = [IsAdminOrCoordinatorCreateOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['course', 'intake', 'semester', 'session', 'blood_group', 'admission_date', 'user']
     search_fields = [

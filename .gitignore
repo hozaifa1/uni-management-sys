@@ -2,6 +2,10 @@
 .windsurf/
 .cursor/
 .cursorignore
+.agents/
+.claude/
+.specify/
+skills-lock.json
 
 ### Local notes & exports
 IGMIS LMS.txt
@@ -22,3 +26,16 @@ CSE/
 MBA/
 /*.pdf
 /*.zip
+
+# Credentials — plaintext passwords MUST never be committed
+credentials/
+*credentials*.csv
+*password*.csv
+student_passwords.csv
+
+# Student PII — seed CSVs contain names + phone numbers; keep local only.
+data_to_seed/csv/*.csv
+data_to_seed/csv/raw_dump/
+data_to_seed/csv/raw_formulas/
+data_to_seed/Account/
+!data_to_seed/csv/README.md

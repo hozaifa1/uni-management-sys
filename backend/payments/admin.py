@@ -1,6 +1,47 @@
 from django.contrib import admin
 
-from .models import Expense, Payment
+from .models import (
+    AdmissionRecord,
+    DailyAccount,
+    Expense,
+    FeeStructure,
+    Payment,
+    SemesterSummary,
+)
+
+
+@admin.register(SemesterSummary)
+class SemesterSummaryAdmin(admin.ModelAdmin):
+    list_display = ['student', 'semester', 'program', 'intake_batch',
+                    'opening_balance', 'semester_total_received',
+                    'closing_balance', 'cumulative_due_after_semester']
+    list_filter = ['program', 'intake_batch', 'semester']
+    search_fields = ['student__roll_number', 'student__full_name']
+    list_select_related = ['student']
+
+
+@admin.register(AdmissionRecord)
+class AdmissionRecordAdmin(admin.ModelAdmin):
+    list_display = ['roll_number', 'name', 'program', 'intake_batch',
+                    'admission_date', 'admission_fee', 'application_fee']
+    list_filter = ['program', 'intake_batch']
+    search_fields = ['roll_number', 'name', 'registration_number']
+
+
+@admin.register(DailyAccount)
+class DailyAccountAdmin(admin.ModelAdmin):
+    list_display = ['date', 'description', 'cash_receive',
+                    'cash_expense', 'cash_balance', 'year_group']
+    list_filter = ['year_group']
+    search_fields = ['description']
+    date_hierarchy = 'date'
+
+
+@admin.register(FeeStructure)
+class FeeStructureAdmin(admin.ModelAdmin):
+    list_display = ['program', 'item', 'unit_amount', 'total_amount', 'order']
+    list_filter = ['program']
+    ordering = ['program', 'order']
 
 
 @admin.register(Payment)
@@ -18,10 +59,12 @@ class PaymentAdmin(admin.ModelAdmin):
         'payment_date',
         'payment_method',
         'fee_type',
+        'semester',
+        'late_fine',
         'payment_regularity',
         'transaction_id',
     ]
-    list_filter = ['payment_method', 'payment_date', 'fee_type']
+    list_filter = ['payment_method', 'payment_date', 'fee_type', 'semester']
     search_fields = [
         'student__student_id',
         'student__user__first_name',
@@ -37,8 +80,8 @@ class PaymentAdmin(admin.ModelAdmin):
         }),
         ('Amount Details', {
             'fields': (
-                'amount_paid', 'discount_amount', 'payment_method',
-                'transaction_id', 'payment_regularity',
+                'amount_paid', 'discount_amount', 'late_fine', 'payment_method',
+                'transaction_id', 'payment_regularity', 'semester',
             )
         }),
         ('Additional Information', {
