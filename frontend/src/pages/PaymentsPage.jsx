@@ -6,10 +6,14 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import AddPaymentModal from '../components/payments/AddPaymentModal';
 import EditPaymentModal from '../components/payments/EditPaymentModal';
+import EditReceivablesModal from '../components/payments/EditReceivablesModal';
 import PaymentHistory from '../components/payments/PaymentHistory';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import LoadingSkeleton from '../components/common/LoadingSkeleton';
 import { useAuth } from '../context/AuthContext';
+
+const ALL_SEMESTERS = ['1st Sem','2nd Sem','3rd Sem','4th Sem','5th Sem','6th Sem','7th Sem','8th Sem'];
+const COURSE_OPTIONS = ['BBA', 'MBA', 'CSE', 'THM'];
 
 const PAYMENT_METHOD_OPTIONS = [
   { value: '', label: 'All Methods' },
@@ -33,38 +37,90 @@ const FEE_TYPE_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
-const DuesPanel = ({ summaries }) => {
+const RECEIVABLE_COLUMNS = [
+  { key: 'semester_fee', label: 'Semester Fee' },
+  { key: 'monthly_tuition_fee', label: 'Monthly Tuition' },
+  { key: 'midterm_fee', label: 'Midterm Fee', compute: (s) =>
+      Number(s.midterm_1_fee || 0) + Number(s.midterm_2_fee || 0) },
+  { key: 'nu_exam_fee', label: 'NU Exam Fee' },
+  { key: 'library_deposit', label: 'Library Deposit' },
+];
+
+const DuesPanel = ({ summaries, students, canEdit, onRefresh }) => {
   const [search, setSearch] = useState('');
-  const [programFilter, setProgramFilter] = useState('');
-  const [semFilter, setSemFilter] = useState('');
+  const [courseFilter, setCourseFilter] = useState('');
+  const [intakeFilter, setIntakeFilter] = useState('');
+  const [semesterFilter, setSemesterFilter] = useState('');
+  const [editingRow, setEditingRow] = useState(null);
+
+  // Build student-id -> {course, intake} from the students list (fallback when
+  // summary row doesn't have program/intake_batch populated).
+  const studentLookup = useMemo(() => {
+    const map = new Map();
+    for (const s of students || []) map.set(s.id, s);
+    return map;
+  }, [students]);
+
+  // Normalised rows — fill program/intake_batch from student when missing.
+  const enriched = useMemo(() => {
+    return summaries.map((s) => {
+      const stu = studentLookup.get(s.student);
+      return {
+        ...s,
+        program: s.program || stu?.course || '',
+        intake_batch: s.intake_batch || stu?.intake || '',
+      };
+    });
+  }, [summaries, studentLookup]);
+
+  // Available intakes — narrow by course only (semester stays full 1st-8th).
+  const intakeOptions = useMemo(() => {
+    const set = new Set();
+    for (const s of enriched) {
+      if (courseFilter && s.program !== courseFilter) continue;
+      if (s.intake_batch) set.add(s.intake_batch);
+    }
+    return [...set].sort();
+  }, [enriched, courseFilter]);
 
   const filtered = useMemo(() => {
-    return summaries.filter(s => {
-      if (programFilter && s.program !== programFilter) return false;
-      if (semFilter && s.semester !== semFilter) return false;
-      if (search) {
-        const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
+    return enriched.filter((s) => {
+      if (courseFilter && s.program !== courseFilter) return false;
+      if (intakeFilter && s.intake_batch !== intakeFilter) return false;
+      if (semesterFilter && s.semester !== semesterFilter) return false;
+      if (q) {
         const name = (s.student_name || '').toLowerCase();
         const roll = (s.student_roll || '').toLowerCase();
         if (!name.includes(q) && !roll.includes(q)) return false;
       }
       return true;
     });
-  }, [summaries, search, programFilter, semFilter]);
+  }, [enriched, search, courseFilter, intakeFilter, semesterFilter]);
 
   const totals = useMemo(() => filtered.reduce((acc, s) => ({
     due: acc.due + Number(s.cumulative_due_after_semester || 0),
     received: acc.received + Number(s.cumulative_received_after_semester || 0),
     closing: acc.closing + Number(s.closing_balance || 0),
-  }), { due: 0, received: 0, closing: 0 }), [filtered]);
+    receivable: acc.receivable + Number(s.total_receivable_end_of_semester || 0),
+  }), { due: 0, received: 0, closing: 0, receivable: 0 }), [filtered]);
 
-  const programs = [...new Set(summaries.map(s => s.program).filter(Boolean))];
-  const sems = [...new Set(summaries.map(s => s.semester).filter(Boolean))].sort();
+  const handleReset = () => {
+    setSearch('');
+    setCourseFilter('');
+    setIntakeFilter('');
+    setSemesterFilter('');
+  };
+
+  const handleCourseChange = (v) => {
+    setCourseFilter(v);
+    setIntakeFilter('');
+  };
 
   return (
     <div className="space-y-4">
       {/* Summary cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <div className="text-xs text-red-700 font-medium">Total Cumulative Dues</div>
           <div className="text-2xl font-bold text-red-700">৳{totals.due.toLocaleString()}</div>
@@ -77,24 +133,73 @@ const DuesPanel = ({ summaries }) => {
           <div className="text-xs text-amber-700 font-medium">Sum of Closing Balances</div>
           <div className="text-2xl font-bold text-amber-700">৳{totals.closing.toLocaleString()}</div>
         </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="text-xs text-blue-700 font-medium">Sum of Receivables</div>
+          <div className="text-2xl font-bold text-blue-700">৳{totals.receivable.toLocaleString()}</div>
+        </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-3">
-        <input type="text" placeholder="Search by name or roll..."
-          value={search} onChange={e => setSearch(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg" />
-        <select value={programFilter} onChange={e => setProgramFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg">
-          <option value="">All Programs</option>
-          {programs.map(p => <option key={p} value={p}>{p}</option>)}
-        </select>
-        <select value={semFilter} onChange={e => setSemFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg">
-          <option value="">All Semesters</option>
-          {sems.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <div className="text-sm text-gray-500 self-center">
+      <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Course</label>
+            <select
+              value={courseFilter}
+              onChange={(e) => handleCourseChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Courses</option>
+              {COURSE_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Intake</label>
+            <select
+              value={intakeFilter}
+              onChange={(e) => setIntakeFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Intakes ({intakeOptions.length})</option>
+              {intakeOptions.map((i) => <option key={i} value={i}>{i}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Semester</label>
+            <select
+              value={semesterFilter}
+              onChange={(e) => setSemesterFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Semesters</option>
+              {ALL_SEMESTERS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Search</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Name or roll..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={handleReset}
+              className="flex items-center justify-center w-full px-4 py-2 border border-red-200 text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Reset
+            </button>
+          </div>
+        </div>
+        <div className="mt-3 text-sm text-gray-500">
           {filtered.length} record{filtered.length !== 1 ? 's' : ''}
         </div>
       </div>
@@ -105,42 +210,95 @@ const DuesPanel = ({ summaries }) => {
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Roll</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Program</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sem</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Opening</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Received</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Closing</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cum. Due</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Late Fine</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Roll</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Course</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Intake</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sem</th>
+                {RECEIVABLE_COLUMNS.map((c) => (
+                  <th key={c.key} className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                    {c.label}
+                  </th>
+                ))}
+                <th className="px-3 py-3 text-right text-xs font-medium text-blue-700 uppercase whitespace-nowrap bg-blue-50/50">
+                  Total Receivable
+                </th>
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Received</th>
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Closing</th>
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Cum. Due</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filtered.slice(0, 200).map(s => (
+              {filtered.slice(0, 300).map((s) => (
                 <tr key={s.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 font-mono">{s.student_roll}</td>
-                  <td className="px-4 py-2">{s.student_name}</td>
-                  <td className="px-4 py-2">{s.program}</td>
-                  <td className="px-4 py-2">{s.semester}</td>
-                  <td className="px-4 py-2 text-right">৳{Number(s.opening_balance || 0).toLocaleString()}</td>
-                  <td className="px-4 py-2 text-right text-green-700">৳{Number(s.semester_total_received || 0).toLocaleString()}</td>
-                  <td className={`px-4 py-2 text-right font-medium ${Number(s.closing_balance) > 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                  <td className="px-3 py-2 font-mono text-xs">{s.student_roll}</td>
+                  <td className="px-3 py-2">{s.student_name}</td>
+                  <td className="px-3 py-2">{s.program}</td>
+                  <td className="px-3 py-2">{s.intake_batch}</td>
+                  <td className="px-3 py-2">{s.semester}</td>
+                  {RECEIVABLE_COLUMNS.map((c) => {
+                    const v = c.compute ? c.compute(s) : Number(s[c.key] || 0);
+                    return (
+                      <td key={c.key} className="px-3 py-2 text-right text-gray-700 whitespace-nowrap">
+                        ৳{Number(v).toLocaleString()}
+                      </td>
+                    );
+                  })}
+                  <td className="px-3 py-2 text-right whitespace-nowrap bg-blue-50/30">
+                    <div className="flex items-center justify-end gap-1">
+                      <span className="font-semibold text-blue-700">
+                        ৳{Number(s.total_receivable_end_of_semester || 0).toLocaleString()}
+                      </span>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingRow(s)}
+                          className="p-1 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                          title="Edit receivable fees"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 text-right text-green-700 whitespace-nowrap">
+                    ৳{Number(s.semester_total_received || 0).toLocaleString()}
+                  </td>
+                  <td className={`px-3 py-2 text-right font-medium whitespace-nowrap ${Number(s.closing_balance) > 0 ? 'text-red-600' : 'text-gray-700'}`}>
                     ৳{Number(s.closing_balance || 0).toLocaleString()}
                   </td>
-                  <td className="px-4 py-2 text-right text-red-700">৳{Number(s.cumulative_due_after_semester || 0).toLocaleString()}</td>
-                  <td className="px-4 py-2 text-right">৳{Number(s.late_payment_fine_total || 0).toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right text-red-700 whitespace-nowrap">
+                    ৳{Number(s.cumulative_due_after_semester || 0).toLocaleString()}
+                  </td>
                 </tr>
               ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={5 + RECEIVABLE_COLUMNS.length + 4} className="px-6 py-12 text-center text-gray-500">
+                    No records match the current filters.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
-          {filtered.length > 200 && (
+          {filtered.length > 300 && (
             <div className="p-3 text-sm text-gray-500 text-center bg-gray-50">
-              Showing first 200 of {filtered.length} records — refine filters to narrow.
+              Showing first 300 of {filtered.length} records — refine filters to narrow.
             </div>
           )}
         </div>
       </div>
+
+      {editingRow && (
+        <EditReceivablesModal
+          row={editingRow}
+          onClose={() => setEditingRow(null)}
+          onSuccess={() => {
+            setEditingRow(null);
+            onRefresh?.();
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -184,7 +342,7 @@ const PaymentsPage = () => {
           api.get('/accounts/students/', { params: { page_size: 500 } }),
           api.get('/payments/payments/', { params: { page_size: 200 } }),
           api.get('/academics/exams/', { params: { page_size: 100 } }),
-          api.get('/payments/semester-summaries/', { params: { page_size: 500 } }),
+          api.get('/payments/semester-summaries/', { params: { page_size: 10000 } }),
         ]);
 
         if (studentsRes.status === 'fulfilled') {
@@ -222,6 +380,18 @@ const PaymentsPage = () => {
       setLoading(false);
     }
   }, [currentPage, searchTerm, selectedStudent, selectedMethod, dateFrom, dateTo]);
+
+  const fetchSummaries = useCallback(async () => {
+    try {
+      const response = await api.get('/payments/semester-summaries/', {
+        params: { page_size: 10000 },
+      });
+      setSummaries(response.data.results || response.data || []);
+    } catch (error) {
+      console.error('Error fetching summaries:', error);
+      toast.error('Failed to refresh dues data');
+    }
+  }, []);
 
   // Derive options that actually have payments
   const availableOptions = useMemo(() => {
@@ -657,7 +827,12 @@ const PaymentsPage = () => {
       </div>
 
       {activeTab === 'dues' && (
-        <DuesPanel summaries={summaries} />
+        <DuesPanel
+          summaries={summaries}
+          students={students}
+          canEdit={canEdit}
+          onRefresh={fetchSummaries}
+        />
       )}
 
       {activeTab === 'payments' && (

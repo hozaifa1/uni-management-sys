@@ -206,20 +206,33 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         })
 
 
-class SemesterSummaryViewSet(viewsets.ReadOnlyModelViewSet):
+class SemesterSummaryViewSet(viewsets.ModelViewSet):
     """
-    Read-only per-student-per-semester financial summary (dues, balances,
-    attendance). Sourced from Excel ledger — the system does not auto-compute.
+    Per-student-per-semester financial summary (dues, balances, attendance).
+    Sourced from Excel ledger originally; admins can edit receivable fees.
     """
 
     queryset = SemesterSummary.objects.select_related('student', 'student__user').all()
     serializer_class = SemesterSummarySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrCoordinatorCreateOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['student', 'semester', 'program', 'intake_batch']
     search_fields = ['student__roll_number', 'student__full_name']
     ordering_fields = ['semester', 'closing_balance', 'cumulative_due_after_semester']
     ordering = ['-cumulative_due_after_semester']
+
+    # Fee fields that admins can bulk-edit via bulk_update_receivables.
+    EDITABLE_FEE_FIELDS = {
+        'semester_fee',
+        'monthly_tuition_fee',
+        'midterm_1_fee',
+        'midterm_2_fee',
+        'nu_exam_fee',
+        'library_deposit',
+        'total_receivable_end_of_semester',
+        'receivable_at_mt_exam',
+        'total_payable_at_form_fillup',
+    }
 
     @action(detail=False, methods=['get'])
     def dues_overview(self, request):
@@ -232,6 +245,111 @@ class SemesterSummaryViewSet(viewsets.ReadOnlyModelViewSet):
             'total_due': agg['total_due'] or 0,
             'total_received': agg['total_received'] or 0,
             'student_count': SemesterSummary.objects.values('student').distinct().count(),
+        })
+
+    @action(detail=False, methods=['post'], url_path='bulk-update-receivables')
+    def bulk_update_receivables(self, request):
+        """
+        Bulk-edit receivable fee fields across a scope.
+
+        Body: {
+          "scope": "student" | "intake" | "semester" | "course",
+          "target": { ...filters depending on scope... },
+            - student:  {"student": <id>}
+            - intake:   {"intake_batch": "14th", "program": "BBA" (optional),
+                         "semester": "1st Sem" (optional)}
+            - semester: {"semester": "1st Sem", "program": "BBA" (optional),
+                         "intake_batch": "14th" (optional)}
+            - course:   {"program": "BBA"}
+          "fields": {"semester_fee": 1000, ...}  // only EDITABLE_FEE_FIELDS
+        }
+        """
+        user = request.user
+        if not (user.is_superuser or getattr(user, "role", None) == "ADMIN"):
+            return Response(
+                {'error': 'Only admins can bulk-edit receivables.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        scope = (request.data.get('scope') or '').strip()
+        target = request.data.get('target') or {}
+        raw_fields = request.data.get('fields') or {}
+
+        if scope not in {'student', 'intake', 'semester', 'course'}:
+            return Response(
+                {'error': "scope must be one of: student, intake, semester, course."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Whitelist + coerce update fields.
+        clean_fields: dict = {}
+        for key, value in raw_fields.items():
+            if key not in self.EDITABLE_FEE_FIELDS:
+                continue
+            if value is None or value == '':
+                continue
+            try:
+                clean_fields[key] = int(float(value))
+            except (TypeError, ValueError):
+                return Response(
+                    {'error': f"Field '{key}' must be numeric."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        if not clean_fields:
+            return Response(
+                {'error': 'No editable fields provided.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Build the scoped queryset.
+        qs = SemesterSummary.objects.all()
+        if scope == 'student':
+            sid = target.get('student')
+            if not sid:
+                return Response(
+                    {'error': "scope=student requires target.student (id)."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            qs = qs.filter(student_id=sid)
+        elif scope == 'intake':
+            ib = target.get('intake_batch')
+            if not ib:
+                return Response(
+                    {'error': "scope=intake requires target.intake_batch."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            qs = qs.filter(intake_batch=ib)
+            if target.get('program'):
+                qs = qs.filter(program=target['program'])
+            if target.get('semester'):
+                qs = qs.filter(semester=target['semester'])
+        elif scope == 'semester':
+            sem = target.get('semester')
+            if not sem:
+                return Response(
+                    {'error': "scope=semester requires target.semester."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            qs = qs.filter(semester=sem)
+            if target.get('program'):
+                qs = qs.filter(program=target['program'])
+            if target.get('intake_batch'):
+                qs = qs.filter(intake_batch=target['intake_batch'])
+        elif scope == 'course':
+            prog = target.get('program')
+            if not prog:
+                return Response(
+                    {'error': "scope=course requires target.program."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            qs = qs.filter(program=prog)
+
+        updated = qs.update(**clean_fields)
+        return Response({
+            'updated': updated,
+            'fields': clean_fields,
+            'scope': scope,
+            'target': target,
         })
 
 
