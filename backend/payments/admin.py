@@ -4,10 +4,30 @@ from .models import (
     AdmissionRecord,
     DailyAccount,
     Expense,
+    ExpenseCategory,
+    ExpenseSchedule,
     FeeStructure,
     Payment,
     SemesterSummary,
 )
+
+
+@admin.register(ExpenseCategory)
+class ExpenseCategoryAdmin(admin.ModelAdmin):
+    list_display = ['name', 'kind', 'default_amount', 'is_active']
+    list_filter = ['kind', 'is_active']
+    search_fields = ['name']
+    ordering = ['kind', 'name']
+
+
+@admin.register(ExpenseSchedule)
+class ExpenseScheduleAdmin(admin.ModelAdmin):
+    list_display = ['category', 'payee', 'frequency', 'amount_per_period',
+                    'start_date', 'end_date', 'is_active']
+    list_filter = ['frequency', 'is_active', 'category__kind']
+    search_fields = ['payee', 'category__name']
+    list_select_related = ['category']
+    ordering = ['category', 'payee']
 
 
 @admin.register(SemesterSummary)
@@ -113,23 +133,25 @@ class ExpenseAdmin(admin.ModelAdmin):
     """
 
     list_display = [
-        'expense_type',
+        'category',
         'amount',
         'paid_to',
         'expense_date',
+        'period_label',
         'get_created_by',
     ]
-    list_filter = ['expense_type', 'expense_date']
-    search_fields = ['description', 'paid_to']
+    list_filter = ['category__kind', 'category', 'expense_date']
+    search_fields = ['description', 'paid_to', 'period_label', 'category__name']
     ordering = ['-expense_date']
-    list_select_related = ['created_by']
+    list_select_related = ['created_by', 'category', 'schedule']
 
     fieldsets = (
         ('Expense Information', {
-            'fields': ('expense_type', 'amount', 'expense_date', 'paid_to')
+            'fields': ('category', 'schedule', 'period_label',
+                       'amount', 'expense_date', 'paid_to')
         }),
         ('Details', {
-            'fields': ('description', 'receipt_file')
+            'fields': ('description', 'receipt_file', 'expense_type')
         }),
         ('System Information', {
             'fields': ('created_by', 'created_at', 'updated_at'),

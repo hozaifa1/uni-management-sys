@@ -4,6 +4,8 @@ from .models import (
     AdmissionRecord,
     DailyAccount,
     Expense,
+    ExpenseCategory,
+    ExpenseSchedule,
     FeeStructure,
     Payment,
     SemesterSummary,
@@ -86,6 +88,58 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
         return float(obj.net_amount())
 
 
+class ExpenseCategorySerializer(serializers.ModelSerializer):
+    schedule_count = serializers.IntegerField(read_only=True, required=False)
+
+    class Meta:
+        model = ExpenseCategory
+        fields = [
+            'id', 'name', 'kind', 'default_amount', 'is_active', 'notes',
+            'schedule_count', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class ExpenseScheduleSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    category_kind = serializers.CharField(source='category.kind', read_only=True)
+    periods_elapsed = serializers.SerializerMethodField()
+    expected_total = serializers.SerializerMethodField()
+    paid_total = serializers.SerializerMethodField()
+    outstanding = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ExpenseSchedule
+        fields = [
+            'id', 'category', 'category_name', 'category_kind',
+            'payee', 'amount_per_period', 'frequency',
+            'start_date', 'end_date', 'day_of_period',
+            'is_active', 'notes',
+            'periods_elapsed', 'expected_total', 'paid_total', 'outstanding',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_periods_elapsed(self, obj):
+        return obj.periods_elapsed()
+
+    def get_expected_total(self, obj):
+        return obj.expected_total()
+
+    def get_paid_total(self, obj):
+        from django.db.models import Sum
+        total = obj.expenses.aggregate(s=Sum('amount'))['s'] or 0
+        return int(total)
+
+    def get_outstanding(self, obj):
+        return self.get_expected_total(obj) - self.get_paid_total(obj)
+
+    def validate_amount_per_period(self, value):
+        if value is None or value <= 0:
+            raise serializers.ValidationError('Amount must be greater than zero.')
+        return value
+
+
 class ExpenseSerializer(serializers.ModelSerializer):
     """
     Serializer for Expense model.
@@ -95,20 +149,41 @@ class ExpenseSerializer(serializers.ModelSerializer):
         source='created_by.get_full_name',
         read_only=True,
     )
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    category_kind = serializers.CharField(source='category.kind', read_only=True)
+    schedule_label = serializers.SerializerMethodField()
 
     class Meta:
         model = Expense
         fields = [
-            'id', 'expense_type', 'amount', 'description',
+            'id', 'category', 'category_name', 'category_kind',
+            'schedule', 'schedule_label', 'period_label',
+            'expense_type', 'amount', 'description',
             'expense_date', 'paid_to', 'created_by', 'created_by_name',
             'receipt_file', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
 
+    def get_schedule_label(self, obj):
+        if not obj.schedule_id:
+            return None
+        s = obj.schedule
+        return f"{s.category.name}{(' - ' + s.payee) if s.payee else ''}"
+
     def validate_amount(self, value):
         if value is None or value <= 0:
             raise serializers.ValidationError('Amount must be greater than zero.')
         return value
+
+    def validate(self, attrs):
+        # Require category OR legacy expense_type so we can identify the expense.
+        category = attrs.get('category') or getattr(self.instance, 'category', None)
+        expense_type = attrs.get('expense_type') or getattr(self.instance, 'expense_type', None)
+        if not category and not expense_type:
+            raise serializers.ValidationError({
+                'category': 'Pick a category (or supply legacy expense_type).',
+            })
+        return attrs
 
 
 class PaymentStatisticsSerializer(serializers.Serializer):

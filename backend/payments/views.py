@@ -13,6 +13,8 @@ from .models import (
     AdmissionRecord,
     DailyAccount,
     Expense,
+    ExpenseCategory,
+    ExpenseSchedule,
     FeeStructure,
     Payment,
     SemesterSummary,
@@ -20,6 +22,8 @@ from .models import (
 from .serializers import (
     AdmissionRecordSerializer,
     DailyAccountSerializer,
+    ExpenseCategorySerializer,
+    ExpenseScheduleSerializer,
     ExpenseSerializer,
     FeeStructureSerializer,
     PaymentDetailSerializer,
@@ -154,17 +158,45 @@ class PaymentViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+class ExpenseCategoryViewSet(viewsets.ModelViewSet):
+    """Manage user-defined expense categories."""
+
+    queryset = ExpenseCategory.objects.all()
+    serializer_class = ExpenseCategorySerializer
+    permission_classes = [IsAdminOrCoordinatorCreateOnly]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['kind', 'is_active']
+    search_fields = ['name']
+    ordering_fields = ['name', 'kind']
+    ordering = ['kind', 'name']
+
+
+class ExpenseScheduleViewSet(viewsets.ModelViewSet):
+    """Manage recurring expense obligations."""
+
+    queryset = ExpenseSchedule.objects.select_related('category').all()
+    serializer_class = ExpenseScheduleSerializer
+    permission_classes = [IsAdminOrCoordinatorCreateOnly]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['category', 'frequency', 'is_active']
+    search_fields = ['payee', 'category__name']
+    ordering_fields = ['start_date', 'amount_per_period']
+    ordering = ['category', 'payee']
+
+
 class ExpenseViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Expense model CRUD operations.
     """
 
-    queryset = Expense.objects.select_related('created_by').all()
+    queryset = Expense.objects.select_related(
+        'created_by', 'category', 'schedule', 'schedule__category',
+    ).all()
     serializer_class = ExpenseSerializer
     permission_classes = [IsAdminOrCoordinatorCreateOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['expense_type', 'expense_date']
-    search_fields = ['description', 'paid_to']
+    filterset_fields = ['category', 'schedule', 'expense_type', 'expense_date']
+    search_fields = ['description', 'paid_to', 'period_label', 'category__name']
     ordering_fields = ['expense_date', 'amount']
     ordering = ['-expense_date']
 
@@ -173,28 +205,31 @@ class ExpenseViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
-        """Get expense summary by type."""
-        summary = Expense.objects.values('expense_type').annotate(
-            total=Sum('amount'),
-            count=Count('id'),
-        ).order_by('-total')
-
-        return Response(summary)
+        """Total spent grouped by category."""
+        summary = (
+            Expense.objects
+            .values('category', 'category__name', 'category__kind')
+            .annotate(total=Sum('amount'), count=Count('id'))
+            .order_by('-total')
+        )
+        return Response(list(summary))
 
     @action(detail=False, methods=['get'])
     def monthly(self, request):
-        """Get monthly expense breakdown."""
-        month = request.query_params.get('month', datetime.now().month)
-        year = request.query_params.get('year', datetime.now().year)
+        """Monthly expense breakdown by category."""
+        month = int(request.query_params.get('month', datetime.now().month))
+        year = int(request.query_params.get('year', datetime.now().year))
 
         monthly_expenses = Expense.objects.filter(
             expense_date__year=year,
             expense_date__month=month,
         )
 
-        summary = monthly_expenses.values('expense_type').annotate(
-            total=Sum('amount'),
-            count=Count('id'),
+        breakdown = list(
+            monthly_expenses
+            .values('category', 'category__name', 'category__kind')
+            .annotate(total=Sum('amount'), count=Count('id'))
+            .order_by('-total')
         )
 
         total = monthly_expenses.aggregate(total=Sum('amount'))['total'] or 0
@@ -202,8 +237,61 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         return Response({
             'month': f'{month}/{year}',
             'total_expenses': total,
-            'breakdown': summary,
+            'breakdown': breakdown,
         })
+
+    @action(detail=False, methods=['get'], url_path='dues-overview')
+    def dues_overview(self, request):
+        """
+        Per-category outstanding dues across all active schedules.
+
+        For each active ExpenseSchedule:
+          expected = periods_elapsed * amount_per_period
+          paid     = sum(expenses linked to this schedule)
+          due      = expected - paid
+
+        Aggregated by category, then a totals row.
+        """
+        schedules = ExpenseSchedule.objects.select_related('category').filter(is_active=True)
+
+        # Paid totals keyed by schedule id (one query).
+        paid_by_schedule = dict(
+            Expense.objects
+            .filter(schedule__in=schedules)
+            .values_list('schedule')
+            .annotate(s=Sum('amount'))
+            .values_list('schedule', 's')
+        )
+
+        by_category = {}
+        for sched in schedules:
+            cat = sched.category
+            slot = by_category.setdefault(cat.id, {
+                'category_id': cat.id,
+                'category_name': cat.name,
+                'category_kind': cat.kind,
+                'expected_total': 0,
+                'paid_total': 0,
+                'outstanding': 0,
+                'schedule_count': 0,
+            })
+            expected = sched.expected_total()
+            paid = int(paid_by_schedule.get(sched.id, 0) or 0)
+            slot['expected_total'] += expected
+            slot['paid_total'] += paid
+            slot['outstanding'] += (expected - paid)
+            slot['schedule_count'] += 1
+
+        rows = sorted(by_category.values(), key=lambda r: -r['outstanding'])
+
+        totals = {
+            'expected_total': sum(r['expected_total'] for r in rows),
+            'paid_total': sum(r['paid_total'] for r in rows),
+            'outstanding': sum(r['outstanding'] for r in rows),
+            'schedule_count': sum(r['schedule_count'] for r in rows),
+        }
+
+        return Response({'categories': rows, 'totals': totals})
 
 
 class SemesterSummaryViewSet(viewsets.ModelViewSet):

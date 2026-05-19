@@ -131,11 +131,152 @@ class Payment(models.Model):
         return self.amount_paid - self.discount_amount
 
 
-class Expense(models.Model):
+class ExpenseCategory(models.Model):
     """
-    Expense tracking for institution.
+    User-extensible expense category.
+
+    Replaces the legacy hard-coded EXPENSE_TYPE_CHOICES. `kind` is a coarse
+    grouping for UI colors/filters; `name` is the display label and is unique.
     """
 
+    KIND_CHOICES = [
+        ('salary', 'Salary'),
+        ('rent', 'Rent'),
+        ('utility', 'Utility'),
+        ('food', 'Food'),
+        ('conveyance', 'Conveyance'),
+        ('maintenance', 'Maintenance'),
+        ('other', 'Other'),
+    ]
+
+    name = models.CharField(max_length=100, unique=True)
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default='other')
+    default_amount = models.DecimalField(
+        max_digits=12, decimal_places=0, default=0,
+        help_text='Suggested amount when creating schedules/expenses',
+    )
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['kind', 'name']
+        verbose_name = 'Expense Category'
+        verbose_name_plural = 'Expense Categories'
+        indexes = [models.Index(fields=['kind'])]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class ExpenseSchedule(models.Model):
+    """
+    Recurring expense obligation (the 'payable' rule).
+
+    Example: 'Campus Rent: ৳80,000/month from 2026-01-01 until null'.
+    Actual outflows live in Expense; this model only describes what is
+    expected to be paid.
+    """
+
+    FREQUENCY_CHOICES = [
+        ('monthly', 'Monthly'),
+        ('weekly', 'Weekly'),
+        ('quarterly', 'Quarterly'),
+        ('yearly', 'Yearly'),
+        ('one_time', 'One-time'),
+    ]
+
+    category = models.ForeignKey(
+        ExpenseCategory,
+        on_delete=models.PROTECT,
+        related_name='schedules',
+    )
+    payee = models.CharField(
+        max_length=200, blank=True,
+        help_text='Recipient name (e.g. teacher name, landlord, utility provider)',
+    )
+    amount_per_period = models.DecimalField(max_digits=12, decimal_places=0)
+    frequency = models.CharField(
+        max_length=20, choices=FREQUENCY_CHOICES, default='monthly',
+    )
+    start_date = models.DateField(help_text='When this obligation begins')
+    end_date = models.DateField(
+        blank=True, null=True,
+        help_text='Continue until this date (null = ongoing)',
+    )
+    day_of_period = models.PositiveSmallIntegerField(
+        blank=True, null=True,
+        help_text='Day of month/week when payment is due (optional)',
+    )
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['category', 'payee']
+        verbose_name = 'Expense Schedule'
+        verbose_name_plural = 'Expense Schedules'
+        indexes = [
+            models.Index(fields=['category', 'is_active']),
+            models.Index(fields=['frequency']),
+        ]
+
+    def __str__(self) -> str:
+        payee = f" - {self.payee}" if self.payee else ""
+        return f"{self.category.name}{payee} ({self.get_frequency_display()})"
+
+    def periods_elapsed(self, as_of=None) -> int:
+        """
+        Number of periods that have started between start_date and as_of.
+
+        A 'monthly' schedule starting 2026-01-15 has had 1 period as of
+        2026-01-15, 2 as of 2026-02-15, etc. Capped by end_date if set.
+        """
+        from datetime import date as _date
+        if as_of is None:
+            as_of = _date.today()
+        if not self.is_active or self.start_date > as_of:
+            return 0
+        anchor = self.end_date if (self.end_date and self.end_date < as_of) else as_of
+
+        freq = self.frequency
+        if freq == 'one_time':
+            return 1 if self.start_date <= anchor else 0
+        if freq == 'weekly':
+            return ((anchor - self.start_date).days // 7) + 1
+        if freq == 'monthly':
+            months = (anchor.year - self.start_date.year) * 12 + (anchor.month - self.start_date.month)
+            if anchor.day >= self.start_date.day:
+                months += 1
+            return max(months, 0)
+        if freq == 'quarterly':
+            months = (anchor.year - self.start_date.year) * 12 + (anchor.month - self.start_date.month)
+            return max((months // 3) + (1 if anchor.day >= self.start_date.day else 0), 0)
+        if freq == 'yearly':
+            years = anchor.year - self.start_date.year
+            if (anchor.month, anchor.day) >= (self.start_date.month, self.start_date.day):
+                years += 1
+            return max(years, 0)
+        return 0
+
+    def expected_total(self, as_of=None):
+        return self.periods_elapsed(as_of) * int(self.amount_per_period)
+
+
+class Expense(models.Model):
+    """
+    Actual outflow record.
+
+    A single payment the institution made. Optionally linked to a
+    schedule + period_label so multiple Expenses can pay down the
+    same period (partial payments allowed).
+    """
+
+    # Legacy enum kept temporarily for backward compatibility during migration.
     EXPENSE_TYPE_CHOICES = [
         ('salary', 'Salary'),
         ('rent', 'Rent'),
@@ -144,10 +285,32 @@ class Expense(models.Model):
         ('other', 'Other'),
     ]
 
+    category = models.ForeignKey(
+        ExpenseCategory,
+        on_delete=models.PROTECT,
+        related_name='expenses',
+        null=True, blank=True,
+        help_text='New: expense category. Falls back to legacy expense_type when null.',
+    )
+
+    schedule = models.ForeignKey(
+        ExpenseSchedule,
+        on_delete=models.SET_NULL,
+        related_name='expenses',
+        null=True, blank=True,
+        help_text='Links this outflow to a recurring obligation (optional)',
+    )
+
+    period_label = models.CharField(
+        max_length=40, blank=True,
+        help_text='Which period this payment covers, e.g. "May 2026", "Q1 2026"',
+    )
+
     expense_type = models.CharField(
         max_length=20,
         choices=EXPENSE_TYPE_CHOICES,
-        help_text='Type of expense',
+        blank=True, null=True,
+        help_text='[Legacy] Free-form type label. Use category instead.',
     )
 
     amount = models.DecimalField(
@@ -157,6 +320,7 @@ class Expense(models.Model):
     )
 
     description = models.TextField(
+        blank=True,
         help_text='Expense description',
     )
 
@@ -166,6 +330,7 @@ class Expense(models.Model):
 
     paid_to = models.CharField(
         max_length=200,
+        blank=True,
         help_text='Payee name',
     )
 
@@ -191,9 +356,15 @@ class Expense(models.Model):
         ordering = ['-expense_date']
         verbose_name = 'Expense'
         verbose_name_plural = 'Expenses'
+        indexes = [
+            models.Index(fields=['expense_date']),
+            models.Index(fields=['category', 'expense_date']),
+            models.Index(fields=['schedule', 'period_label']),
+        ]
 
     def __str__(self) -> str:
-        return f"{self.get_expense_type_display()} - {self.amount} on {self.expense_date}"
+        label = self.category.name if self.category_id else (self.get_expense_type_display() or 'Expense')
+        return f"{label} - {self.amount} on {self.expense_date}"
 
 
 class SemesterSummary(models.Model):
